@@ -29,3 +29,18 @@ coverage
 
 *.tsbuildinfo
 .vercel
+
+# Variable d'environnement
+.env
+.env.test
+.env.test.local
+.env.local
+.env.example
+.env.example.local
+.env.example.test
+.env.example.test.local
+.env.example.prod
+.env.example.prod.local
+.env.example.dev
+.env.example.dev.local
+
