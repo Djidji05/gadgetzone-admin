@@ -1,0 +1,86 @@
+[
+  {
+    "id": 2,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "role": "user",
+    "roleType": "string"
+  },
+  {
+    "id": 3,
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "role": "user",
+    "roleType": "string"
+  },
+  {
+    "id": 4,
+    "name": "Noel Djivensly",
+    "email": "ndjivensly@gmail.com",
+    "role": "user",
+    "roleType": "string"
+  },
+  {
+    "id": 5,
+    "name": "Djouvenska Noel",
+    "email": "djouka@gmail.com",
+    "role": "user",
+    "roleType": "string"
+  },
+  {
+    "id": 6,
+    "name": "Devidson  Noel",
+    "email": "dave@gmail.com",
+    "role": "user",
+    "roleType": "string"
+  },
+  {
+    "id": 7,
+    "name": "Schneider Fanfan",
+    "email": "dede@gmail.com",
+    "role": "user",
+    "roleType": "string"
+  },
+  {
+    "id": 8,
+    "name": "Berly Jean",
+    "email": "berly@gmaal.com",
+    "role": "user",
+    "roleType": "string"
+  },
+  {
+    "id": 9,
+    "name": "MInel Pierre",
+    "email": "admi@gadgetzone.com",
+    "role": "user",
+    "roleType": "string"
+  },
+  {
+    "id": 10,
+    "name": "Guisline Marseille",
+    "email": "guis@gmail.com.com",
+    "role": "user",
+    "roleType": "string"
+  },
+  {
+    "id": 1,
+    "name": "Admin System",
+    "email": "admin@gadgetzone.com",
+    "role": "admin",
+    "roleType": "string"
+  },
+  {
+    "id": 11,
+    "name": "Djivensly Noel",
+    "email": "ndjivensl@gmail.com",
+    "role": "gestionnaire",
+    "roleType": "string"
+  },
+  {
+    "id": 12,
+    "name": "Djivensly Noel",
+    "email": "djidji@gmail.com",
+    "role": "gestionnaire",
+    "roleType": "string"
+  }
+]

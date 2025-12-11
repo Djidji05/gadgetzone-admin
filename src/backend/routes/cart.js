@@ -5,12 +5,55 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Route de debug TEMPORAIRE (à retirer ensuite) - Doit être AVANT le middleware d'auth
+router.post('/debug_test', async (req, res) => {
+  try {
+    const { Cart, CartItem } = await import('../models/index.js');
+    const Product = (await import('../models/Product.js')).default;
+
+    const carts = await Cart.findAll({
+      include: [{
+        model: CartItem,
+        include: [{
+          model: Product,
+          attributes: ['id', 'name', 'price', 'image_url', 'images']
+        }]
+      }],
+      limit: 1
+    });
+
+    const debugInfo = carts.map(c => ({
+      cartId: c.id,
+      items: c.CartItems.map(i => ({
+        prodId: i.Product.id,
+        url: i.Product.image_url,
+        images: i.Product.images,
+        logic: i.Product.image_url || (i.Product.images && i.Product.images.length > 0 ? i.Product.images[0] : 'FAIL')
+      }))
+    }));
+
+    res.json({
+      db_config: Cart.sequelize.config.database,
+      carts: debugInfo
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Middleware d'authentification pour toutes les routes panier
 router.use(authenticateToken);
 
 // Obtenir le panier du client connecté
 router.get('/', async (req, res) => {
   try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const logFile = path.resolve('app_debug_log.txt');
+    const log = (msg) => fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
+
+    log(`Cart Request. DB Name: ${Cart.sequelize.config.database} / Host: ${Cart.sequelize.config.host}`);
+
     const customerId = req.user.id;
 
     let cart = await Cart.findOne({
@@ -19,7 +62,7 @@ router.get('/', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image', 'stock']
+          attributes: ['id', 'name', 'price', 'image_url', 'images', 'stock']
         }]
       }]
     });
@@ -37,28 +80,31 @@ router.get('/', async (req, res) => {
     const response = {
       id: cart.id,
       customerId: cart.customerId,
-      items: cart.CartItems ? cart.CartItems.map(item => ({
-        id: item.id,
-        productId: item.productId,
-        quantity: item.quantity,
-        subtotal: item.quantity * item.Product.price,
-        product: {
-          id: item.Product.id,
-          name: item.Product.name,
-          price: item.Product.price,
-          image: item.Product.image
-        }
-      })) : [],
-      totalAmount,
-      createdAt: cart.createdAt,
-      updatedAt: cart.updatedAt
+      items: cart.CartItems ? cart.CartItems.map(item => {
+        const img = item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null);
+        console.log(`[CartDebug] Product ${item.Product.id}: url=${item.Product.image_url}, images=${JSON.stringify(item.Product.images)}, result=${img}`);
+        return {
+          id: item.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          subtotal: item.quantity * item.Product.price,
+          product: {
+            id: item.Product.id,
+            name: item.Product.name,
+            price: item.Product.price,
+            image: item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null)
+          }
+        })) : [],
+          totalAmount,
+          createdAt: cart.createdAt,
+            updatedAt: cart.updatedAt
     };
 
-    res.json(response);
+res.json(response);
   } catch (error) {
-    console.error('Get cart error:', error);
-    res.status(500).json({ message: 'Erreur lors de la récupération du panier' });
-  }
+  console.error('Get cart error:', error);
+  res.status(500).json({ message: 'Erreur lors de la récupération du panier' });
+}
 });
 
 // Ajouter un produit au panier
@@ -112,7 +158,7 @@ router.post('/add', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image', 'stock']
+          attributes: ['id', 'name', 'price', 'image_url', 'images', 'stock']
         }]
       }]
     });
@@ -133,7 +179,7 @@ router.post('/add', async (req, res) => {
           id: item.Product.id,
           name: item.Product.name,
           price: item.Product.price,
-          image: item.Product.image
+          image: item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null)
         }
       })),
       totalAmount,
@@ -188,7 +234,7 @@ router.put('/items/:itemId', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image', 'stock']
+          attributes: ['id', 'name', 'price', 'image_url', 'images', 'stock']
         }]
       }]
     });
@@ -209,7 +255,7 @@ router.put('/items/:itemId', async (req, res) => {
           id: item.Product.id,
           name: item.Product.name,
           price: item.Product.price,
-          image: item.Product.image
+          image: item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null)
         }
       })),
       totalAmount,
@@ -252,7 +298,7 @@ router.delete('/items/:itemId', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image', 'stock']
+          attributes: ['id', 'name', 'price', 'image_url', 'images', 'stock']
         }]
       }]
     });
@@ -273,7 +319,7 @@ router.delete('/items/:itemId', async (req, res) => {
           id: item.Product.id,
           name: item.Product.name,
           price: item.Product.price,
-          image: item.Product.image
+          image: item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null)
         }
       })) : [],
       totalAmount,
@@ -319,7 +365,7 @@ router.post('/promo', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image', 'stock']
+          attributes: ['id', 'name', 'price', 'image_url', 'images', 'stock']
         }]
       }]
     });
@@ -344,7 +390,7 @@ router.post('/promo', async (req, res) => {
           id: item.Product.id,
           name: item.Product.name,
           price: item.Product.price,
-          image: item.Product.image
+          image: item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null)
         }
       })),
       totalAmount,

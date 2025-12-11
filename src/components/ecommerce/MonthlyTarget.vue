@@ -7,9 +7,9 @@
     >
       <div class="flex justify-between">
         <div>
-          <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Monthly Target</h3>
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Objectif Mensuel</h3>
           <p class="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-            Target you’ve set for each month
+            Objectif que vous vous êtes fixé pour chaque mois
           </p>
         </div>
         <div>
@@ -40,16 +40,22 @@
           </div>
         </div>
         <span
-          class="absolute left-1/2 top-[85%] -translate-x-1/2 -translate-y-[85%] rounded-full bg-success-50 px-3 py-1 text-xs font-medium text-success-600 dark:bg-success-500/15 dark:text-success-500"
-          >+10%</span
+          class="absolute left-1/2 top-[85%] -translate-x-1/2 -translate-y-[85%] rounded-full px-3 py-1 text-xs font-medium"
+          :class="[
+            targetData.monthOverMonthGrowth >= 0
+              ? 'bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500'
+              : 'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-500'
+          ]"
         >
+          {{ targetData.monthOverMonthGrowth >= 0 ? '+' : '' }}{{ targetData.monthOverMonthGrowth.toFixed(1) }}%
+        </span>
       </div>
-      <p class="mx-auto mt-1.5 w-full max-w-[380px] text-center text-sm text-gray-500 sm:text-base">
-        You earn $3287 today, it's higher than last month. Keep up your good work!
+      <p class="mx-auto mt-2 w-full max-w-[380px] text-center text-sm text-gray-500 sm:text-base">
+        Vous avez gagné {{ formatCurrency(targetData.todayRevenue) }} aujourd'hui{{ comparisonText }}.
       </p>
     </div>
 
-    <div class="flex items-center justify-center gap-5 px-6 py-3.5 sm:gap-8 sm:py-5">
+    <div class="flex items-center justify-center gap-5 px-6 py-4 sm:gap-8 sm:py-5">
       <div>
         <p class="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
           Target
@@ -57,7 +63,7 @@
         <p
           class="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg"
         >
-          $20K
+          {{ formatCurrency(targetData.target) }}
           <svg
             width="16"
             height="16"
@@ -79,12 +85,12 @@
 
       <div>
         <p class="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
-          Revenue
+          Revenus
         </p>
         <p
           class="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg"
         >
-          $20K
+          {{ formatCurrency(targetData.currentRevenue) }}
           <svg
             width="16"
             height="16"
@@ -106,12 +112,12 @@
 
       <div>
         <p class="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
-          Today
+          Aujourd'hui
         </p>
         <p
           class="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg"
         >
-          $20K
+          {{ formatCurrency(targetData.todayRevenue) }}
           <svg
             width="16"
             height="16"
@@ -133,22 +139,64 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import DropdownMenu from '../common/DropdownMenu.vue'
-const menuItems = [
-  { label: 'View More', onClick: () => console.log('View More clicked') },
-  { label: 'Delete', onClick: () => console.log('Delete clicked') },
-]
 import VueApexCharts from 'vue3-apexcharts'
+import { statsService } from '@/services/api'
 
-const props = defineProps({
-  value: {
-    type: Number,
-    default: 75.55,
-  },
+const menuItems = [
+  { label: 'Voir plus', onClick: () => console.log('View More clicked') },
+  { label: 'Supprimer', onClick: () => console.log('Delete clicked') },
+]
+
+const targetData = ref({
+  target: 20000,
+  currentRevenue: 0,
+  todayRevenue: 0,
+  lastMonthRevenue: 0,
+  progressPercentage: 0,
+  monthOverMonthGrowth: 0
 })
 
-const series = computed(() => [props.value])
+const isLoading = ref(true)
+
+const series = computed(() => [targetData.value.progressPercentage])
+
+const comparisonText = computed(() => {
+  const growth = targetData.value.monthOverMonthGrowth
+  if (growth > 0) {
+    return ', c\'est plus que le mois dernier. Continuez votre bon travail !'
+  } else if (growth < 0) {
+    return ', c\'est moins que le mois dernier. Continuez vos efforts !'
+  } else {
+    return ', au même niveau que le mois dernier.'
+  }
+})
+
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('fr-HT', {
+    style: 'decimal',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value) + ' HTG'
+}
+
+const fetchMonthlyTarget = async () => {
+  try {
+    isLoading.value = true
+    const data = await statsService.getMonthlyTarget()
+    targetData.value = data
+    console.log('🎯 Monthly target data:', data)
+  } catch (error) {
+    console.error('❌ Error fetching monthly target:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchMonthlyTarget()
+})
 
 const chartOptions = {
   colors: ['#465FFF'],

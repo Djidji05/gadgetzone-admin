@@ -1,0 +1,19 @@
+Connecting to localhost:5432 / DB: gadgetzone as postgres
+Connected to DB.
+Available Tables: [
+  "categories",
+  "orders",
+  "order_items",
+  "banners",
+  "promotions",
+  "users",
+  "products",
+  "brands",
+  "expenses"
+]
+Product Count: 9
+Attempting raw SELECT on "carts"...
+Raw query on "carts" failed: la relation « carts » n'existe pas
+Attempting raw SELECT on "Cart"...
+Raw query on "Cart" failed: la relation « Cart » n'existe pas
+Error querying carts via Model: la relation « carts » n'existe pas

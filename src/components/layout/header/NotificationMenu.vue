@@ -6,7 +6,7 @@
     >
       <span
         :class="{ hidden: !notifying, flex: notifying }"
-        class="absolute right-0 top-0.5 z-1 h-2 w-2 rounded-full bg-orange-400"
+        class="absolute right-0 top-0 z-1 h-2 w-2 rounded-full bg-orange-400"
       >
         <span
           class="absolute inline-flex w-full h-full bg-orange-400 rounded-full opacity-75 -z-1 animate-ping"
@@ -59,34 +59,38 @@
       </div>
 
       <ul class="flex flex-col h-auto overflow-y-auto custom-scrollbar">
-        <li v-for="notification in notifications" :key="notification.id" @click="handleItemClick">
+        <li v-if="loading" class="p-4 text-center text-gray-500 dark:text-gray-400">
+          Chargement...
+        </li>
+        <li v-else-if="notifications.length === 0" class="p-4 text-center text-gray-500 dark:text-gray-400">
+          Aucune notification
+        </li>
+        <li v-else v-for="notification in notifications" :key="notification.id" @click="handleItemClick(notification)">
           <a
-            class="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
-            href="#"
+            class="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5 cursor-pointer"
+            :class="{ 'bg-blue-50 dark:bg-blue-900/10': notification.status === 'unread' }"
           >
             <span class="relative block w-full h-10 rounded-full z-1 max-w-10">
-              <img :src="notification.userImage" alt="User" class="overflow-hidden rounded-full" />
-              <span
-                :class="notification.status === 'online' ? 'bg-success-500' : 'bg-error-500'"
-                class="absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white dark:border-gray-900"
-              ></span>
+              <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700">
+                <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+              </div>
             </span>
 
-            <span class="block">
-              <span class="mb-1.5 block text-theme-sm text-gray-500 dark:text-gray-400">
-                <span class="font-medium text-gray-800 dark:text-white/90">
-                  {{ notification.userName }}
-                </span>
-                {{ notification.action }}
-                <span class="font-medium text-gray-800 dark:text-white/90">
-                  {{ notification.project }}
-                </span>
+            <span class="block flex-1">
+              <span class="mb-2 block text-theme-sm text-gray-800 dark:text-white/90 font-medium">
+                {{ notification.title }}
+              </span>
+              <span class="mb-2 block text-theme-sm text-gray-500 dark:text-gray-400">
+                {{ notification.message }}
               </span>
 
               <span class="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                <span>{{ notification.type }}</span>
+                <span class="capitalize">{{ notification.type }}</span>
                 <span class="w-1 h-1 bg-gray-400 rounded-full"></span>
-                <span>{{ notification.time }}</span>
+                <span>{{ formatTime(notification.created_at) }}</span>
+                <span v-if="notification.status === 'unread'" class="ml-2 w-2 h-2 bg-blue-500 rounded-full"></span>
               </span>
             </span>
           </a>
@@ -98,7 +102,7 @@
         class="mt-3 flex justify-center rounded-lg border border-gray-300 bg-white p-3 text-theme-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
         @click="handleViewAllClick"
       >
-        View All Notification
+        Voir toutes les notifications
       </router-link>
     </div>
     <!-- Dropdown End -->
@@ -106,100 +110,48 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+import { notificationService } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
+const router = useRouter()
+const authStore = useAuthStore()
 const dropdownOpen = ref(false)
-const notifying = ref(true)
 const dropdownRef = ref(null)
+const notifications = ref([])
+const unreadCount = ref(0)
+const loading = ref(false)
 
-const notifications = ref([
-  {
-    id: 1,
-    userName: 'Terry Franci',
-    userImage: '/images/user/user-02.jpg',
-    action: 'requests permission to change',
-    project: 'Project - Nganter App',
-    type: 'Project',
-    time: '5 min ago',
-    status: 'online',
-  },
-  {
-    id: 2,
-    userName: 'Terry Franci',
-    userImage: '/images/user/user-03.jpg',
-    action: 'requests permission to change',
-    project: 'Project - Nganter App',
-    type: 'Project',
-    time: '5 min ago',
-    status: 'offline',
-  },
-  {
-    id: 3,
-    userName: 'Terry Franci',
-    userImage: '/images/user/user-04.jpg',
-    action: 'requests permission to change',
-    project: 'Project - Nganter App',
-    type: 'Project',
-    time: '5 min ago',
-    status: 'online',
-  },
-  {
-    id: 4,
-    userName: 'Terry Franci',
-    userImage: '/images/user/user-05.jpg',
-    action: 'requests permission to change',
-    project: 'Project - Nganter App',
-    type: 'Project',
-    time: '5 min ago',
-    status: 'online',
-  },
-  {
-    id: 5,
-    userName: 'Terry Franci',
-    userImage: '/images/user/user-06.jpg',
-    action: 'requests permission to change',
-    project: 'Project - Nganter App',
-    type: 'Project',
-    time: '5 min ago',
-    status: 'offline',
-  },
-  {
-    id: 6,
-    userName: 'Terry Franci',
-    userImage: '/images/user/user-07.jpg',
-    action: 'requests permission to change',
-    project: 'Project - Nganter App',
-    type: 'Project',
-    time: '5 min ago',
-    status: 'online',
-  },
-  {
-    id: 7,
-    userName: 'Terry Franci',
-    userImage: '/images/user/user-08.jpg',
-    action: 'requests permission to change',
-    project: 'Project - Nganter App',
-    type: 'Project',
-    time: '5 min ago',
-    status: 'online',
-  },
-  {
-    id: 7,
-    userName: 'Terry Franci',
-    userImage: '/images/user/user-09.jpg',
-    action: 'requests permission to change',
-    project: 'Project - Nganter App',
-    type: 'Project',
-    time: '5 min ago',
-    status: 'online',
-  },
-  // Add more notifications here...
-])
+const notifying = computed(() => unreadCount.value > 0)
+
+const loadNotifications = async () => {
+  // Ne charger que si l'utilisateur est authentifié
+  if (!authStore.isAuthenticated) {
+    return
+  }
+
+  try {
+    loading.value = true
+    const data = await notificationService.getAll({ limit: 10 })
+    notifications.value = data.notifications || []
+    unreadCount.value = data.unreadCount || 0
+  } catch (error) {
+    // Ignorer silencieusement les erreurs 401 (non authentifié)
+    if (error.response?.status !== 401) {
+      console.error('Erreur chargement notifications:', error)
+    }
+  } finally {
+    loading.value = false
+  }
+}
 
 const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value
-  notifying.value = false
+  if (dropdownOpen.value && unreadCount.value > 0) {
+    // Optionnel: marquer comme lues après ouverture
+    // markAllAsRead()
+  }
 }
 
 const closeDropdown = () => {
@@ -212,25 +164,73 @@ const handleClickOutside = (event) => {
   }
 }
 
-const handleItemClick = (event) => {
-  event.preventDefault()
-  // Handle the item click action here
-  console.log('Notification item clicked')
-  closeDropdown()
+const handleItemClick = async (notification) => {
+  try {
+    if (notification.status === 'unread') {
+      await notificationService.markAsRead(notification.id)
+      notification.status = 'read'
+      unreadCount.value = Math.max(0, unreadCount.value - 1)
+    }
+    closeDropdown()
+  } catch (error) {
+    console.error('Erreur marquage notification:', error)
+  }
 }
 
 const handleViewAllClick = (event) => {
   event.preventDefault()
-  // Handle the "View All Notification" action here
-  console.log('View All Notifications clicked')
+  router.push('/notifications')
   closeDropdown()
 }
 
+const formatTime = (dateString) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return 'À l\'instant'
+  if (diffMins < 60) return `Il y a ${diffMins} min`
+  if (diffHours < 24) return `Il y a ${diffHours}h`
+  if (diffDays < 7) return `Il y a ${diffDays}j`
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
+// Watcher pour charger les notifications quand l'utilisateur se connecte
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    loadNotifications()
+  } else {
+    // Réinitialiser les notifications à la déconnexion
+    notifications.value = []
+    unreadCount.value = 0
+  }
+})
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  
+  // Charger les notifications si déjà authentifié
+  if (authStore.isAuthenticated) {
+    loadNotifications()
+    
+    // Rafraîchir toutes les 30 secondes
+    const interval = setInterval(() => {
+      if (authStore.isAuthenticated) {
+        loadNotifications()
+      }
+    }, 30000)
+    
+    onUnmounted(() => {
+      clearInterval(interval)
+    })
+  }
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 </script>
+

@@ -36,11 +36,11 @@
       <!-- User Menu -->
       <button
         class="flex items-center text-gray-700 dark:text-gray-400 gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-        @click.prevent="toggleDropdown"
+        @click.stop="toggleDropdown"
         aria-haspopup="true"
         :aria-expanded="dropdownOpen"
       >
-        <span class="font-medium text-sm">Admin</span>
+        <span class="font-medium text-sm">{{ userName }}</span>
         <ChevronDownIcon :class="['w-4 h-4 transition-transform', { 'rotate-180': dropdownOpen }]" />
       </button>
     </div>
@@ -53,8 +53,8 @@
     >
       <div class="p-2">
         <div class="px-4 py-2">
-          <p class="text-sm font-medium text-gray-900 dark:text-white">Admin User</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">admin@example.com</p>
+          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ userName }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ userEmail }}</p>
         </div>
 
         <div class="h-px my-1 bg-gray-200 dark:bg-gray-700"></div>
@@ -68,7 +68,7 @@
           role="menuitem"
         >
           <component :is="item.icon" class="w-4 h-4 text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300" />
-          {{ $t(item.text) }}
+          {{ item.text }}
         </router-link>
 
         <div class="h-px my-1 bg-gray-200 dark:bg-gray-700"></div>
@@ -91,8 +91,9 @@
 
 <script setup lang="ts">
 import { ChevronDownIcon, InfoCircleIcon, LogoutIcon, SettingsIcon } from '@/icons'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 type Language = {
   code: 'fr' | 'en';
@@ -100,11 +101,18 @@ type Language = {
   flag: string;
 };
 
+const authStore = useAuthStore()
+const router = useRouter()
 const locale = ref('fr')
 
 const dropdownOpen = ref(false)
 const languageDropdownOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
+
+// Données utilisateur dynamiques
+const userName = computed(() => authStore.user?.name || 'Utilisateur')
+const userEmail = computed(() => authStore.user?.email || '')
+const userRole = computed(() => authStore.user?.role || 'User')
 
 // Langues disponibles
 const availableLanguages: Language[] = [
@@ -113,8 +121,7 @@ const availableLanguages: Language[] = [
 ]
 
 const menuItems = [
-  { href: '/profile', icon: SettingsIcon, text: 'app.settings.account' },
-  { href: '/profile', icon: InfoCircleIcon, text: 'app.common.support' },
+  { href: '/profile', icon: SettingsIcon, text: 'Mon Profil' },
 ]
 
 const toggleDropdown = () => {
@@ -141,9 +148,10 @@ const changeLanguage = (lang: 'fr' | 'en') => {
 }
 
 const signOut = () => {
-  // Implémentez la logique de déconnexion ici
-  console.log('Déconnexion...')
+  authStore.logout()
   closeDropdown()
+  // Forcer le rechargement pour nettoyer l'état complètement
+  window.location.href = '/signin'
 }
 
 const handleClickOutside = (event: Event) => {

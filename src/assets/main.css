@@ -200,12 +200,12 @@ layer(base);
     cursor: pointer;
   }
   body {
-    @apply relative font-normal font-outfit z-1 bg-gray-50;
+    @apply relative font-normal z-10 bg-gray-50;
   }
 }
 
 @utility menu-item {
-  @apply relative flex items-center w-full gap-3 px-3 py-2 font-medium rounded-lg text-theme-sm;
+  @apply relative flex items-center w-full gap-3 px-3 py-2 font-medium rounded-lg text-sm;
 }
 
 @utility menu-item-active {
@@ -241,7 +241,7 @@ layer(base);
 }
 
 @utility menu-dropdown-item {
-  @apply relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-theme-sm font-medium;
+  @apply relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium;
 }
 
 @utility menu-dropdown-item-active {
@@ -253,7 +253,7 @@ layer(base);
 }
 
 @utility menu-dropdown-badge {
-  @apply block rounded-full px-2.5 py-0.5 text-xs font-medium uppercase text-brand-500 dark:text-brand-400;
+  @apply block rounded-full px-2 py-1 text-xs font-medium uppercase text-brand-500 dark:text-brand-400;
 }
 
 @utility menu-dropdown-badge-active {
@@ -275,7 +275,7 @@ layer(base);
 
 @utility custom-scrollbar {
   &::-webkit-scrollbar {
-    @apply size-1.5;
+    @apply size-2;
   }
 
   &::-webkit-scrollbar-track {
@@ -366,7 +366,7 @@ layer(base);
   @apply !mb-0 !border-b-0 !bg-transparent !p-0 !text-[10px] !leading-4 !text-gray-800 dark:!text-white/90;
 }
 .apexcharts-tooltip-text {
-  @apply !text-theme-xs !text-gray-700 dark:!text-white/90;
+  @apply !text-xs !text-gray-700 dark:!text-white/90;
 }
 .apexcharts-tooltip-text-y-value {
   @apply !font-medium;
@@ -403,7 +403,7 @@ layer(base);
 
 .stocks-slider-outer .swiper-button-next,
 .stocks-slider-outer .swiper-button-prev {
-  @apply !static mt-0 h-8 w-9 rounded-full border border-gray-200 !text-gray-700 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-800 dark:!text-gray-400;
+  @apply !static mt-0 h-8 w-8 rounded-full border border-gray-200 !text-gray-700 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-800 dark:!text-gray-400;
 }
 
 .stocks-slider-outer .swiper-button-next.swiper-button-disabled,
@@ -448,11 +448,11 @@ layer(base);
 }
 
 .flatpickr-weekday {
-  @apply !text-theme-sm !font-medium !text-gray-500 dark:!text-gray-400;
+  @apply !text-sm !font-medium !text-gray-500 dark:!text-gray-400;
 }
 
 .flatpickr-day {
-  @apply !flex !items-center !text-theme-sm !font-medium !text-gray-800 dark:!text-white/90 dark:hover:!border-gray-300 dark:hover:!bg-gray-900;
+  @apply !flex !items-center !text-sm !font-medium !text-gray-800 dark:!text-white/90 dark:hover:!border-gray-300 dark:hover:!bg-gray-900;
 }
 .flatpickr-day.nextMonthDay,
 .flatpickr-day.prevMonthDay {
@@ -460,15 +460,15 @@ layer(base);
 }
 .flatpickr-months .flatpickr-prev-month,
 .flatpickr-months .flatpickr-next-month {
-  @apply !top-7 dark:!fill-white dark:!text-white;
+  @apply !top-6 dark:!fill-white dark:!text-white;
 }
 .flatpickr-months .flatpickr-prev-month.flatpickr-prev-month,
 .flatpickr-months .flatpickr-next-month.flatpickr-prev-month {
-  @apply !left-7;
+  @apply !left-6;
 }
 .flatpickr-months .flatpickr-prev-month.flatpickr-next-month,
 .flatpickr-months .flatpickr-next-month.flatpickr-next-month {
-  @apply !right-7;
+  @apply !right-6;
 }
 span.flatpickr-weekday,
 .flatpickr-months .flatpickr-month {
@@ -478,7 +478,7 @@ span.flatpickr-weekday,
   box-shadow:
     -5px 0 0 #f9fafb,
     5px 0 0 #f9fafb !important;
-  @apply dark:shadow-datepicker!;
+  @apply dark:shadow-lg;
 }
 .flatpickr-day.inRange,
 .flatpickr-day.prevMonthDay.inRange,
@@ -588,13 +588,13 @@ span.flatpickr-weekday,
   @apply hidden;
 }
 .fc-addEventButton-button {
-  @apply !rounded-lg !border-0 !bg-brand-500 !px-4 !py-2.5 !text-sm !font-medium hover:!bg-brand-600 focus:!shadow-none;
+  @apply !rounded-lg !border-0 !bg-brand-500 !px-4 !py-2 !text-sm !font-medium hover:!bg-brand-600 focus:!shadow-none;
 }
 .fc-toolbar-title {
   @apply !text-lg !font-medium text-gray-800 dark:text-white/90;
 }
 .fc-header-toolbar.fc-toolbar .fc-toolbar-chunk:last-child {
-  @apply rounded-lg bg-gray-100 p-0.5 dark:bg-gray-900;
+  @apply rounded-lg bg-gray-100 p-1 dark:bg-gray-900;
 }
 .fc-header-toolbar.fc-toolbar .fc-toolbar-chunk:last-child .fc-button {
   @apply !h-auto !w-auto rounded-md !border-0 bg-transparent !px-5 !py-2 text-sm font-medium text-gray-500 hover:text-gray-700 focus:!shadow-none dark:text-gray-400;
@@ -634,7 +634,7 @@ span.flatpickr-weekday,
   @apply text-gray-400 dark:text-white/30;
 }
 .event-fc-color {
-  @apply rounded-lg py-2.5 pl-4 pr-3;
+  @apply rounded-lg py-2 pl-4 pr-3;
 }
 .event-fc-color .fc-event-title {
   @apply p-0 text-sm font-normal text-gray-700;
@@ -673,7 +673,7 @@ span.flatpickr-weekday,
   @apply bg-orange-500;
 }
 .fc-direction-ltr .fc-timegrid-slot-label-frame {
-  @apply px-3 py-1.5 text-left text-sm font-medium text-gray-500 dark:text-gray-400;
+  @apply px-3 py-2 text-left text-sm font-medium text-gray-500 dark:text-gray-400;
 }
 .fc .fc-timegrid-axis-cushion {
   @apply text-sm font-medium text-gray-500 dark:text-gray-400;
@@ -706,7 +706,7 @@ span.flatpickr-weekday,
 .carouselTwo .swiper-button-prev,
 .carouselFour .swiper-button-next,
 .carouselFour .swiper-button-prev {
-  @apply h-10 w-10 rounded-full border-[0.5px] border-white/10 bg-white/90 !text-gray-700 shadow-slider-navigation backdrop-blur-[10px];
+  @apply h-10 w-10 rounded-full border-[0.5px] border-white/10 bg-white/90 !text-gray-700 shadow-lg backdrop-blur-[10px];
 }
 
 .carouselTwo .swiper-button-prev,
@@ -721,17 +721,17 @@ span.flatpickr-weekday,
 
 .carouselThree .swiper-pagination,
 .carouselFour .swiper-pagination {
-  @apply !bottom-3 !left-1/2 inline-flex !w-auto -translate-x-1/2 items-center gap-1.5 rounded-[40px] border-[0.5px] border-white/10 bg-white/60 px-2 py-1.5 shadow-slider-navigation backdrop-blur-[10px] sm:!bottom-5;
+  @apply !bottom-3 !left-1/2 inline-flex !w-auto -translate-x-1/2 items-center gap-2 rounded-[40px] border-[0.5px] border-white/10 bg-white/60 px-2 py-2 shadow-lg backdrop-blur-[10px] sm:!bottom-5;
 }
 
 .carouselThree .swiper-pagination-bullet,
 .carouselFour .swiper-pagination-bullet {
-  @apply !m-0 h-2.5 w-2.5 bg-white opacity-100 shadow-theme-xs duration-200 ease-in-out;
+  @apply !m-0 h-2 w-2 bg-white opacity-100 shadow-sm duration-200 ease-in-out;
 }
 
 .carouselThree .swiper-pagination-bullet-active,
 .carouselFour .swiper-pagination-bullet-active {
-  @apply w-6.5 rounded-xl;
+  @apply w-6 rounded-xl;
 }
 
 .form-check-input:checked ~ span {
@@ -768,9 +768,9 @@ span.flatpickr-weekday,
 }
 
 .social-button {
-  @apply flex h-11 w-11 items-center justify-center gap-2 rounded-full border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200;
+  @apply flex h-10 w-10 items-center justify-center gap-2 rounded-full border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200;
 }
 
 .edit-button {
-  @apply flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200 lg:inline-flex lg:w-auto;
+  @apply flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200 lg:inline-flex lg:w-auto;
 }

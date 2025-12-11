@@ -61,7 +61,7 @@
             <td class="px-5 py-4 sm:px-6">
               <span
                 :class="[
-                  'rounded-full px-2 py-0.5 text-theme-xs font-medium',
+                  'rounded-full px-2 py-1 text-theme-xs font-medium',
                   {
                     'bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-500':
                       user.status === 'Active',

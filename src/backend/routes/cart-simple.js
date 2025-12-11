@@ -79,7 +79,7 @@ router.post('/add', async (req, res) => {
           id: product.id,
           name: product.name,
           price: product.price,
-          image: product.image
+          image: product.image_url || (product.images && product.images.length > 0 ? product.images[0] : null)
         }
       };
       cart.items.push(cartItem);

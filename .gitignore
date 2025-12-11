@@ -36,7 +36,34 @@ coverage
 .env.test.local
 .env.local
 .env.example
-.env.example.local
+.env.example.localPS C:\wamp64\www\gadgetzone_admin> npm run dev
+
+> tailadmin-vue-pro-2.0.1@2.0.1 dev
+> vite
+
+
+  VITE v6.4.1  ready in 38350 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://169.254.71.122:5173/
+  ➜  press h + enter to show help
+12:40:57 [vite] Internal server error: [postcss] Cannot apply unknown utility class: py-2.5
+  Plugin: vite:css
+  File: C:/wamp64/www/gadgetzone_admin/src/assets/main.css:undefined:NaN
+      at onInvalidCandidate (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:17:297)
+      at ne (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:12:115877)
+      at C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:17:260
+      at _ (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:5:1652)
+      at _ (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:5:1930)
+      at $e (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:17:150)
+      at Lr (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:33:724)
+      at async Mr (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:33:977)
+      at async ot (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\dist\index.js:10:3272)
+      at async p (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\postcss\dist\index.js:8:3200)
+12:40:57 [vite] (client) Pre-transform error: [postcss] Cannot apply unknown utility class: py-2.5
+  Plugin: vite:css
+  File: C:/wamp64/www/gadgetzone_admin/src/assets/main.css:undefined:NaN    
+
 .env.example.test
 .env.example.test.local
 .env.example.prod

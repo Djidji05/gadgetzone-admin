@@ -36,11 +36,11 @@ const sizeClasses = {
 }
 
 const statusSizeClasses = {
-  xsmall: 'h-1.5 w-1.5 max-w-1.5',
+  xsmall: 'h-1 w-1 max-w-1',
   small: 'h-2 w-2 max-w-2',
-  medium: 'h-2.5 w-2.5 max-w-2.5',
+  medium: 'h-2 w-2 max-w-2',
   large: 'h-3 w-3 max-w-3',
-  xlarge: 'h-3.5 w-3.5 max-w-3.5',
+  xlarge: 'h-3 w-3 max-w-3',
   xxlarge: 'h-4 w-4 max-w-4',
 }
 

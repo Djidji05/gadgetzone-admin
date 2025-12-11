@@ -1,6 +1,7 @@
 import express from 'express';
 import { Op } from 'sequelize';
 import { Order, OrderItem, Product, User } from '../models/index.js';
+import { notifyNewOrder, notifyOrderStatusChange } from '../utils/notificationHelper.js';
 
 const router = express.Router();
 
@@ -12,14 +13,14 @@ router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
     const offset = (page - 1) * limit;
-    
+
     const whereClause = {};
-    
+
     // Filtrer par statut si fourni
     if (status) {
       whereClause.status = status;
     }
-    
+
     const orders = await Order.findAndCountAll({
       where: whereClause,
       include: [
@@ -44,7 +45,7 @@ router.get('/', async (req, res) => {
       offset: parseInt(offset),
       order: [['created_at', 'DESC']]
     });
-    
+
     res.json({
       orders: orders.rows,
       pagination: {
@@ -67,7 +68,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const order = await Order.findByPk(id, {
       include: [
         {
@@ -88,11 +89,11 @@ router.get('/:id', async (req, res) => {
         }
       ]
     });
-    
+
     if (!order) {
       return res.status(404).json({ error: 'Commande non trouvée' });
     }
-    
+
     res.json(order);
   } catch (error) {
     console.error('Erreur commande:', error);
@@ -107,41 +108,41 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { user_id, items, shipping_address } = req.body;
-    
+
     if (!user_id || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'L\'utilisateur et les articles sont obligatoires' });
     }
-    
+
     // Vérifier que l'utilisateur existe
     const user = await User.findByPk(user_id);
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
-    
+
     // Calculer le montant total et vérifier les stocks
     let total_amount = 0;
     const orderItems = [];
-    
+
     for (const item of items) {
       const product = await Product.findByPk(item.product_id);
       if (!product) {
         return res.status(404).json({ error: `Produit ${item.product_id} non trouvé` });
       }
-      
+
       if (product.stock < item.quantity) {
         return res.status(400).json({ error: `Stock insuffisant pour le produit ${product.name}` });
       }
-      
+
       const itemTotal = product.price * item.quantity;
       total_amount += itemTotal;
-      
+
       orderItems.push({
         product_id: item.product_id,
         quantity: item.quantity,
         price: product.price
       });
     }
-    
+
     // Créer la commande
     const newOrder = await Order.create({
       user_id,
@@ -149,21 +150,21 @@ router.post('/', async (req, res) => {
       status: 'pending',
       shipping_address
     });
-    
+
     // Créer les articles de commande
     for (const itemData of orderItems) {
       await OrderItem.create({
         order_id: newOrder.id,
         ...itemData
       });
-      
+
       // Mettre à jour le stock
       await Product.decrement('stock', {
         where: { id: itemData.product_id },
         by: itemData.quantity
       });
     }
-    
+
     // Récupérer la commande complète
     const order = await Order.findByPk(newOrder.id, {
       include: [
@@ -185,7 +186,10 @@ router.post('/', async (req, res) => {
         }
       ]
     });
-    
+
+    // Notifier les admins de la nouvelle commande
+    await notifyNewOrder(order);
+
     res.status(201).json(order);
   } catch (error) {
     console.error('Erreur création commande:', error);
@@ -201,19 +205,25 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status, shipping_address } = req.body;
-    
+
     const order = await Order.findByPk(id);
-    
+
     if (!order) {
       return res.status(404).json({ error: 'Commande non trouvée' });
     }
-    
+
+    const oldStatus = order.status;
     const updateData = {};
     if (status) updateData.status = status;
     if (shipping_address) updateData.shipping_address = shipping_address;
-    
+
     await order.update(updateData);
-    
+
+    // Notifier si le statut a changé
+    if (status && status !== oldStatus) {
+      await notifyOrderStatusChange(order, oldStatus, status);
+    }
+
     // Récupérer la commande mise à jour
     const updatedOrder = await Order.findByPk(id, {
       include: [
@@ -235,7 +245,7 @@ router.put('/:id', async (req, res) => {
         }
       ]
     });
-    
+
     res.json(updatedOrder);
   } catch (error) {
     console.error('Erreur mise à jour commande:', error);
@@ -250,15 +260,15 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const order = await Order.findByPk(id, {
       include: [{ model: OrderItem, as: 'items' }]
     });
-    
+
     if (!order) {
       return res.status(404).json({ error: 'Commande non trouvée' });
     }
-    
+
     // Restaurer les stocks
     for (const item of order.items) {
       await Product.increment('stock', {
@@ -266,10 +276,10 @@ router.delete('/:id', async (req, res) => {
         by: item.quantity
       });
     }
-    
+
     // Supprimer la commande (les OrderItem seront supprimés en cascade)
     await order.destroy();
-    
+
     res.json({ message: 'Commande supprimée avec succès' });
   } catch (error) {
     console.error('Erreur suppression commande:', error);

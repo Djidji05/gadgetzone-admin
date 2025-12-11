@@ -1,6 +1,7 @@
 import express from 'express';
 import { Op } from 'sequelize';
-import { Product, Category } from '../models/index.js';
+import { Product, Category, Brand } from '../models/index.js';
+import { notifyLowStock } from '../utils/notificationHelper.js';
 
 const router = express.Router();
 
@@ -10,7 +11,7 @@ const router = express.Router();
  */
 router.get('/', async (req, res) => {
   try {
-    const { page = 1, limit = 10, search, category } = req.query;
+    const { page = 1, limit = 10, search, category, brand, is_new } = req.query;
     const offset = (page - 1) * limit;
 
     const whereClause = {};
@@ -28,9 +29,22 @@ router.get('/', async (req, res) => {
       whereClause.category_id = category;
     }
 
+    // Filtrer par marque
+    if (brand) {
+      whereClause.brand_id = brand;
+    }
+
+    // Filtrer par nouveauté
+    if (is_new === 'true') {
+      whereClause.is_new = true;
+    }
+
     const products = await Product.findAndCountAll({
       where: whereClause,
-      include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }],
+      include: [
+        { model: Category, as: 'category', attributes: ['id', 'name'] },
+        { model: Brand, as: 'brand', attributes: ['id', 'name', 'logo_url'] }
+      ],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['created_at', 'DESC']]
@@ -57,8 +71,8 @@ router.get('/', async (req, res) => {
  */
 router.get('/featured', async (req, res) => {
   try {
-    // Récupérer les 8 premiers produits comme produits featured
     const featuredProducts = await Product.findAll({
+      where: { is_featured: true },
       include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }],
       limit: 8,
       order: [['created_at', 'DESC']]
@@ -100,7 +114,7 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { name, description, price, stock, category_id, image_url } = req.body;
+    const { name, description, price, stock, category_id, image_url, images, features, specifications, is_featured, is_new } = req.body;
 
     if (!name || !price) {
       return res.status(400).json({ error: 'Le nom et le prix sont obligatoires' });
@@ -112,7 +126,12 @@ router.post('/', async (req, res) => {
       price,
       stock: stock || 0,
       category_id: category_id || null,
-      image_url: image_url || null
+      image_url: image_url || null,
+      images: images || [],
+      features: features || [],
+      specifications: specifications || {},
+      is_featured: is_featured || false,
+      is_new: is_new || false
     });
 
     // Récupérer le produit avec sa catégorie
@@ -123,7 +142,11 @@ router.post('/', async (req, res) => {
     res.status(201).json(productWithCategory);
   } catch (error) {
     console.error('Erreur création produit:', error);
-    res.status(500).json({ error: 'Erreur lors de la création du produit' });
+    res.status(500).json({
+      error: 'Erreur lors de la création du produit',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -134,7 +157,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, price, stock, category_id, image_url } = req.body;
+    const { name, description, price, stock, category_id, image_url, images, features, specifications, is_featured, is_new } = req.body;
 
     const product = await Product.findByPk(id);
 
@@ -148,13 +171,23 @@ router.put('/:id', async (req, res) => {
       price: price !== undefined ? price : product.price,
       stock: stock !== undefined ? stock : product.stock,
       category_id: category_id !== undefined ? category_id : product.category_id,
-      image_url: image_url !== undefined ? image_url : product.image_url
+      image_url: image_url !== undefined ? image_url : product.image_url,
+      images: images !== undefined ? images : product.images,
+      features: features !== undefined ? features : product.features,
+      specifications: specifications !== undefined ? specifications : product.specifications,
+      is_featured: is_featured !== undefined ? is_featured : product.is_featured,
+      is_new: is_new !== undefined ? is_new : product.is_new
     });
 
     // Récupérer le produit mis à jour avec sa catégorie
     const updatedProduct = await Product.findByPk(id, {
       include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }]
     });
+
+    // Vérifier si le stock est faible (< 10) et notifier
+    if (updatedProduct.stock < 10 && updatedProduct.stock > 0) {
+      await notifyLowStock(updatedProduct);
+    }
 
     res.json(updatedProduct);
   } catch (error) {

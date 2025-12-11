@@ -11,6 +11,9 @@ import { fileURLToPath } from 'url';
 import { initDatabase } from './src/backend/config/database.js';
 import apiRoutes from './src/backend/routes/index.js';
 import { advancedLogger, asyncErrorLogger, logError, healthCheck } from './src/backend/middleware/logging.js';
+import { generalLimiter } from './src/backend/middleware/rateLimiter.js';
+import { swaggerSpec, swaggerUi } from './src/backend/config/swagger.js';
+import { initSentry, sentryRequestHandler, sentryTracingHandler, sentryErrorHandler } from './src/backend/config/sentry.js';
 
 // Configuration
 const __filename = fileURLToPath(import.meta.url);
@@ -19,6 +22,11 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
+
+// Initialize Sentry (must be first)
+initSentry(app);
+app.use(sentryRequestHandler());
+app.use(sentryTracingHandler());
 
 // Middleware
 app.use(helmet());
@@ -29,12 +37,24 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:5174',
-    'http://localhost:5175'
+    'http://localhost:5175',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://127.0.0.1:5175'
   ],
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Apply rate limiting to all API routes
+app.use('/api', generalLimiter);
+
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'GadgetZone API Documentation'
+}));
 
 // Servir les fichiers statiques du frontend en production
 if (process.env.NODE_ENV === 'production') {
@@ -65,6 +85,9 @@ app.get('/health', async (req, res) => {
 
 // Middleware de gestion des erreurs
 app.use(asyncErrorLogger);
+
+// Sentry error handler (must be before other error handlers)
+app.use(sentryErrorHandler());
 
 // Gestionnaire d'erreurs global
 app.use((err, req, res, next) => {
