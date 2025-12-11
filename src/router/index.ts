@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -21,6 +22,14 @@ const router = createRouter({
       component: () => import('../views/Clients/ListeClients.vue'),
       meta: {
         title: 'Gestion des clients',
+      },
+    },
+    {
+      path: '/clients/:id',
+      name: 'ClientDetail',
+      component: () => import('../views/Clients/ClientDetail.vue'),
+      meta: {
+        title: 'Détails du client',
       },
     },
     {
@@ -47,6 +56,11 @@ const router = createRouter({
       meta: {
         title: 'Liste des commandes',
       },
+    },
+    // Redirect /commandes to /liste-commandes
+    {
+      path: '/commandes',
+      redirect: '/liste-commandes'
     },
     {
       path: '/commandes-en-cours',
@@ -99,11 +113,19 @@ const router = createRouter({
       },
     },
     {
-      path: '/calendar',
-      name: 'Calendar',
-      component: () => import('../views/Others/Calendar.vue'),
+      path: '/finance',
+      name: 'Finance',
+      component: () => import('../views/Finance.vue'),
       meta: {
-        title: 'Calendar',
+        title: 'Finance - Vue d\'ensemble',
+      },
+    },
+    {
+      path: '/personnalisation',
+      name: 'Personnalisation',
+      component: () => import('../views/Personnalisation/PersonnalisationAccueil.vue'),
+      meta: {
+        title: 'Personnalisation',
       },
     },
     {
@@ -156,65 +178,7 @@ const router = createRouter({
       name: 'Bar Chart',
       component: () => import('../views/Chart/BarChart/BarChart.vue'),
     },
-    {
-      path: '/alerts',
-      name: 'Alerts',
-      component: () => import('../views/UiElements/Alerts.vue'),
-      meta: {
-        title: 'Alerts',
-      },
-    },
-    {
-      path: '/avatars',
-      name: 'Avatars',
-      component: () => import('../views/UiElements/Avatars.vue'),
-      meta: {
-        title: 'Avatars',
-      },
-    },
-    {
-      path: '/badge',
-      name: 'Badge',
-      component: () => import('../views/UiElements/Badges.vue'),
-      meta: {
-        title: 'Badge',
-      },
-    },
 
-    {
-      path: '/buttons',
-      name: 'Buttons',
-      component: () => import('../views/UiElements/Buttons.vue'),
-      meta: {
-        title: 'Buttons',
-      },
-    },
-
-    {
-      path: '/images',
-      name: 'Images',
-      component: () => import('../views/UiElements/Images.vue'),
-      meta: {
-        title: 'Images',
-      },
-    },
-    // Routes pour les paiements
-    {
-      path: '/paiements',
-      name: 'Paiements',
-      component: () => import('../views/Paiements/Paiements.vue'),
-      meta: {
-        title: 'Gestion des paiements',
-      },
-    },
-    {
-      path: '/videos',
-      name: 'Videos',
-      component: () => import('../views/UiElements/Videos.vue'),
-      meta: {
-        title: 'Videos',
-      },
-    },
     {
       path: '/blank',
       name: 'Blank',
@@ -239,16 +203,10 @@ const router = createRouter({
       component: () => import('../views/Auth/Signin.vue'),
       meta: {
         title: 'Signin',
+        layout: 'auth',
       },
     },
-    {
-      path: '/signup',
-      name: 'Signup',
-      component: () => import('../views/Auth/Signup.vue'),
-      meta: {
-        title: 'Signup',
-      },
-    },
+
     // Redirection de /personnalisation vers /personnalisation/accueil
     {
       path: '/personnalisation',
@@ -263,12 +221,263 @@ const router = createRouter({
         title: 'Personnalisation de la page d\'accueil',
       },
     },
+    // API Management
+    {
+      path: '/api-management',
+      name: 'ApiManagement',
+      component: () => import('../views/ApiManagement.vue'),
+      meta: {
+        title: 'API Management',
+        requiresAdmin: true,
+      },
+    },
+    // Utilisateurs & Rôles
+    {
+      path: '/utilisateurs/ajouter',
+      name: 'AjouterUtilisateur',
+      component: () => import('../views/Utilisateurs/AjouterUtilisateur.vue'),
+      meta: {
+        title: 'Ajouter un utilisateur',
+        requiresAdmin: true,
+      },
+    },
+    {
+      path: '/utilisateurs/modifier/:id',
+      name: 'ModifierUtilisateur',
+      component: () => import('../views/Utilisateurs/AjouterUtilisateur.vue'),
+      meta: {
+        title: 'Modifier un utilisateur',
+        requiresAdmin: true,
+      },
+    },
+    {
+      path: '/utilisateurs/liste',
+      name: 'ListeUtilisateurs',
+      component: () => import('../views/Utilisateurs/ListeUtilisateurs.vue'),
+      meta: {
+        title: 'Liste des utilisateurs',
+        requiresAdmin: true,
+      },
+    },
+    // Notifications
+    {
+      path: '/notifications',
+      name: 'Notifications',
+      component: () => import('../views/Notifications/NotificationsPage.vue'),
+      meta: {
+        title: 'Notifications',
+      },
+    },
+    {
+      path: '/utilisateurs/roles',
+      name: 'Roles',
+      component: () => import('../views/Utilisateurs/Roles.vue'),
+      meta: {
+        title: 'Rôles & Permissions',
+        requiresAdmin: true,
+      },
+    },
+    // Paramètres
+    {
+      path: '/parametres/general',
+      name: 'ParametresGeneral',
+      component: () => import('../views/Parametres/General.vue'),
+      meta: {
+        title: 'Paramètres généraux',
+        requiresAdmin: true,
+      },
+    },
+    {
+      path: '/parametres/securite',
+      name: 'ParametresSecurite',
+      component: () => import('../views/Parametres/Securite.vue'),
+      meta: {
+        title: 'Paramètres de sécurité',
+        requiresAdmin: true,
+      },
+    },
+    {
+      path: '/parametres/email',
+      name: 'ParametresEmail',
+      component: () => import('../views/Parametres/Email.vue'),
+      meta: {
+        title: 'Paramètres email',
+        requiresAdmin: true,
+      },
+    },
+    {
+      path: '/parametres/paiements',
+      name: 'ParametresPaiements',
+      component: () => import('../views/Parametres/Paiements.vue'),
+      meta: {
+        title: 'Paramètres de paiement',
+        requiresAdmin: true,
+      },
+    },
+    // Logs & Activité
+    {
+      path: '/logs',
+      name: 'Logs',
+      component: () => import('../views/Logs.vue'),
+      meta: {
+        title: 'Logs & Activité',
+        requiresAdmin: true,
+      },
+    },
+    // Support
+    {
+      path: '/support/tickets',
+      name: 'SupportTickets',
+      component: () => import('../views/Support/Tickets.vue'),
+      meta: {
+        title: 'Support - Tickets',
+      },
+    },
+    {
+      path: '/support/faq',
+      name: 'SupportFAQ',
+      component: () => import('../views/Support/FAQ.vue'),
+      meta: {
+        title: 'Support - FAQ',
+      },
+    },
+    {
+      path: '/support/documentation',
+      name: 'SupportDocumentation',
+      component: () => import('../views/Support/Documentation.vue'),
+      meta: {
+        title: 'Support - Documentation',
+      },
+    },
+    // Marketing
+    {
+      path: '/marketing/campagnes',
+      name: 'MarketingCampagnes',
+      component: () => import('../views/Marketing/Campagnes.vue'),
+      meta: {
+        title: 'Campagnes marketing',
+      },
+    },
+    {
+      path: '/marketing/newsletter',
+      name: 'MarketingNewsletter',
+      component: () => import('../views/Marketing/Newsletter.vue'),
+      meta: {
+        title: 'Newsletter',
+      },
+    },
+    {
+      path: '/marketing/promotions',
+      name: 'MarketingPromotions',
+      component: () => import('../views/Marketing/Promotions.vue'),
+      meta: {
+        title: 'Promotions',
+      },
+    },
+    // CMS
+    {
+      path: '/cms/pages',
+      name: 'CMSPages',
+      component: () => import('../views/CMS/Pages.vue'),
+      meta: {
+        title: 'CMS - Pages',
+      },
+    },
+    {
+      path: '/cms/blog',
+      name: 'CMSBlog',
+      component: () => import('../views/CMS/Blog.vue'),
+      meta: {
+        title: 'CMS - Blog',
+      },
+    },
+    {
+      path: '/cms/medias',
+      name: 'CMSMedias',
+      component: () => import('../views/CMS/Medias.vue'),
+      meta: {
+        title: 'CMS - Médias',
+      },
+    },
+    // Intégrations
+    {
+      path: '/integrations/apps',
+      name: 'IntegrationsApps',
+      component: () => import('../views/Integrations/Apps.vue'),
+      meta: {
+        title: 'Intégrations - Applications',
+      },
+    },
+    {
+      path: '/integrations/webhooks',
+      name: 'IntegrationsWebhooks',
+      component: () => import('../views/Integrations/Webhooks.vue'),
+      meta: {
+        title: 'Intégrations - Webhooks',
+      },
+    },
+    {
+      path: '/integrations/api-keys',
+      name: 'IntegrationsApiKeys',
+      component: () => import('../views/Integrations/ApiKeys.vue'),
+      meta: {
+        title: 'Intégrations - API Keys',
+      },
+    },
   ],
 })
 
 export default router
 
-router.beforeEach((to, from, next) => {
-  document.title = `Vue.js ${to.meta.title} | TailAdmin - Vue.js Tailwind CSS Dashboard Template`
+// Guards de navigation
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore()
+
+  // Initialiser l'auth si pas déjà fait
+  if (!authStore.isAuthenticated) {
+    authStore.init()
+  }
+
+  // Nettoyer les erreurs précédentes
+  authStore.clearError()
+
+  // Définir les routes publiques
+  const publicPages = ['/signin', '/error-404'];
+  const authRequired = !publicPages.some(page => to.path.startsWith(page)) && !to.meta.public;
+
+  if (authRequired && !authStore.isAuthenticated) {
+    // Rediriger vers la page de login
+    next({
+      path: '/signin',
+      query: { redirect: to.fullPath }
+    })
+    return
+  }
+
+  // Vérifier les routes admin
+  if (to.meta.requiresAdmin && !authStore.isAdmin) {
+    // Rediriger vers le dashboard si pas admin
+    next('/')
+    return
+  }
+
+  // Si l'utilisateur est connecté et va sur une page d'auth
+  if (authStore.isAuthenticated && (to.path.startsWith('/signin') || to.path.startsWith('/signup'))) {
+    // Rediriger vers le dashboard ou la page demandée
+    const redirect = (to.query.redirect as string) || '/'
+    next(redirect)
+    return
+  }
+
   next()
+})
+
+// Gestion du titre de page
+router.afterEach((to) => {
+  // Mettre à jour le titre de la page
+  if (to.meta.title) {
+    document.title = `${to.meta.title} - GadgetZone Admin`
+  } else {
+    document.title = 'GadgetZone Admin'
+  }
 })

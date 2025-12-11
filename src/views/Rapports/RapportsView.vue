@@ -11,7 +11,7 @@
         <div class="mt-4 md:mt-0">
           <div class="flex items-center space-x-2">
             <div class="relative">
-              <select 
+              <select
                 v-model="periode"
                 class="block appearance-none w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 px-4 py-2 pr-8 rounded shadow leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               >
@@ -27,7 +27,7 @@
                 </svg>
               </div>
             </div>
-            <button 
+            <button
               @click="exporterRapport"
               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
@@ -58,7 +58,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
           <div class="flex items-center">
             <div class="p-3 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-200">
@@ -75,7 +75,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
           <div class="flex items-center">
             <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-200">
@@ -92,7 +92,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
           <div class="flex items-center">
             <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-200">
@@ -118,8 +118,9 @@
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">Évolution du chiffre d'affaires</h3>
             <div class="relative">
-              <select 
+              <select
                 v-model="typeGraphiqueCA"
+                @change="loadRevenueChart"
                 class="block appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 px-3 py-1 pr-8 rounded shadow leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               >
                 <option value="jour">Par jour</option>
@@ -134,9 +135,15 @@
             </div>
           </div>
           <div class="h-80">
-            <!-- Espace pour le graphique (intégration avec une bibliothèque de graphiques) -->
-            <div class="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-700 rounded">
-              <p class="text-gray-500 dark:text-gray-400">Graphique d'évolution du CA (intégration avec Chart.js/autres)</p>
+            <apexchart
+              v-if="revenueChartOptions.series[0].data.length > 0"
+              type="area"
+              height="320"
+              :options="revenueChartOptions"
+              :series="revenueChartOptions.series"
+            />
+            <div v-else class="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-700 rounded">
+              <p class="text-gray-500 dark:text-gray-400">Aucune donnée disponible</p>
             </div>
           </div>
         </div>
@@ -147,9 +154,15 @@
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">Répartition des ventes par catégorie</h3>
           </div>
           <div class="h-80">
-            <!-- Espace pour le graphique en camembert -->
-            <div class="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-700 rounded">
-              <p class="text-gray-500 dark:text-gray-400">Graphique en camembert (intégration avec Chart.js/autres)</p>
+            <apexchart
+              v-if="categoryChartOptions.series.length > 0"
+              type="donut"
+              height="320"
+              :options="categoryChartOptions"
+              :series="categoryChartOptions.series"
+            />
+            <div v-else class="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-700 rounded">
+              <p class="text-gray-500 dark:text-gray-400">Aucune donnée disponible</p>
             </div>
           </div>
         </div>
@@ -284,9 +297,9 @@
                   <span class="font-medium text-gray-700 dark:text-gray-300">{{ source.source }}</span>
                   <span class="font-medium">{{ (source.percentage * 0.1).toFixed(1) }}%</span>
                 </div>
-                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                  <div 
-                    class="h-2.5 rounded-full bg-blue-600" 
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    class="h-2 rounded-full bg-blue-600"
                     :style="{ width: (source.percentage * 0.1) + '%' }"
                   ></div>
                 </div>
@@ -326,7 +339,7 @@
                 'bg-yellow-50 dark:bg-yellow-900/30': alerte.niveau === 'moyen',
                 'bg-blue-50 dark:bg-blue-900/30': alerte.niveau === 'bas'
               }">
-                <div class="flex-shrink-0 pt-0.5">
+                <div class="flex-shrink-0 pt-1">
                   <span v-if="alerte.niveau === 'critique'" class="h-5 w-5 text-red-500 dark:text-red-400">
                     <svg fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
@@ -415,54 +428,139 @@ const sourcesTrafic = ref([]);
 const tauxConversionGlobal = ref(0);
 const evolutionConversion = ref([]);
 
-const alertes = ref([
-  {
-    id: 1,
-    niveau: 'critique',
-    titre: 'Stock critique',
-    description: 'Le produit "Écouteurs sans fil Pro" est en rupture de stock dans 3 jours au rythme actuel des ventes.',
-    date: 'Il y a 2 heures'
-  },
-  {
-    id: 2,
-    niveau: 'moyen',
-    titre: 'Baisse des ventes mobile',
-    description: 'Les ventes sur mobile ont baissé de 15% cette semaine par rapport à la semaine dernière.',
-    date: 'Il y a 5 heures'
-  },
-  {
-    id: 3,
-    niveau: 'bas',
-    titre: 'Nouveau rapport disponible',
-    description: 'Votre rapport hebdomadaire des ventes est prêt à être consulté.',
-    date: 'Hier'
-  }
-]);
+const alertes = ref([]);
+const actionsRecommandees = ref([]);
 
-const actionsRecommandees = ref([
-  { id: 1, description: 'Réapprovisionner le stock des produits en rupture' },
-  { id: 2, description: 'Mettre en avant les produits les plus rentables' },
-  { id: 3, description: 'Analyser les performances des campagnes marketing' }
-]);
+// Configuration des graphiques
+const revenueChartOptions = ref({
+  series: [{
+    name: 'Chiffre d\'affaires',
+    data: []
+  }],
+  chart: {
+    type: 'area',
+    height: 320,
+    toolbar: {
+      show: false
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  stroke: {
+    curve: 'smooth',
+    width: 2
+  },
+  xaxis: {
+    categories: [],
+    labels: {
+      style: {
+        colors: '#6B7280'
+      }
+    }
+  },
+  yaxis: {
+    labels: {
+      style: {
+        colors: '#6B7280'
+      },
+      formatter: (value: number) => {
+        return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'HTG', minimumFractionDigits: 0 }).format(value);
+      }
+    }
+  },
+  fill: {
+    type: 'gradient',
+    gradient: {
+      shadeIntensity: 1,
+      opacityFrom: 0.7,
+      opacityTo: 0.3,
+      stops: [0, 90, 100]
+    }
+  },
+  colors: ['#3B82F6'],
+  tooltip: {
+    y: {
+      formatter: (value: number) => {
+        return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'HTG' }).format(value);
+      }
+    }
+  }
+});
+
+const categoryChartOptions = ref({
+  series: [],
+  chart: {
+    type: 'donut',
+    height: 320
+  },
+  labels: [],
+  colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'],
+  legend: {
+    position: 'bottom'
+  },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '70%'
+      }
+    }
+  },
+  tooltip: {
+    y: {
+      formatter: (value: number) => {
+        return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'HTG' }).format(value);
+      }
+    }
+  }
+});
+
+// Charger les données des graphiques
+const loadRevenueChart = async () => {
+  try {
+    const data = await statsService.getRevenueEvolution(typeGraphiqueCA.value);
+    revenueChartOptions.value.xaxis.categories = data.labels;
+    revenueChartOptions.value.series[0].data = data.data;
+  } catch (err) {
+    console.error('Error loading revenue chart:', err);
+  }
+};
+
+const loadCategoryChart = async () => {
+  try {
+    const data = await statsService.getSalesByCategory();
+    categoryChartOptions.value.labels = data.labels;
+    categoryChartOptions.value.series = data.data;
+  } catch (err) {
+    console.error('Error loading category chart:', err);
+  }
+};
 
 // Charger les données depuis l'API
 const loadStatsData = async () => {
   try {
     loading.value = true;
-    const [overviewData, topProductsData, topClientsData, trafficData, conversionData] = await Promise.all([
+    const [overviewData, topProductsData, topClientsData, trafficData, conversionData, alertsData] = await Promise.all([
       statsService.getOverview(periode.value),
       statsService.getTopProducts(5),
       statsService.getTopClients(5),
       statsService.getTrafficSources(),
-      statsService.getConversionRate(periode.value)
+      statsService.getConversionRate(periode.value),
+      statsService.getAlerts()
     ]);
-    
+
     stats.value = overviewData;
     topProduits.value = topProductsData;
     topClients.value = topClientsData;
     sourcesTrafic.value = trafficData;
     tauxConversionGlobal.value = conversionData.current;
     evolutionConversion.value = conversionData.evolution;
+    alertes.value = alertsData.alertes;
+    actionsRecommandees.value = alertsData.actionsRecommandees;
+    
+    // Charger les graphiques
+    await loadRevenueChart();
+    await loadCategoryChart();
   } catch (err) {
     error.value = 'Erreur lors du chargement des statistiques';
     console.error('Error loading stats:', err);

@@ -23,16 +23,7 @@
       <router-link to="/">
         <img
           v-if="isExpanded || isHovered || isMobileOpen"
-          class="dark:hidden"
           :src="logoLight"
-          alt="Logo"
-          width="180"
-          height="48"
-        />
-        <img
-          v-if="isExpanded || isHovered || isMobileOpen"
-          class="hidden dark:block"
-          :src="logoDark"
           alt="Logo"
           width="180"
           height="48"
@@ -110,7 +101,7 @@
                   >
                     <ChevronDownIcon />
                   </span>
-                  />
+
                 </button>
                 <router-link
                   v-else-if="item.path"
@@ -240,12 +231,14 @@ import HorizontalDots from '@/icons/HorizontalDots.vue';
 import ChevronDownIcon from '@/icons/ChevronDownIcon.vue';
 import SidebarWidget from "./SidebarWidget.vue";
 import { useSidebar } from "@/composables/useSidebar";
+import { useAuthStore } from "@/stores/auth";
 
 const route = useRoute();
+const authStore = useAuthStore();
 
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar();
 
-const menuGroups: MenuGroup[] = [
+const allMenuGroups: MenuGroup[] = [
   {
     title: "Menu",
     items: [
@@ -257,75 +250,136 @@ const menuGroups: MenuGroup[] = [
       {
         icon: UserCircleIcon,
         name: "Clients",
-        path: "/admin/clients"
+        path: "/clients"
       },
       {
         icon: BoxCubeIcon,
         name: "Produits",
         subItems: [
-          { name: "Ajouter un produit", path: "/admin/products/create" },
-          { name: "Liste des produits", path: "/admin/products" },
+          { name: "Ajouter un produit", path: "/ajouter-produit" },
+          { name: "Liste des produits", path: "/liste-produits" },
         ],
       },
       {
         icon: BoxCubeIcon,
         name: "Commandes",
         subItems: [
-          { name: "Liste commandes", path: "/admin/orders" },
-          { name: "En cours", path: "/admin/orders" },
-          { name: "Livrées", path: "/admin/orders" },
-          { name: "Annulées", path: "/admin/orders" },
+          { name: "Liste commandes", path: "/liste-commandes" },
+          { name: "En cours", path: "/commandes-en-cours" },
+          { name: "Livrées", path: "/commandes-livrees" },
+          { name: "Annulées", path: "/commandes-annulees" },
         ],
       },
       {
         icon: CreditCardIcon,
-        name: "Paiements",
-        path: "/paiements"
+        name: "Finance",
+        path: "/finance"
       },
       {
         name: "Rapports",
         icon: TableIcon,
-        path: "/admin/rapports",
+        path: "/rapports",
       },
       {
         name: "Personnalisation",
         icon: PageIcon,
-        path: "/admin/personnalisation",
+        path: "/personnalisation",
       },
     ],
   },
   {
-    title: "Others",
+    title: "Marketing & Contenu",
     items: [
+      {
+        icon: PieChartIcon,
+        name: "Marketing",
+        subItems: [
+          { name: "Campagnes", path: "/marketing/campagnes" },
+          { name: "Newsletter", path: "/marketing/newsletter" },
+          { name: "Promotions", path: "/marketing/promotions" },
+        ],
+      },
+      {
+        icon: PageIcon,
+        name: "CMS",
+        subItems: [
+          { name: "Pages", path: "/cms/pages" },
+          { name: "Blog", path: "/cms/blog" },
+          { name: "Médias", path: "/cms/medias" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Système",
+    items: [
+      {
+        icon: UserCircleIcon,
+        name: "Utilisateurs",
+        subItems: [
+          { name: "Liste utilisateurs", path: "/utilisateurs/liste" },
+          { name: "Rôles & Permissions", path: "/utilisateurs/roles" },
+        ],
+      },
+      {
+        icon: PlugInIcon,
+        name: "API Management",
+        path: "/api-management",
+      },
+      {
+        icon: GridIcon,
+        name: "Intégrations",
+        subItems: [
+          { name: "Applications", path: "/integrations/apps" },
+          { name: "Webhooks", path: "/integrations/webhooks" },
+          { name: "API Keys", path: "/integrations/api-keys" },
+        ],
+      },
+      {
+        icon: TableIcon,
+        name: "Logs & Activité",
+        path: "/logs",
+      },
+      {
+        icon: GridIcon,
+        name: "Paramètres",
+        subItems: [
+          { name: "Général", path: "/parametres/general" },
+          { name: "Sécurité", path: "/parametres/securite" },
+          { name: "Email", path: "/parametres/email" },
+          { name: "Paiements", path: "/parametres/paiements" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Support",
+    items: [
+      {
+        icon: UserCircleIcon,
+        name: "Support",
+        subItems: [
+          { name: "Tickets", path: "/support/tickets" },
+          { name: "FAQ", path: "/support/faq" },
+          { name: "Documentation", path: "/support/documentation" },
+        ],
+      },
       {
         icon: PieChartIcon,
         name: "Analytics",
         path: "/analytics",
       },
-      {
-        icon: BoxCubeIcon,
-        name: "Ui Elements",
-        subItems: [
-          { name: "Alerts", path: "/alerts", pro: false },
-          { name: "Avatars", path: "/avatars", pro: false },
-          { name: "Badge", path: "/badge", pro: false },
-          { name: "Buttons", path: "/buttons", pro: false },
-          { name: "Images", path: "/images", pro: false },
-          { name: "Videos", path: "/videos", pro: false },
-        ],
-      },
-      {
-        icon: PlugInIcon,
-        name: "Authentication",
-        subItems: [
-          { name: "Signin", path: "/signin", pro: false },
-          { name: "Signup", path: "/signup", pro: false },
-        ],
-      },
-      // ... Add other menu items here
     ],
   },
 ];
+
+const menuGroups = computed(() => {
+  // Masquer le groupe "Système" si l'utilisateur n'est pas admin
+  if (authStore.user?.role !== 'admin') {
+    return allMenuGroups.filter(group => group.title !== 'Système');
+  }
+  return allMenuGroups;
+});
 
 const isActive = (path: string): boolean => {
   return route.path === path;
@@ -337,7 +391,7 @@ const toggleSubmenu = (groupIndex: number, itemIndex: number) => {
 };
 
 const isAnySubmenuRouteActive = computed(() => {
-  return menuGroups.some((group) =>
+  return menuGroups.value.some((group) =>
     group.items.some(
       (item) =>
         item.subItems && item.subItems.some((subItem) => isActive(subItem.path!))
@@ -350,7 +404,7 @@ const isSubmenuOpenWithRoute = (groupIndex: number, itemIndex: number): boolean 
   return (
     Boolean(openSubmenu.value === key) ||
     (isAnySubmenuRouteActive.value &&
-      menuGroups[groupIndex].items[itemIndex].subItems?.some((subItem) =>
+      menuGroups.value[groupIndex].items[itemIndex].subItems?.some((subItem) =>
         isActive(subItem.path!)
       ))
   );

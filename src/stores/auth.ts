@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authService } from '@/services/api'
+import { inactivityTracker } from '@/services/inactivity'
 import type { User, LoginCredentials, RegisterData, ProfileUpdateData, PasswordChangeData } from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -20,16 +21,19 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       isLoading.value = true
       error.value = null
-      
+
       const response = await authService.login(credentials)
-      
+
       // Sauvegarder les données
       token.value = response.token
       user.value = response.user
-      
+
       // Persister dans localStorage
       authService.setUser(response.user, response.token)
-      
+
+      // Démarrer le suivi d'activité
+      inactivityTracker.start()
+
       return { success: true, data: response }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { data?: { error?: string } } }
@@ -44,16 +48,16 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       isLoading.value = true
       error.value = null
-      
+
       const response = await authService.register(userData)
-      
+
       // Sauvegarder les données
       token.value = response.token
       user.value = response.user
-      
+
       // Persister dans localStorage
       authService.setUser(response.user, response.token)
-      
+
       return { success: true, data: response }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { data?: { error?: string } } }
@@ -69,21 +73,25 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     error.value = null
     authService.logout()
+    localStorage.removeItem('auth-store') // Forcer la suppression de l'état persistant Pinia
+
+    // Arrêter le suivi d'activité
+    inactivityTracker.stop()
   }
 
   const updateProfile = async (userData: ProfileUpdateData) => {
     try {
       isLoading.value = true
       error.value = null
-      
+
       const response = await authService.updateProfile(userData)
-      
+
       // Mettre à jour l'utilisateur
-      user.value = response.data?.user
-      
+      user.value = response.data?.user || null
+
       // Mettre à jour localStorage
       localStorage.setItem('user_data', JSON.stringify(response.data?.user))
-      
+
       return { success: true, data: response }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { data?: { error?: string } } }
@@ -98,9 +106,9 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       isLoading.value = true
       error.value = null
-      
+
       const response = await authService.changePassword(passwordData)
-      
+
       return { success: true, data: response }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { data?: { error?: string } } }
@@ -115,7 +123,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Vérifier s'il y a des données dans localStorage
     const savedToken = localStorage.getItem('auth_token')
     const savedUser = localStorage.getItem('user_data')
-    
+
     if (savedToken && savedUser) {
       try {
         token.value = savedToken
@@ -127,14 +135,14 @@ export const useAuthStore = defineStore('auth', () => {
         return false
       }
     }
-    
+
     return false
   }
 
   const refreshProfile = async () => {
     try {
       const response = await authService.getProfile()
-      user.value = response.data?.user
+      user.value = response.data?.user || null
       localStorage.setItem('user_data', JSON.stringify(response.data?.user))
       return { success: true, data: response }
     } catch (err: unknown) {
@@ -148,9 +156,28 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
   }
 
+  const refreshToken = async () => {
+    try {
+      const response = await authService.refreshToken()
+      if (response.token) {
+        token.value = response.token
+      }
+      return { success: true }
+    } catch (err: unknown) {
+      const errorResponse = err as { response?: { data?: { error?: string } } }
+      error.value = errorResponse.response?.data?.error || 'Erreur lors du rafraîchissement'
+      return { success: false, error: error.value }
+    }
+  }
+
   // Initialiser l'auth au chargement du store
   const init = () => {
-    checkAuth()
+    const isAuth = checkAuth()
+
+    // Si authentifié, démarrer le suivi d'activité
+    if (isAuth) {
+      inactivityTracker.start()
+    }
   }
 
   return {
@@ -159,12 +186,12 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     isLoading,
     error,
-    
+
     // Getters
     isAuthenticated,
     isAdmin,
     userRole,
-    
+
     // Actions
     login,
     register,
@@ -173,6 +200,7 @@ export const useAuthStore = defineStore('auth', () => {
     changePassword,
     checkAuth,
     refreshProfile,
+    refreshToken,
     clearError,
     init
   }

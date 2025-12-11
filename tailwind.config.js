@@ -23,8 +23,5 @@ export default {
       },
     },
   },
-  plugins: [
-    '@tailwindcss/forms',
-    '@tailwindcss/typography',
-  ],
+  plugins: [],
 }

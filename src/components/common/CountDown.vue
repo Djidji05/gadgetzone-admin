@@ -39,7 +39,7 @@
     </div>
 
     <div class="text-base text-center text-gray-500 dark:text-gray-400">
-      <div class="flex justify-center gap-0.5">
+      <div class="flex justify-center gap-1">
         <div v-for="(day, index) in daysArray" :key="index">
           <span v-show="day.visible" class="inline-block timer-box">
             <span class="inline-block">{{ day.value }}</span>

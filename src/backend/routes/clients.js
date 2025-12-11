@@ -13,19 +13,19 @@ router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 10, search } = req.query;
     const offset = (page - 1) * limit;
-    
+
     const whereClause = {
       role: 'user' // Ne récupérer que les clients (pas les admins)
     };
-    
-    // Filtrer par recherche
+
+    // Filtrer par recherche (utiliser Op.like pour MySQL)
     if (search) {
       whereClause[Op.or] = [
-        { name: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } }
+        { name: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } }
       ];
     }
-    
+
     const users = await User.findAndCountAll({
       where: whereClause,
       include: [
@@ -40,13 +40,13 @@ router.get('/', async (req, res) => {
       offset: parseInt(offset),
       order: [['created_at', 'DESC']]
     });
-    
+
     // Ajouter le nombre de commandes pour chaque utilisateur
     const clients = users.rows.map(user => ({
       ...user.toJSON(),
       orders_count: user.orders ? user.orders.length : 0
     }));
-    
+
     res.json({
       clients,
       pagination: {
@@ -69,7 +69,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const user = await User.findByPk(id, {
       include: [
         {
@@ -80,11 +80,11 @@ router.get('/:id', async (req, res) => {
       ],
       attributes: { exclude: ['password'] }
     });
-    
+
     if (!user || user.role !== 'user') {
       return res.status(404).json({ error: 'Client non trouvé' });
     }
-    
+
     res.json({
       ...user.toJSON(),
       orders_count: user.orders ? user.orders.length : 0
@@ -102,32 +102,33 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
-    
+
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Le nom, email et mot de passe sont obligatoires' });
     }
-    
+
     // Vérifier si l'email existe déjà
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ error: 'Cet email est déjà utilisé' });
     }
-    
+
     // Hasher le mot de passe
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     const newUser = await User.create({
       name,
       email,
       password: hashedPassword,
-      role: 'user'
+      role: 'user',
+      phone
     });
-    
+
     // Retourner l'utilisateur sans le mot de passe
     const userResponse = await User.findByPk(newUser.id, {
       attributes: { exclude: ['password'] }
     });
-    
+
     res.status(201).json(userResponse);
   } catch (error) {
     console.error('Erreur création client:', error);
@@ -143,13 +144,13 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email, password, phone } = req.body;
-    
+
     const user = await User.findByPk(id);
-    
+
     if (!user || user.role !== 'user') {
       return res.status(404).json({ error: 'Client non trouvé' });
     }
-    
+
     // Si email modifié, vérifier qu'il n'existe pas déjà
     if (email && email !== user.email) {
       const existingUser = await User.findOne({ where: { email } });
@@ -157,24 +158,25 @@ router.put('/:id', async (req, res) => {
         return res.status(400).json({ error: 'Cet email est déjà utilisé' });
       }
     }
-    
+
     const updateData = {
       name: name || user.name,
-      email: email || user.email
+      email: email || user.email,
+      phone: phone !== undefined ? phone : user.phone
     };
-    
+
     // Si mot de passe fourni, le hasher
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);
     }
-    
+
     await user.update(updateData);
-    
+
     // Retourner l'utilisateur mis à jour sans le mot de passe
     const updatedUser = await User.findByPk(id, {
       attributes: { exclude: ['password'] }
     });
-    
+
     res.json(updatedUser);
   } catch (error) {
     console.error('Erreur mise à jour client:', error);
@@ -189,15 +191,15 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const user = await User.findByPk(id);
-    
+
     if (!user || user.role !== 'user') {
       return res.status(404).json({ error: 'Client non trouvé' });
     }
-    
+
     await user.destroy();
-    
+
     res.json({ message: 'Client supprimé avec succès' });
   } catch (error) {
     console.error('Erreur suppression client:', error);

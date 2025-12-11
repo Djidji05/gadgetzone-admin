@@ -4,10 +4,10 @@
       {{ pageTitle }}
     </h2>
     <nav>
-      <ol class="flex items-center gap-1.5">
+      <ol class="flex items-center gap-2">
         <li>
           <router-link
-            class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
+            class="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
             to="/"
           >
             Home

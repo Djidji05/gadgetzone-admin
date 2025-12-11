@@ -26,8 +26,32 @@ const Product = sequelize.define('Product', {
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  brand_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
   image_url: {
-    type: DataTypes.STRING(500)
+    type: DataTypes.TEXT
+  },
+  images: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
+  features: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
+  specifications: {
+    type: DataTypes.JSON,
+    defaultValue: {}
+  },
+  is_featured: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  is_new: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   },
   created_at: {
     type: DataTypes.DATE,

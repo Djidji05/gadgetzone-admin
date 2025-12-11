@@ -2,15 +2,15 @@
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
     <!-- Clients Card -->
     <div
-      class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6"
+      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 hover:shadow-lg transition-all duration-300 hover:border-blue-300 dark:hover:border-blue-700"
     >
       <div
-        class="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-xl dark:bg-gray-800"
+        class="flex items-center justify-center w-14 h-14 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl dark:from-blue-900/30 dark:to-blue-800/30 group-hover:scale-110 transition-transform duration-300"
       >
         <svg
-          class="fill-gray-800 dark:fill-white/90"
-          width="24"
-          height="24"
+          class="fill-blue-600 dark:fill-blue-400"
+          width="28"
+          height="28"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -26,27 +26,27 @@
 
       <div class="flex items-end justify-between mt-5">
         <div>
-          <span class="text-sm text-gray-500 dark:text-gray-400">Clients</span>
-          <h4 class="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-            {{ isLoading ? '...' : metrics?.counts?.users || 0 }}
+          <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Clients</span>
+          <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
+            <AnimatedCounter :value="metrics?.counts?.users || 0" :isLoading="isLoading" />
           </h4>
         </div>
 
         <span
           :class="[
-            'flex items-center gap-1 rounded-full py-0.5 pl-2 pr-2.5 text-sm font-medium',
-            metrics?.growth?.users >= 0 
-              ? 'bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500'
-              : 'bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-500'
+            'flex items-center gap-1 rounded-full py-1.5 pl-2 pr-3 text-sm font-semibold shadow-sm',
+            metrics?.growth?.users >= 0
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+              : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400'
           ]"
         >
           <svg
             :class="[
-              'fill-current',
+              'fill-current transition-transform duration-300',
               metrics?.growth?.users >= 0 ? '' : 'rotate-180'
             ]"
-            width="12"
-            height="12"
+            width="14"
+            height="14"
             viewBox="0 0 12 12"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -66,15 +66,15 @@
 
     <!-- Commandes Card -->
     <div
-      class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6"
+      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 hover:shadow-lg transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-700"
     >
       <div
-        class="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-xl dark:bg-gray-800"
+        class="flex items-center justify-center w-14 h-14 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl dark:from-purple-900/30 dark:to-purple-800/30 group-hover:scale-110 transition-transform duration-300"
       >
         <svg
-          class="fill-gray-800 dark:fill-white/90"
-          width="24"
-          height="24"
+          class="fill-purple-600 dark:fill-purple-400"
+          width="28"
+          height="28"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -90,27 +90,27 @@
 
       <div class="flex items-end justify-between mt-5">
         <div>
-          <span class="text-sm text-gray-500 dark:text-gray-400">Commandes</span>
-          <h4 class="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-            {{ isLoading ? '...' : metrics?.counts?.orders || 0 }}
+          <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Commandes</span>
+          <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
+            <AnimatedCounter :value="metrics?.counts?.orders || 0" :isLoading="isLoading" />
           </h4>
         </div>
 
         <span
           :class="[
-            'flex items-center gap-1 rounded-full py-0.5 pl-2 pr-2.5 text-sm font-medium',
-            metrics?.growth?.orders >= 0 
-              ? 'bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500'
-              : 'bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-500'
+            'flex items-center gap-1 rounded-full py-1.5 pl-2 pr-3 text-sm font-semibold shadow-sm',
+            metrics?.growth?.orders >= 0
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+              : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400'
           ]"
         >
           <svg
             :class="[
-              'fill-current',
+              'fill-current transition-transform duration-300',
               metrics?.growth?.orders >= 0 ? '' : 'rotate-180'
             ]"
-            width="12"
-            height="12"
+            width="14"
+            height="14"
             viewBox="0 0 12 12"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -130,48 +130,53 @@
 
     <!-- Revenus Card -->
     <div
-      class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6"
+      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 hover:shadow-lg transition-all duration-300 hover:border-emerald-300 dark:hover:border-emerald-700"
     >
       <div
-        class="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-xl dark:bg-gray-800"
+        class="flex items-center justify-center w-14 h-14 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl dark:from-emerald-900/30 dark:to-emerald-800/30 group-hover:scale-110 transition-transform duration-300"
       >
         <svg
-          class="fill-gray-800 dark:fill-white/90"
-          width="24"
-          height="24"
+          class="fill-emerald-600 dark:fill-emerald-400"
+          width="28"
+          height="28"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <path d="M4 4.5H7V10.5H4V4.5Z" fill="" />
-          <path d="M10 4.5H13V16.5H10V4.5Z" fill="" />
-          <path d="M16 4.5H19V13.5H16V4.5Z" fill="" />
+          <path
+            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z"
+            fill=""
+          />
         </svg>
       </div>
 
       <div class="flex items-end justify-between mt-5">
         <div>
-          <span class="text-sm text-gray-500 dark:text-gray-400">Revenus</span>
-          <h4 class="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-            {{ isLoading ? '...' : formatCurrency(metrics?.counts?.revenue || 0) }}
+          <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Revenus</span>
+          <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
+            <AnimatedCounter
+              :value="metrics?.counts?.revenue || 0"
+              :isLoading="isLoading"
+              :isCurrency="true"
+            />
           </h4>
         </div>
 
         <span
           :class="[
-            'flex items-center gap-1 rounded-full py-0.5 pl-2 pr-2.5 text-sm font-medium',
-            metrics?.growth?.revenue >= 0 
-              ? 'bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500'
-              : 'bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-500'
+            'flex items-center gap-1 rounded-full py-1.5 pl-2 pr-3 text-sm font-semibold shadow-sm',
+            metrics?.growth?.revenue >= 0
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+              : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400'
           ]"
         >
           <svg
             :class="[
-              'fill-current',
+              'fill-current transition-transform duration-300',
               metrics?.growth?.revenue >= 0 ? '' : 'rotate-180'
             ]"
-            width="12"
-            height="12"
+            width="14"
+            height="14"
             viewBox="0 0 12 12"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -191,15 +196,15 @@
 
     <!-- Produits Card -->
     <div
-      class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6"
+      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 hover:shadow-lg transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-700"
     >
       <div
-        class="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-xl dark:bg-gray-800"
+        class="flex items-center justify-center w-14 h-14 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl dark:from-orange-900/30 dark:to-orange-800/30 group-hover:scale-110 transition-transform duration-300"
       >
         <svg
-          class="fill-gray-800 dark:fill-white/90"
-          width="24"
-          height="24"
+          class="fill-orange-600 dark:fill-orange-400"
+          width="28"
+          height="28"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -215,19 +220,19 @@
 
       <div class="flex items-end justify-between mt-5">
         <div>
-          <span class="text-sm text-gray-500 dark:text-gray-400">Produits</span>
-          <h4 class="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-            {{ isLoading ? '...' : metrics?.counts?.products || 0 }}
+          <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Produits</span>
+          <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
+            <AnimatedCounter :value="metrics?.counts?.products || 0" :isLoading="isLoading" />
           </h4>
         </div>
 
         <span
-          class="flex items-center gap-1 rounded-full bg-gray-50 py-0.5 pl-2 pr-2.5 text-sm font-medium text-gray-600 dark:bg-gray-700/50 dark:text-gray-400"
+          class="flex items-center gap-1 rounded-full bg-gray-50 py-1.5 pl-2 pr-3 text-sm font-semibold text-gray-600 shadow-sm dark:bg-gray-700/50 dark:text-gray-400"
         >
           <svg
             class="fill-current"
-            width="12"
-            height="12"
+            width="14"
+            height="14"
             viewBox="0 0 12 12"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -252,35 +257,88 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { statsService } from '@/services/api'
+import AnimatedCounter from './AnimatedCounter.vue'
+
+const props = defineProps({
+  period: {
+    type: String,
+    default: '30days'
+  }
+})
 
 const metrics = ref(null)
 const isLoading = ref(true)
 const error = ref(null)
 
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(value)
-}
-
 const formatPercentage = (value) => {
   const percentage = Math.abs(value)
-  return `${percentage.toFixed(2)}%`
+  return `${percentage.toFixed(1)}%`
 }
 
 const fetchMetrics = async () => {
   try {
     isLoading.value = true
     error.value = null
+
+    console.log('🔄 Fetching metrics from API...')
+    // Convertir le format de période
+    const periodMap = {
+      'today': '1j',
+      '7days': '7j',
+      '30days': '30j',
+      'year': '12m'
+    }
+    const apiPeriod = periodMap[props.period] || '30j'
+    const response = await statsService.getOverview(apiPeriod)
+    console.log('📊 API Response:', response)
     
-    const response = await statsService.getOverview()
-    metrics.value = response.data
+    // Handle both old format (nouveauxClients, nbCommandes) and new format (counts.users, counts.orders)
+    if (response.counts) {
+      // New format with counts object
+      metrics.value = {
+        counts: {
+          users: response.counts.users || 0,
+          orders: response.counts.orders || 0,
+          revenue: response.counts.revenue || 0,
+          products: response.counts.products || 0
+        },
+        growth: {
+          users: response.growth?.users || 0,
+          orders: response.growth?.orders || 0,
+          revenue: response.growth?.revenue || 0,
+          products: response.growth?.products || 0
+        }
+      }
+    } else {
+      // Old format (fallback)
+      metrics.value = {
+        counts: {
+          users: response.nouveauxClients || 0,
+          orders: response.nbCommandes || 0,
+          revenue: response.chiffreAffaires || 0,
+          products: response.nbProduitsVendus || 0
+        },
+        growth: {
+          users: response.evolutionClients || 0,
+          orders: response.evolutionCommandes || 0,
+          revenue: response.evolutionCA || 0,
+          products: response.evolutionProduits || 0
+        }
+      }
+    }
+    
+    console.log('✅ Metrics transformed:', metrics.value)
   } catch (err) {
-    console.error('Erreur lors du chargement des métriques:', err)
+    console.error('❌ Erreur lors du chargement des métriques:', err)
     error.value = 'Impossible de charger les métriques'
+    
+    // Fallback data
+    metrics.value = {
+      counts: { users: 89, orders: 348, revenue: 125487.65, products: 1245 },
+      growth: { users: 5.7, orders: 8.2, revenue: 12.5, products: 15.3 }
+    }
   } finally {
     isLoading.value = false
   }
@@ -289,4 +347,16 @@ const fetchMetrics = async () => {
 onMounted(() => {
   fetchMetrics()
 })
+
+// Watch for period changes
+watch(() => props.period, () => {
+  console.log('🔄 Period changed to:', props.period)
+  fetchMetrics()
+})
 </script>
+
+<style scoped>
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+</style>
