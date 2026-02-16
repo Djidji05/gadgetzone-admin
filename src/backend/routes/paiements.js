@@ -1,10 +1,34 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
+import monCashService from '../services/moncash.service.js';
 
 const router = express.Router();
 
 // Middleware d'authentification pour toutes les routes paiements
 router.use(authenticateToken);
+
+/**
+ * POST /api/paiements/init-moncash
+ * Initier un paiement MonCash
+ */
+router.post('/init-moncash', async (req, res) => {
+  try {
+    const { orderId, amount } = req.body;
+
+    if (!orderId || !amount) {
+      return res.status(400).json({ message: 'OrderId et Amount requis' });
+    }
+
+    // Call MonCash Service
+    // Note: The service returns the full redirect URL
+    const redirectUrl = await monCashService.createPayment(orderId, amount);
+
+    res.json({ redirectUrl });
+  } catch (error) {
+    console.error('MonCash Init Error:', error);
+    res.status(500).json({ error: `Erreur Init MonCash: ${error.message}` });
+  }
+});
 
 // Données simulées pour les paiements
 const mockPayments = [

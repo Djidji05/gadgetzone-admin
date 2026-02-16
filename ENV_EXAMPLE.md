@@ -31,9 +31,16 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 FACEBOOK_APP_ID=your_facebook_app_id
 FACEBOOK_APP_SECRET=your_facebook_app_secret
 
-### Paiements (Optionnel)
+### Paiement Stripe (Optionnel)
 STRIPE_PUBLIC_KEY=pk_test_...
 STRIPE_SECRET_KEY=sk_test_...
+
+# MonCash API (Sandbox)
+MONCASH_CLIENT_ID=votre_client_id
+MONCASH_CLIENT_SECRET=votre_client_secret
+MONCASH_API_URL=https://sandbox.moncashbutton.digicelhaiti.com/Api
+
+### Paiement PayPal (Optionnel)
 PAYPAL_CLIENT_ID=your_paypal_client_id
 PAYPAL_CLIENT_SECRET=your_paypal_client_secret
 PAYPAL_MODE=sandbox

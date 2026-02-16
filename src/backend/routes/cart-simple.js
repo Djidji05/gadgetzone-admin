@@ -1,6 +1,15 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { Product } from '../models/index.js';
+import fs from 'fs';
+import path from 'path';
+
+const logFile = path.resolve('debug_cart.log');
+const log = (msg) => {
+  try {
+    fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
+  } catch (e) { }
+};
 
 const router = express.Router();
 
@@ -40,7 +49,9 @@ router.get('/', async (req, res) => {
 // Ajouter un produit au panier (publique)
 router.post('/add', async (req, res) => {
   try {
-    const { productId, quantity = 1 } = req.body;
+    const { productId: rawProductId, quantity = 1 } = req.body;
+    const productId = Number(rawProductId);
+    log(`POST /add - productId: ${productId}, quantity: ${quantity}`);
 
     // Vérifier que le produit existe
     const product = await Product.findByPk(productId);
@@ -48,25 +59,18 @@ router.post('/add', async (req, res) => {
       return res.status(404).json({ message: 'Produit non trouvé' });
     }
 
-    if (product.stock < quantity) {
-      return res.status(400).json({ message: 'Stock insuffisant' });
-    }
-
     // Utiliser un identifiant de session ou IP
     const identifier = req.ip || req.sessionID || 'anonymous';
     const cart = getOrCreateCart(identifier);
 
     // Vérifier si le produit est déjà dans le panier
-    let cartItem = cart.items.find(item => item.productId === productId);
+    let cartItem = cart.items.find(item => Number(item.productId) === productId);
 
     if (cartItem) {
       // Mettre à jour la quantité
       const newQuantity = cartItem.quantity + quantity;
-      if (product.stock < newQuantity) {
-        return res.status(400).json({ message: 'Stock insuffisant pour cette quantité' });
-      }
       cartItem.quantity = newQuantity;
-      cartItem.subtotal = newQuantity * product.price;
+      cartItem.subtotal = Number(newQuantity) * Number(product.price);
     } else {
       // Ajouter le produit au panier
       cartItem = {
@@ -86,11 +90,12 @@ router.post('/add', async (req, res) => {
     }
 
     // Recalculer le total
-    cart.totalAmount = cart.items.reduce((total, item) => total + item.subtotal, 0);
+    cart.totalAmount = cart.items.reduce((total, item) => total + Number(item.subtotal), 0);
     cart.updatedAt = new Date().toISOString();
 
     res.json(cart);
   } catch (error) {
+    log(`Add to cart ERROR: ${error.message}`);
     console.error('Add to cart error:', error);
     res.status(500).json({ message: 'Erreur lors de l\'ajout au panier' });
   }
@@ -114,17 +119,18 @@ router.put('/items/:itemId', async (req, res) => {
       return res.status(404).json({ message: 'Article non trouvé dans le panier' });
     }
 
-    // Vérifier le stock
+
+    // Obtenir le produit pour le prix
     const product = await Product.findByPk(cartItem.productId);
-    if (product.stock < quantity) {
-      return res.status(400).json({ message: 'Stock insuffisant' });
+    if (!product) {
+      return res.status(404).json({ message: 'Produit non trouvé' });
     }
 
-    cartItem.quantity = quantity;
-    cartItem.subtotal = quantity * product.price;
+    cartItem.quantity = Number(quantity);
+    cartItem.subtotal = Number(quantity) * Number(product.price);
 
     // Recalculer le total
-    cart.totalAmount = cart.items.reduce((total, item) => total + item.subtotal, 0);
+    cart.totalAmount = cart.items.reduce((total, item) => total + Number(item.subtotal), 0);
     cart.updatedAt = new Date().toISOString();
 
     res.json(cart);
@@ -150,7 +156,7 @@ router.delete('/items/:itemId', async (req, res) => {
     cart.items.splice(itemIndex, 1);
 
     // Recalculer le total
-    cart.totalAmount = cart.items.reduce((total, item) => total + item.subtotal, 0);
+    cart.totalAmount = cart.items.reduce((total, item) => total + Number(item.subtotal), 0);
     cart.updatedAt = new Date().toISOString();
 
     res.json(cart);

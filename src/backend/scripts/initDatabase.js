@@ -8,32 +8,25 @@ import { Category, Product, User } from '../models/index.js';
 const initializeDatabase = async () => {
   try {
     console.log('🚀 Initialisation de la base de données...');
-    
+
     // Initialiser la connexion
     const dbConnected = await initDatabase();
     if (!dbConnected) {
       console.error('❌ Impossible de se connecter à la base de données');
       process.exit(1);
     }
-    
+
     // Synchroniser les modèles
     const syncResult = await syncDatabase({ force: false, alter: true });
     if (!syncResult) {
       console.error('❌ Impossible de synchroniser la base de données');
       process.exit(1);
     }
-    
-    // Vérifier si des données existent déjà
-    const existingCategories = await Category.count();
-    const existingUsers = await User.count();
-    
-    if (existingCategories > 0 && existingUsers > 0) {
-      console.log('✅ Base de données déjà initialisée');
-      return;
-    }
-    
+
+    console.log('✅ Base de données synchronisée');
+
     console.log('📝 Création des données initiales...');
-    
+
     // Créer les catégories
     const categories = await Category.bulkCreate([
       { name: 'Électronique', description: 'Appareils électroniques et gadgets' },
@@ -41,7 +34,7 @@ const initializeDatabase = async () => {
       { name: 'Maison Connectée', description: 'Appareils pour la maison intelligente' },
       { name: 'Gaming', description: 'Consoles de jeux et accessoires' }
     ]);
-    
+
     // Créer les produits
     const products = await Product.bulkCreate([
       {
@@ -85,10 +78,10 @@ const initializeDatabase = async () => {
         image_url: '/images/products/console.jpg'
       }
     ]);
-    
+
     // Créer les utilisateurs
     const hashedPassword = await bcrypt.hash('password123', 10);
-    
+
     const users = await User.bulkCreate([
       {
         name: 'Admin User',
@@ -115,7 +108,7 @@ const initializeDatabase = async () => {
         role: 'user'
       }
     ]);
-    
+
     console.log('✅ Base de données initialisée avec succès !');
     console.log(`📊 ${categories.length} catégories créées`);
     console.log(`📦 ${products.length} produits créés`);
@@ -124,7 +117,7 @@ const initializeDatabase = async () => {
     console.log('🔑 Comptes de test :');
     console.log('Admin: admin@gadgetzone.com / password123');
     console.log('Client: jean.dupont@example.com / password123');
-    
+
   } catch (error) {
     console.error('❌ Erreur lors de l\'initialisation:', error);
     process.exit(1);

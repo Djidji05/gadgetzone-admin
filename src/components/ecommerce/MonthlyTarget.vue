@@ -36,7 +36,7 @@
       <div class="relative max-h-[195px]">
         <div id="chartTwo" class="h-full">
           <div class="radial-bar-chart">
-            <VueApexCharts type="radialBar" height="330" :options="chartOptions" :series="series" />
+            <VueApexCharts type="radialBar" height="330" :options="chartOptions as any" :series="series" />
           </div>
         </div>
         <span

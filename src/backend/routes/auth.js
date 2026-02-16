@@ -12,6 +12,8 @@ import {
   validateProfileUpdate
 } from '../middleware/validation.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
+import crypto from 'crypto';
+import { sendEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -22,8 +24,8 @@ const router = express.Router();
 router.post('/register', authLimiter, validateRegister, async (req, res) => {
   try {
     const { firstName, lastName, email, password, phone } = req.body;
-    // Forcer le rôle 'user' pour l'inscription publique
-    const role = 'user';
+    // Forcer le rôle 'customer' pour l'inscription publique
+    const role = 'customer';
 
     // Validation
     if (!firstName || !lastName || !email || !password) {
@@ -63,6 +65,7 @@ router.post('/register', authLimiter, validateRegister, async (req, res) => {
       {
         userId: user.id,
         email: user.email,
+        role: user.role,
         lastActivity: Date.now()
       },
       process.env.JWT_SECRET,
@@ -81,10 +84,19 @@ router.post('/register', authLimiter, validateRegister, async (req, res) => {
       created_at: user.created_at
     };
 
+    // Set HttpOnly Cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24h
+      domain: process.env.COOKIE_DOMAIN
+    });
+
     res.status(201).json({
       message: 'Utilisateur créé avec succès',
       user: userResponse,
-      token
+      token // Keep sending token in JSON for backward compatibility
     });
 
   } catch (error) {
@@ -122,11 +134,20 @@ router.post('/login', authLimiter, validateLogin, async (req, res) => {
       });
     }
 
+    // Role check removed to allow customers to log in to the website
+    // if (!['admin', 'gestionnaire'].includes(user.role)) {
+    //   return res.status(403).json({
+    //     error: 'Accès refusé',
+    //     message: 'Accès réservé aux administrateurs et gestionnaires.'
+    //   });
+    // }
+
     // Créer le token
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
+        role: user.role,
         lastActivity: Date.now()
       },
       process.env.JWT_SECRET,
@@ -135,6 +156,11 @@ router.post('/login', authLimiter, validateLogin, async (req, res) => {
 
     // Retourner les infos utilisateur (sans mot de passe)
     const [firstName, lastName] = user.name ? user.name.split(' ') : ['', ''];
+
+    // Check if user has a store
+    const { Store } = await import('../models/index.js');
+    const store = await Store.findOne({ where: { userId: user.id } });
+
     const userResponse = {
       id: user.id,
       name: user.name,
@@ -142,8 +168,19 @@ router.post('/login', authLimiter, validateLogin, async (req, res) => {
       lastName,
       email: user.email,
       role: user.role,
-      created_at: user.created_at
+      created_at: user.created_at,
+      storeStatus: store ? store.status : null,
+      storeId: store ? store.id : null
     };
+
+    // Set HttpOnly Cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24h
+      domain: process.env.COOKIE_DOMAIN
+    });
 
     res.json({
       message: 'Connexion réussie',
@@ -158,6 +195,20 @@ router.post('/login', authLimiter, validateLogin, async (req, res) => {
       message: 'Erreur lors de la connexion'
     });
   }
+});
+
+/**
+ * POST /api/auth/logout
+ * Déconnexion de l'utilisateur
+ */
+router.post('/logout', async (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    domain: process.env.COOKIE_DOMAIN
+  });
+  res.json({ message: 'Déconnexion réussie' });
 });
 
 /**
@@ -285,11 +336,21 @@ router.post('/refresh', authenticateToken, async (req, res) => {
       {
         userId,
         email,
+        role: req.user.role,
         lastActivity: Date.now()
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
+
+    // Set HttpOnly Cookie
+    res.cookie('token', newToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24h
+      domain: process.env.COOKIE_DOMAIN
+    });
 
     res.json({
       message: 'Token rafraîchi avec succès',
@@ -504,6 +565,193 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
     res.json({ message: 'Utilisateur supprimé avec succès' });
   } catch (error) {
     console.error('Erreur suppression utilisateur:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GOOGLE AUTH ROUTES
+ */
+import passport from 'passport';
+
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+router.get(
+  '/google/callback',
+  (req, res, next) => {
+    passport.authenticate('google', { session: false }, (err, user, info) => {
+      if (err) {
+        console.error('❌ Google Auth Error:', err);
+        return res.redirect('/login?error=auth_failed&message=' + encodeURIComponent(err.message));
+      }
+      if (!user) {
+        console.error('❌ Google Auth Failed: No user returned', info);
+        return res.redirect('/login?error=auth_failed&reason=no_user');
+      }
+
+      // Successful authentication
+      const token = jwt.sign(
+        {
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+          lastActivity: Date.now()
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      );
+
+      // Redirect to frontend with token
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+      // Set Cookie
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000, // 24h
+        domain: process.env.COOKIE_DOMAIN
+      });
+
+      res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+    })(req, res, next);
+  }
+);
+
+/**
+ * FACEBOOK AUTH ROUTES
+ */
+router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }));
+
+router.get(
+  '/facebook/callback',
+  passport.authenticate('facebook', { session: false, failureRedirect: '/login?error=facebook_failed' }),
+  (req, res) => {
+    const user = req.user;
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        lastActivity: Date.now()
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+    );
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+    // Set Cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24h
+      domain: process.env.COOKIE_DOMAIN
+    });
+
+    res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+  }
+);
+
+/**
+ * POST /api/auth/forgot-password
+ * Demander la réinitialisation du mot de passe
+ */
+router.post('/forgot-password', authLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ where: { email } });
+
+    // Pour des raisons de sécurité, on ne dit pas si l'utilisateur existe ou non
+    // sauf si on veut explicitement le debug
+    if (!user) {
+      return res.json({
+        message: 'Si un compte existe avec cet email, vous recevrez un lien de réinitialisation.'
+      });
+    }
+
+    // Générer le token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpires = Date.now() + 3600000; // 1 heure
+
+    // Sauvegarder dans la DB
+    await user.update({
+      resetPasswordToken: resetToken,
+      resetPasswordExpires: resetTokenExpires
+    });
+
+    // Envoyer l'email
+    // En production: utiliser une vraie URL frontend
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+    const message = `
+      <h1>Réinitialisation de mot de passe</h1>
+      <p>Vous avez demandé une réinitialisation de mot de passe pour votre compte GadgetZone.</p>
+      <p>Veuillez cliquer sur le lien ci-dessous pour créer un nouveau mot de passe :</p>
+      <a href="${resetUrl}" style="padding: 10px 20px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 5px;">Réinitialiser mon mot de passe</a>
+      <p>Ce lien expirera dans 1 heure.</p>
+      <p>Si vous n'avez pas demandé cette réinitialisation, veuillez ignorer cet email.</p>
+    `;
+
+    await sendEmail(
+      user.email,
+      'Réinitialisation de mot de passe - GadgetZone',
+      message
+    );
+
+    res.json({
+      message: 'Si un compte existe avec cet email, vous recevrez un lien de réinitialisation.'
+    });
+
+  } catch (error) {
+    console.error('Erreur forgot-password:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * Réinitialiser le mot de passe avec le token
+ */
+router.post('/reset-password', authLimiter, async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    // Rechercher l'utilisateur avec le token valide et non expiré
+    const user = await User.findOne({
+      where: {
+        resetPasswordToken: token,
+        resetPasswordExpires: { [Op.gt]: Date.now() } // Doit être supérieur à maintenant
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        error: 'Lien invalide ou expiré',
+        message: 'Ce lien de réinitialisation est invalide ou a expiré. Veuillez refaire une demande.'
+      });
+    }
+
+    // Hasher le nouveau mot de passe
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Mettre à jour et nettoyer les tokens
+    await user.update({
+      password: hashedPassword,
+      resetPasswordToken: null,
+      resetPasswordExpires: null
+    });
+
+    res.json({
+      message: 'Mot de passe modifié avec succès. Vous pouvez maintenant vous connecter.'
+    });
+
+  } catch (error) {
+    console.error('Erreur reset-password:', error);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

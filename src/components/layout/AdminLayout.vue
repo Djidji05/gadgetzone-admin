@@ -8,7 +8,7 @@
     >
       <app-header />
       <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
-        <RouterView />
+        <slot />
       </div>
       <!-- Footer -->
       <footer class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 pt-0">

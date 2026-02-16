@@ -3,28 +3,8 @@ import express from 'express';
 const router = express.Router();
 
 // Données de démonstration pour les bannières
-const mockBanners = [
-  {
-    id: 1,
-    title: 'Bienvenue sur GadgetZone',
-    subtitle: 'Découvrez nos derniers produits technologiques',
-    image: 'https://via.placeholder.com/1200x500/3B82F6/FFFFFF?text=Bannière+GadgetZone',
-    link: '/products',
-    isActive: true,
-    startDate: '2024-01-01',
-    endDate: '2025-12-31'
-  },
-  {
-    id: 2,
-    title: 'Promotions Spéciales',
-    subtitle: '-20% sur tous les produits sélectionnés',
-    image: 'https://via.placeholder.com/1200x500/10B981/FFFFFF?text=Promotions+-20%25',
-    link: '/products?promotion=special',
-    isActive: true,
-    startDate: '2024-01-01',
-    endDate: '2025-12-31'
-  }
-];
+import { Banner } from '../models/index.js';
+import { Op } from 'sequelize';
 
 // Données de démonstration pour les promotions
 const mockPromotions = [
@@ -62,11 +42,20 @@ const mockPromotions = [
  */
 router.get('/banners', async (req, res) => {
   try {
-    const activeBanners = mockBanners.filter(banner =>
-      banner.isActive &&
-      new Date() >= new Date(banner.startDate) &&
-      new Date() <= new Date(banner.endDate)
-    );
+    const activeBanners = await Banner.findAll({
+      where: {
+        isActive: true,
+        [Op.or]: [
+          { startDate: { [Op.eq]: null } },
+          { startDate: { [Op.lte]: new Date() } }
+        ],
+        [Op.or]: [
+          { endDate: { [Op.eq]: null } },
+          { endDate: { [Op.gte]: new Date() } }
+        ]
+      },
+      order: [['order', 'ASC'], ['createdAt', 'DESC']]
+    });
 
     res.json(activeBanners);
   } catch (error) {

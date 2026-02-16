@@ -7,7 +7,8 @@ import { User } from '../models/index.js';
 export const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    // Check Authorization Header OR Cookie
+    const token = (authHeader && authHeader.split(' ')[1]) || req.cookies.token;
 
     if (!token) {
       console.log('❌ Auth Middleware: No token provided');
@@ -81,13 +82,75 @@ export const authenticateToken = async (req, res, next) => {
  * Middleware pour vérifier le rôle admin
  */
 export const requireAdmin = (req, res, next) => {
-  if (!req.user || req.user.role !== 'admin') {
+  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'gestionnaire')) {
     return res.status(403).json({
       error: 'Accès refusé',
-      message: 'Droits administratifs requis'
+      message: 'Accès réservé aux administrateurs et gestionnaires.'
     });
   }
   next();
+};
+
+/**
+ * Middleware pour vérifier le rôle vendeur
+ */
+export const isSeller = (req, res, next) => {
+  if (!req.user || (req.user.role !== 'seller' && req.user.role !== 'admin')) {
+    return res.status(403).json({
+      error: 'Accès refusé',
+      message: 'Compte vendeur requis'
+    });
+  }
+  next();
+};
+
+/**
+ * Middleware pour vérifier si la boutique du vendeur est active (non suspendue)
+ * Doit être placé APRÈS authenticateToken
+ */
+export const checkStoreActive = async (req, res, next) => {
+  try {
+    // Lazy load Store model to avoid circular dependency if any
+    const { Store } = await import('../models/index.js');
+
+    const store = await Store.findOne({ where: { userId: req.user.id } });
+
+    // Les admins peuvent tout faire, mais on attache quand même le store s'il existe
+    if (req.user.role === 'admin') {
+      if (store) req.store = store;
+      return next();
+    }
+
+    // Si pas de boutique, pas le droit de créer des produits (sauf si admin, déjà géré)
+    if (!store) {
+      return res.status(403).json({
+        error: 'Accès refusé',
+        message: 'Vous devez avoir une boutique pour effectuer cette action.'
+      });
+    }
+
+    if (store.status === 'suspended') {
+      return res.status(403).json({
+        error: 'Boutique suspendue',
+        message: 'Votre boutique est suspendue. Vous ne pouvez pas ajouter ou modifier des produits ou des ventes. Veuillez contacter le support.',
+        code: 'STORE_SUSPENDED'
+      });
+    }
+
+    if (store.status !== 'active') {
+      return res.status(403).json({
+        error: 'Boutique non active',
+        message: `Votre boutique est en statut : ${store.status}. Attendez l'approbation.`,
+        code: 'STORE_NOT_ACTIVE'
+      });
+    }
+
+    req.store = store; // Attach store to request for convenience
+    next();
+  } catch (error) {
+    console.error('Error in checkStoreActive:', error);
+    return res.status(500).json({ error: 'Erreur serveur lors de la vérification du statut boutique' });
+  }
 };
 
 /**
@@ -96,7 +159,8 @@ export const requireAdmin = (req, res, next) => {
 export const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    // Check Authorization Header OR Cookie
+    const token = (authHeader && authHeader.split(' ')[1]) || req.cookies.token;
 
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);

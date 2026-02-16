@@ -31,7 +31,7 @@ api.interceptors.request.use(
         // Session expirée par inactivité
         localStorage.removeItem('auth_token')
         localStorage.removeItem('user_data')
-        window.location.href = '/login?reason=inactivity'
+        window.location.href = '/signin?reason=inactivity'
         return Promise.reject(new Error('Session expirée'))
       }
 
@@ -54,33 +54,51 @@ api.interceptors.response.use(
     // Gérer les erreurs de session expirée
     if (error.response?.status === 401) {
       const errorCode = error.response?.data?.code
+      const isNotificationRequest = originalRequest?.url?.includes('/notifications')
 
-      // Si c'est un timeout de session, déconnecter
-      if (errorCode === 'SESSION_TIMEOUT') {
+      // Si c'est un timeout de session, ou si on n'est pas déjà sur la page de connexion
+      if (errorCode === 'SESSION_TIMEOUT' || !window.location.pathname.includes('/signin')) {
+        // Nettoyage complet
         localStorage.removeItem('auth_token')
         localStorage.removeItem('user_data')
-        // Éviter la boucle de redirection
-        if (!window.location.pathname.includes('/signin')) {
-          window.location.href = '/signin?reason=timeout'
+        localStorage.removeItem('auth-store') // Crucial pour éviter la boucle avec Pinia Persist
+
+        // Rediriger seulement si ce n'est pas une requête de notification en arrière-plan
+        // ou si on force la déconnexion
+        if (!isNotificationRequest || errorCode === 'SESSION_TIMEOUT') {
+          if (!window.location.pathname.includes('/signin')) {
+            window.location.href = errorCode === 'SESSION_TIMEOUT' ? '/signin?reason=timeout' : '/signin'
+          }
         }
-        return Promise.reject(error)
       }
 
-      // Pour les autres erreurs 401, rediriger vers signin
-      if (!originalRequest._retry) {
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('user_data')
-        // Éviter la boucle de redirection
-        if (!window.location.pathname.includes('/signin')) {
-          window.location.href = '/signin'
-        }
+      // Silence pour les erreurs 401 sur les notifications en arrière-plan
+      if (isNotificationRequest) {
+        return Promise.reject(error)
       }
     }
 
-    console.error('API Error:', error.response?.data || error.message)
+    // Ne pas logger les erreurs 401 qui ont déjà été traitées
+    if (error.response?.status !== 401) {
+      console.error('API Error:', error.response?.data || error.message)
+    }
     return Promise.reject(error)
   }
 )
+
+// Interfaces de base
+export interface Store {
+  id: number
+  name: string
+  description?: string
+  logoUrl?: string
+  bannerUrl?: string
+  status: 'pending' | 'active' | 'suspended' | 'closed'
+  userId: number
+  settings: any
+  created_at: string
+  updated_at: string
+}
 
 export interface Product {
   id: number
@@ -103,9 +121,11 @@ export interface User {
   id: number
   name: string
   email: string
+  phone?: string
   role: string
   created_at: string
   updated_at: string
+  store?: Store
 }
 
 export interface OrderItem {
@@ -120,13 +140,14 @@ export interface OrderItem {
 export interface Order {
   id: number
   user_id: number
-  user_name: string
-  user_email: string
+  user_name?: string
+  user_email?: string
   total_amount: number
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'confirmed'
   created_at: string
   updated_at: string
-  items: OrderItem[]
+  items?: OrderItem[]
+  user?: User
 }
 
 // Interfaces pour la personnalisation
@@ -259,7 +280,7 @@ export const authService = {
 // Services pour les produits
 export const productService = {
   getAll: async (): Promise<Product[]> => {
-    const response = await api.get('/products')
+    const response = await api.get('/products', { params: { limit: 1000 } })
     return response.data.products || response.data || []
   },
 
@@ -277,8 +298,8 @@ export const productService = {
     await api.put(`/products/${id}`, product)
   },
 
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/products/${id}`)
+  delete: async (id: number, reason?: string): Promise<void> => {
+    await api.delete(`/products/${id}`, { data: { reason } })
   }
 }
 
@@ -335,6 +356,11 @@ export const userService = {
     } catch {
       console.warn('API not available, simulating delete')
     }
+  },
+
+  search: async (query: string, role?: string): Promise<User[]> => {
+    const response = await api.get('/users', { params: { search: query, role } })
+    return response.data
   }
 }
 
@@ -361,7 +387,7 @@ export const orderService = {
   // Alias pour getAll avec format de réponse paginé
   getOrders: async (): Promise<{ orders: Order[], pagination?: any }> => {
     try {
-      const response = await api.get('/orders')
+      const response = await api.get('/orders', { params: { limit: 1000 } })
       // Retourner le format attendu avec orders et pagination
       return {
         orders: response.data.orders || response.data || [],
@@ -446,8 +472,6 @@ export const orderService = {
     return orderService.delete(id)
   }
 }
-
-export default api
 
 // Services pour la personnalisation (bannières et promotions)
 export const personalisationService = {
@@ -792,12 +816,10 @@ export const financeService = {
     const response = await api.get('/finance/expenses-breakdown')
     return response.data
   },
-
   getProfitTrend: async () => {
     const response = await api.get('/finance/profit-trend')
     return response.data
   },
-
 
   getPaymentMethods: async () => {
     const response = await api.get('/finance/payment-methods')
@@ -832,3 +854,54 @@ export const notificationService = {
     return response.data
   }
 }
+
+// Service pour les messages
+export const messageService = {
+  getConversations: async () => {
+    const response = await api.get('/messages/conversations')
+    return response.data
+  },
+  getConversationMessages: async (id: number) => {
+    const response = await api.get(`/messages/conversations/${id}/messages`)
+    return response.data
+  },
+  sendMessage: async (receiverId: number, content: string) => {
+    const response = await api.post('/messages/send', { receiverId, content })
+    return response.data
+  }
+}
+
+// Service pour les vendeurs (Marketplace)
+export const vendorService = {
+  getMe: async (): Promise<Store> => {
+    const response = await api.get('/vendors/me')
+    return response.data
+  },
+  updateMe: async (storeData: Partial<Store>): Promise<Store> => {
+    const response = await api.put('/vendors/me', storeData)
+    return response.data.store
+  },
+  getProducts: async (): Promise<Product[]> => {
+    const response = await api.get('/vendors/me/products')
+    return response.data.products || response.data || []
+  },
+  getOrders: async (page = 1, limit = 10): Promise<{ orders: Order[], pagination: any }> => {
+    const response = await api.get('/vendors/me/orders', { params: { page, limit } })
+    return response.data
+  },
+  getStats: async (): Promise<any> => {
+    const response = await api.get('/vendors/me/stats')
+    return response.data
+  },
+  getPayouts: async (): Promise<any> => {
+    const response = await api.get('/vendors/me/payouts')
+    return response.data
+  },
+  updateOrderItemStatus: async (orderId: number, itemId: number, status: string): Promise<any> => {
+    const response = await api.patch(`/vendors/me/orders/${orderId}/items/${itemId}`, { status })
+    return response.data
+  }
+}
+
+export { api }
+export default api

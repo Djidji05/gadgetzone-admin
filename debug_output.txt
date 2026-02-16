@@ -1,0 +1,40 @@
+--- Stores ---
+Store ID: 6, Name: Beauty & Cosmetics, UserID: 2
+Store ID: 1, Name: Glow, UserID: 2
+Store ID: 2, Name: TechGadgets Pro, UserID: 3
+Store ID: 4, Name: Home Decor Paradise, UserID: 7
+Store ID: 5, Name: Sports & Fitness Store, UserID: 8
+Store ID: 7, Name: bouttech, UserID: 2
+Store ID: 3, Name: Fashion Hub Haiti, UserID: 6
+Store ID: 8, Name: hhhh, UserID: 15
+Store ID: 19, Name: Shop A, UserID: 26
+Store ID: 20, Name: Shop B, UserID: 27
+Store ID: 21, Name: GadgetZone Official, UserID: 1
+
+--- Products (All) ---
+Product ID: 18, Name: Product A1, StoreID: 19
+Product ID: 19, Name: aaaa, StoreID: 8
+Product ID: 20, Name: qqqq, StoreID: 8
+Product ID: 7, Name: sjyete, StoreID: 21
+Product ID: 11, Name: Samsung S25 Ultra, StoreID: 21
+Product ID: 16, Name: Iphone, StoreID: 21
+Product ID: 17, Name: djd, StoreID: 21
+Product ID: 9, Name: ertui, StoreID: 21
+Product ID: 10, Name: iphone 12 pro, StoreID: 21
+Product ID: 12, Name: Laptop nimo, StoreID: 21
+Product ID: 6, Name: afag, StoreID: 21
+Product ID: 14, Name: Lenovo Thinkpad, StoreID: 21
+Product ID: 15, Name: Asah, StoreID: 21
+Product ID: 8, Name: eqw,rn, StoreID: 21
+Product ID: 13, Name: Iphone 11 pro, StoreID: 21
+
+--- Recent Orders ---
+Order ID: 4, UserID: 4, Status: pending
+  - Item ID: 5, Product ID: 20, Product Name: qqqq, Product StoreID: 8
+Order ID: 3, UserID: 4, Status: pending
+  - Item ID: 4, Product ID: 20, Product Name: qqqq, Product StoreID: 8
+Order ID: 2, UserID: 4, Status: shipped
+  - Item ID: 3, Product ID: 13, Product Name: Iphone 11 pro, Product StoreID: 21
+Order ID: 1, UserID: 4, Status: delivered
+  - Item ID: 1, Product ID: 15, Product Name: Asah, Product StoreID: 21
+  - Item ID: 2, Product ID: 8, Product Name: eqw,rn, Product StoreID: 21

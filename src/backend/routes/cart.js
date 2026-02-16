@@ -62,7 +62,7 @@ router.get('/', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image_url', 'images', 'stock']
+          attributes: ['id', 'name', 'price', 'image_url', 'images']
         }]
       }]
     });
@@ -94,17 +94,18 @@ router.get('/', async (req, res) => {
             price: item.Product.price,
             image: item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null)
           }
-        })) : [],
-          totalAmount,
-          createdAt: cart.createdAt,
-            updatedAt: cart.updatedAt
+        };
+      }) : [],
+      totalAmount,
+      createdAt: cart.createdAt,
+      updatedAt: cart.updatedAt
     };
 
-res.json(response);
+    res.json(response);
   } catch (error) {
-  console.error('Get cart error:', error);
-  res.status(500).json({ message: 'Erreur lors de la récupération du panier' });
-}
+    console.error('Get cart error:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération du panier' });
+  }
 });
 
 // Ajouter un produit au panier
@@ -117,10 +118,6 @@ router.post('/add', async (req, res) => {
     const product = await Product.findByPk(productId);
     if (!product) {
       return res.status(404).json({ message: 'Produit non trouvé' });
-    }
-
-    if (product.stock < quantity) {
-      return res.status(400).json({ message: 'Stock insuffisant' });
     }
 
     // Récupérer ou créer le panier
@@ -137,9 +134,6 @@ router.post('/add', async (req, res) => {
     if (cartItem) {
       // Mettre à jour la quantité
       const newQuantity = cartItem.quantity + quantity;
-      if (product.stock < newQuantity) {
-        return res.status(400).json({ message: 'Stock insuffisant pour cette quantité' });
-      }
       cartItem.quantity = newQuantity;
       await cartItem.save();
     } else {
@@ -158,7 +152,7 @@ router.post('/add', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image_url', 'images', 'stock']
+          attributes: ['id', 'name', 'price', 'image_url', 'images']
         }]
       }]
     });
@@ -218,11 +212,6 @@ router.put('/items/:itemId', async (req, res) => {
       return res.status(404).json({ message: 'Article non trouvé dans le panier' });
     }
 
-    // Vérifier le stock
-    const product = await Product.findByPk(cartItem.productId);
-    if (product.stock < quantity) {
-      return res.status(400).json({ message: 'Stock insuffisant' });
-    }
 
     cartItem.quantity = quantity;
     await cartItem.save();
@@ -234,7 +223,7 @@ router.put('/items/:itemId', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image_url', 'images', 'stock']
+          attributes: ['id', 'name', 'price', 'image_url', 'images']
         }]
       }]
     });
@@ -298,7 +287,7 @@ router.delete('/items/:itemId', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image_url', 'images', 'stock']
+          attributes: ['id', 'name', 'price', 'image_url', 'images']
         }]
       }]
     });
@@ -365,7 +354,7 @@ router.post('/promo', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image_url', 'images', 'stock']
+          attributes: ['id', 'name', 'price', 'image_url', 'images']
         }]
       }]
     });

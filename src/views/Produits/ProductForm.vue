@@ -119,8 +119,11 @@ import { useRouter, useRoute } from 'vue-router'
 import { productService } from '@/services/api'
 import type { Category, ProductCreateData, ProductUpdateData } from '@/types'
 
+import { useAuthStore } from '@/stores/auth'
+
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const form = ref({
   name: '',
@@ -135,6 +138,18 @@ const categories = ref<Category[]>([])
 const isLoading = ref(false)
 
 const isEdit = computed(() => !!route.params.id)
+
+onMounted(async () => {
+  // Security check: Redirect if suspended
+  if (authStore.userRole === 'seller' && authStore.user?.storeStatus === 'suspended') {
+      alert("Votre compte est suspendu. Vous ne pouvez pas créer ou modifier de produits.");
+      router.push('/admin/products');
+      return;
+  }
+
+  await fetchCategories()
+  await fetchProduct()
+})
 
 const fetchCategories = async () => {
   try {
@@ -179,8 +194,4 @@ const handleSubmit = async () => {
   }
 }
 
-onMounted(async () => {
-  await fetchCategories()
-  await fetchProduct()
-})
 </script>

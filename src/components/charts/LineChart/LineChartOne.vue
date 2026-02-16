@@ -22,7 +22,7 @@ const series = ref([
   },
 ])
 
-const chartOptions = ref({
+const chartOptions = ref<any>({
   legend: {
     show: false,
     position: 'top',

@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 
 // Charger les variables d'environnement
 dotenv.config();
+dotenv.config({ path: '.env.backend' });
+dotenv.config({ path: '.env.backend' });
 
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
@@ -45,23 +47,26 @@ export const initDatabase = async () => {
     console.log(`- Port: ${dbConfig.port}`);
     console.log(`- Base: ${dbConfig.database}`);
     console.log(`- Utilisateur: ${dbConfig.username}`);
-    
+
     await sequelize.authenticate();
     console.log('✅ Connexion à la base de données réussie');
-    
+
     // Test de requête simple
     const [results] = await sequelize.query('SELECT version();');
     console.log('📊 Version PostgreSQL:', results[0].version);
-    
+
+    // Synchroniser les modèles
+    await syncDatabase({ alter: true });
+
     return true;
   } catch (error) {
     console.error('❌ Erreur lors de la connexion à la base de données:', error);
-    
+
     // Vérifier si c'est une erreur Sequelize
     if (error.original) {
       console.error('- Message d\'erreur:', error.original.message || error.message);
       console.error('- Code d\'erreur:', error.original.code);
-      
+
       // Suggestions basées sur les erreurs courantes
       switch (error.original.code) {
         case 'ECONNREFUSED':
@@ -77,7 +82,7 @@ export const initDatabase = async () => {
           console.log('💡 Solution: Vérifiez votre configuration PostgreSQL');
       }
     }
-    
+
     return false;
   }
 };
@@ -88,14 +93,14 @@ export const initDatabase = async () => {
 export const syncDatabase = async (options = {}) => {
   try {
     const { force = false, alter = false } = options;
-    
+
     if (force && process.env.NODE_ENV === 'production') {
       throw new Error('La synchronisation forcée est désactivée en production');
     }
 
     // Importer les modèles
     const { default: models } = await import('../models/index.js');
-    
+
     await sequelize.sync({ force, alter });
     console.log('✅ Base de données synchronisée avec succès');
     return true;

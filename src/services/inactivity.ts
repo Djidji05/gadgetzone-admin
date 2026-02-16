@@ -125,5 +125,5 @@ class InactivityTracker {
 export const inactivityTracker = new InactivityTracker()
 
 // Constantes
-export const INACTIVITY_TIMEOUT = 10 * 60 * 1000 // 10 minutes
+export const INACTIVITY_TIMEOUT = 60 * 60 * 1000 // 60 minutes
 export const TOKEN_REFRESH_THRESHOLD = 5 * 60 * 1000 // 5 minutes

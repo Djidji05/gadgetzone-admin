@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 export const advancedLogger = (req, res, next) => {
   const start = Date.now();
   const timestamp = new Date().toISOString();
-  
+
   // Informations de base
   const logData = {
     timestamp,
@@ -23,19 +23,23 @@ export const advancedLogger = (req, res, next) => {
     contentLength: req.get('Content-Length') || 0
   };
 
-  // Log la requête entrante
-  console.log(`🔵 IN: ${req.method} ${req.url} - IP: ${logData.ip}`);
+  // Log la requête entrante (sauf pour les notifications silencieuses)
+  if (!(req.method === 'GET' && req.url.includes('/api/notifications'))) {
+    console.log(`🔵 IN: ${req.method} ${req.url} - IP: ${logData.ip}`);
+  }
 
   // Intercepter la réponse pour capturer le statut et le temps
   const originalSend = res.send;
   res.send = function (data) {
     const duration = Date.now() - start;
     const statusCode = res.statusCode;
-    
-    // Log la réponse sortante
-    const statusIcon = statusCode < 400 ? '🟢' : statusCode < 500 ? '🟡' : '🔴';
-    console.log(`${statusIcon} OUT: ${req.method} ${req.url} - ${statusCode} - ${duration}ms`);
-    
+
+    // Log la réponse sortante (sauf pour les notifications silencieuses)
+    if (!(req.method === 'GET' && req.url.includes('/api/notifications'))) {
+      const statusIcon = statusCode < 400 ? '🟢' : statusCode < 500 ? '🟡' : '🔴';
+      console.log(`${statusIcon} OUT: ${req.method} ${req.url} - ${statusCode} - ${duration}ms`);
+    }
+
     // Logger dans un fichier en production
     if (process.env.NODE_ENV === 'production') {
       logToFile({
@@ -45,7 +49,7 @@ export const advancedLogger = (req, res, next) => {
         responseSize: Buffer.byteLength(data, 'utf8')
       });
     }
-    
+
     return originalSend.call(this, data);
   };
 
@@ -81,7 +85,7 @@ export const logError = (error, req = null, additionalContext = {}) => {
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
-    
+
     const errorLogFile = path.join(logDir, `errors-${new Date().toISOString().split('T')[0]}.log`);
     fs.appendFileSync(errorLogFile, JSON.stringify(errorLog) + '\n');
   }
@@ -110,7 +114,7 @@ export const logSecurity = (event, req, details = {}) => {
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
-    
+
     const securityLogFile = path.join(logDir, `security-${new Date().toISOString().split('T')[0]}.log`);
     fs.appendFileSync(securityLogFile, JSON.stringify(securityLog) + '\n');
   }
@@ -135,7 +139,7 @@ export const logPerformance = (operation, duration, metadata = {}) => {
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
-    
+
     const perfLogFile = path.join(logDir, `performance-${new Date().toISOString().split('T')[0]}.log`);
     fs.appendFileSync(perfLogFile, JSON.stringify(perfLog) + '\n');
   }
@@ -160,7 +164,7 @@ export const logActivity = (action, userId, details = {}) => {
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
-    
+
     const activityLogFile = path.join(logDir, `activity-${new Date().toISOString().split('T')[0]}.log`);
     fs.appendFileSync(activityLogFile, JSON.stringify(activityLog) + '\n');
   }
@@ -175,7 +179,7 @@ const logToFile = (data) => {
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
-    
+
     const logFile = path.join(logDir, `access-${new Date().toISOString().split('T')[0]}.log`);
     fs.appendFileSync(logFile, JSON.stringify(data) + '\n');
   } catch (error) {
@@ -187,9 +191,9 @@ const logToFile = (data) => {
  * Middleware pour capturer les erreurs asynchrones
  */
 export const asyncErrorLogger = (err, req, res, next) => {
-  logError(err, req, { 
+  logError(err, req, {
     type: 'Async Error',
-    statusCode: res.statusCode 
+    statusCode: res.statusCode
   });
   next(err);
 };

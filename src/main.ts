@@ -33,8 +33,6 @@ const initApp = () => {
 
     // Montage de l'application
     app.mount('#app');
-
-    console.log('✅ Application démarrée avec succès');
   } catch (error) {
     console.error('❌ Erreur lors du démarrage de l\'application:', error);
   }

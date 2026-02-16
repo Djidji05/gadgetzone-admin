@@ -2,6 +2,7 @@
   <component :is="layout">
     <router-view />
   </component>
+  <NotificationProvider />
 </template>
 
 <script setup lang="ts">
@@ -13,13 +14,14 @@ import AdminLayout from './components/layout/AdminLayout.vue'
 import AuthLayout from './components/layout/AuthLayout.vue'
 import ThemeProvider from './components/layout/ThemeProvider.vue'
 import SidebarProvider from './components/layout/SidebarProvider.vue'
+import NotificationProvider from './components/ui/NotificationProvider.vue'
 import { h } from 'vue'
 
 const AdminLayoutWithProviders = {
-  setup() {
+  setup(props, { slots }) {
     return () => h(ThemeProvider, () => [
       h(SidebarProvider, () => [
-        h(AdminLayout)
+        h(AdminLayout, null, slots)
       ])
     ])
   }
@@ -43,7 +45,6 @@ const startTokenRefresh = () => {
   refreshInterval = setInterval(async () => {
     // Si l'utilisateur est connecté et a été actif récemment
     if (authStore.isAuthenticated && !inactivityTracker.isInactive(ACTIVITY_THRESHOLD)) {
-      console.log('🔄 Rafraîchissement automatique du token (activité détectée)')
       await authStore.refreshToken()
     }
   }, REFRESH_RATE)

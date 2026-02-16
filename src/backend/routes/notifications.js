@@ -27,6 +27,7 @@ router.get('/', authenticateToken, async (req, res) => {
             where: whereClause,
             order: [['created_at', 'DESC']],
             limit: parseInt(limit),
+            logging: false,
             include: [{
                 model: User,
                 as: 'user',
@@ -36,7 +37,8 @@ router.get('/', authenticateToken, async (req, res) => {
 
         // Compter les non lues
         const unreadCount = await Notification.count({
-            where: { userId, status: 'unread' }
+            where: { userId, status: 'unread' },
+            logging: false
         });
 
         res.json({

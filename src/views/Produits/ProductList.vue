@@ -1,9 +1,8 @@
 <template>
   <div class="p-6">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Produits</h1>
       <button
-        v-if="authStore.isAdmin"
+        v-if="canModifyProducts"
         @click="$router.push('/admin/products/create')"
         class="btn btn-primary"
       >
@@ -11,6 +10,11 @@
       </button>
     </div>
     
+    <div v-if="isSuspended" class="mb-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+        <p class="font-bold">Compte Suspendu</p>
+        <p>Votre boutique est suspendue. Vous ne pouvez pas ajouter ou modifier des produits pour le moment. Veuillez contacter le support.</p>
+    </div>
+
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div class="mb-4">
         <input
@@ -56,20 +60,21 @@
                 </span>
               </td>
               <td class="p-2">
-                <button
-                  v-if="authStore.isAdmin"
-                  @click="editProduct(product.id)"
-                  class="text-blue-600 hover:text-blue-800 mr-2"
-                >
-                  Modifier
-                </button>
-                <button
-                  v-if="authStore.isAdmin"
-                  @click="deleteProduct(product.id)"
-                  class="text-red-600 hover:text-red-800"
-                >
-                  Supprimer
-                </button>
+                <div v-if="canModifyProducts">
+                    <button
+                      @click="editProduct(product.id)"
+                      class="text-blue-600 hover:text-blue-800 mr-2"
+                    >
+                      Modifier
+                    </button>
+                    <button
+                      @click="deleteProduct(product.id)"
+                      class="text-red-600 hover:text-red-800"
+                    >
+                      Supprimer
+                    </button>
+                </div>
+                <span v-else class="text-gray-400 italic text-sm">Lecture seule</span>
               </td>
             </tr>
           </tbody>
@@ -92,6 +97,20 @@ const authStore = useAuthStore()
 const products = ref<Product[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
+
+// Check if user has permission to modify products
+const canModifyProducts = computed(() => {
+  if (authStore.isAdmin) return true;
+  if (authStore.userRole === 'seller') {
+      // Check store status
+      return authStore.user?.storeStatus === 'active';
+  }
+  return false;
+});
+
+const isSuspended = computed(() => {
+    return authStore.userRole === 'seller' && authStore.user?.storeStatus === 'suspended';
+});
 
 const filteredProducts = computed(() => {
   if (!searchQuery.value) return products.value
@@ -130,6 +149,7 @@ const deleteProduct = async (id: string | number) => {
       await fetchProducts()
     } catch (error) {
       console.error('Erreur lors de la suppression:', error)
+      alert("Erreur: " + (error.response?.data?.message || "Impossible de supprimer le produit"));
     }
   }
 }

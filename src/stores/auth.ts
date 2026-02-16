@@ -13,7 +13,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Getters
   const isAuthenticated = computed(() => !!token.value)
-  const isAdmin = computed(() => user.value?.role === 'admin')
+  const isAdmin = computed(() => ['admin', 'gestionnaire'].includes(user.value?.role?.toLowerCase() || ''))
   const userRole = computed(() => user.value?.role || 'guest')
 
   // Actions
@@ -26,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Sauvegarder les données
       token.value = response.token
-      user.value = response.user
+      user.value = response.user as any
 
       // Persister dans localStorage
       authService.setUser(response.user, response.token)
@@ -53,7 +53,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Sauvegarder les données
       token.value = response.token
-      user.value = response.user
+      user.value = response.user as any
 
       // Persister dans localStorage
       authService.setUser(response.user, response.token)
@@ -87,7 +87,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authService.updateProfile(userData)
 
       // Mettre à jour l'utilisateur
-      user.value = response.data?.user || null
+      user.value = (response.data?.user as any) || null
 
       // Mettre à jour localStorage
       localStorage.setItem('user_data', JSON.stringify(response.data?.user))
@@ -142,7 +142,7 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshProfile = async () => {
     try {
       const response = await authService.getProfile()
-      user.value = response.data?.user || null
+      user.value = (response.data?.user as any) || null
       localStorage.setItem('user_data', JSON.stringify(response.data?.user))
       return { success: true, data: response }
     } catch (err: unknown) {
@@ -209,5 +209,5 @@ export const useAuthStore = defineStore('auth', () => {
     key: 'auth-store',
     storage: localStorage,
     paths: ['user', 'token']
-  }
+  } as any
 })

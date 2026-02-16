@@ -18,14 +18,32 @@ const User = sequelize.define('User', {
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true // Nullable pour social login
+  },
+  googleId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true
+  },
+  facebookId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true
   },
   role: {
-    type: DataTypes.STRING,
-    defaultValue: 'user'
+    type: DataTypes.STRING, // 'admin', 'seller', 'customer' (formerly 'user')
+    defaultValue: 'customer'
   },
   phone: {
     type: DataTypes.STRING,
+    allowNull: true
+  },
+  resetPasswordToken: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  resetPasswordExpires: {
+    type: DataTypes.DATE,
     allowNull: true
   },
   created_at: {

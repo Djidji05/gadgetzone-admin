@@ -22,6 +22,10 @@ const props = defineProps({
   duration: {
     type: Number,
     default: 1000 // milliseconds
+  },
+  compact: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -29,6 +33,13 @@ const displayValue = ref(props.isCurrency ? '0 HTG' : '0')
 const currentValue = ref(0)
 
 const formatCurrency = (value) => {
+  if (props.compact && value >= 1000) {
+    return new Intl.NumberFormat('fr-FR', {
+      notation: 'compact',
+      compactDisplay: 'short',
+      maximumFractionDigits: 1
+    }).format(value) + ' HTG'
+  }
   return new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
@@ -36,6 +47,13 @@ const formatCurrency = (value) => {
 }
 
 const formatNumber = (value) => {
+  if (props.compact && value >= 10000) {
+    return new Intl.NumberFormat('fr-FR', {
+      notation: 'compact',
+      compactDisplay: 'short',
+      maximumFractionDigits: 1
+    }).format(Math.round(value))
+  }
   return new Intl.NumberFormat('fr-FR').format(Math.round(value))
 }
 

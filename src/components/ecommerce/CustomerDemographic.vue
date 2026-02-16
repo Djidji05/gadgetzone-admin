@@ -1,6 +1,6 @@
 <template>
   <div
-    class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] sm:p-6"
+    class="sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 bg-transparent dark:bg-transparent sm:dark:bg-white/[0.03] sm:p-6"
   >
     <div class="flex justify-between">
       <div>
@@ -72,7 +72,7 @@ const demographics = ref({
   newThisMonth: 0,
   activeCustomers: 0,
   activePercentage: 0,
-  topCities: []
+  topCities: [] as any[]
 })
 
 const isLoading = ref(true)

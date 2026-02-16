@@ -1,8 +1,8 @@
 <template>
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
     <!-- Clients Card -->
     <div
-      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 hover:shadow-lg transition-all duration-300 hover:border-blue-300 dark:hover:border-blue-700"
+      class="group sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 sm:dark:bg-white/[0.03] bg-transparent dark:bg-transparent md:p-6 hover:shadow-lg transition-all duration-300 hover:border-blue-300 dark:hover:border-blue-700"
     >
       <div
         class="flex items-center justify-center w-14 h-14 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl dark:from-blue-900/30 dark:to-blue-800/30 group-hover:scale-110 transition-transform duration-300"
@@ -24,49 +24,48 @@
         </svg>
       </div>
 
-      <div class="flex items-end justify-between mt-5">
-        <div>
-          <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Clients</span>
-          <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
-            <AnimatedCounter :value="metrics?.counts?.users || 0" :isLoading="isLoading" />
-          </h4>
-        </div>
-
-        <span
-          :class="[
-            'flex items-center gap-1 rounded-full py-1.5 pl-2 pr-3 text-sm font-semibold shadow-sm',
-            metrics?.growth?.users >= 0
-              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
-              : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400'
-          ]"
-        >
-          <svg
+      <div class="mt-5">
+        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Clients</span>
+        <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
+          <AnimatedCounter :value="metrics?.counts?.users || 0" :isLoading="isLoading" compact />
+        </h4>
+        
+        <div class="mt-3 flex">
+          <span
             :class="[
-              'fill-current transition-transform duration-300',
-              metrics?.growth?.users >= 0 ? '' : 'rotate-180'
+              'flex items-center gap-1 rounded-full py-1.5 pl-2 pr-3 text-sm font-semibold shadow-sm',
+              metrics?.growth?.users >= 0
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400'
             ]"
-            width="14"
-            height="14"
-            viewBox="0 0 12 12"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
           >
-            <path
-              fill-rule="evenodd"
-              clip-rule="evenodd"
-              d="M5.56462 1.62393C5.70193 1.47072 5.90135 1.37432 6.12329 1.37432C6.1236 1.37432 6.12391 1.37432 6.12422 1.37432C6.31631 1.37415 6.50845 1.44731 6.65505 1.59381L9.65514 4.5918C9.94814 4.88459 9.94831 5.35947 9.65552 5.65246C9.36273 5.94546 8.88785 5.94562 8.59486 5.65283L6.87329 3.93247L6.87329 10.125C6.87329 10.5392 6.53751 10.875 6.12329 10.875C5.70908 10.875 5.37329 10.5392 5.37329 10.125L5.37329 3.93578L3.65516 5.65282C3.36218 5.94562 2.8873 5.94547 2.5945 5.65248C2.3017 5.35949 2.30185 4.88462 2.59484 4.59182L5.56462 1.62393Z"
-              fill=""
-            />
-          </svg>
-
-          {{ formatPercentage(metrics?.growth?.users || 0) }}
-        </span>
+            <svg
+              :class="[
+                'fill-current transition-transform duration-300',
+                metrics?.growth?.users >= 0 ? '' : 'rotate-180'
+              ]"
+              width="14"
+              height="14"
+              viewBox="0 0 12 12"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M5.56462 1.62393C5.70193 1.47072 5.90135 1.37432 6.12329 1.37432C6.1236 1.37432 6.12391 1.37432 6.12422 1.37432C6.31631 1.37415 6.50845 1.44731 6.65505 1.59381L9.65514 4.5918C9.94814 4.88459 9.94831 5.35947 9.65552 5.65246C9.36273 5.94546 8.88785 5.94562 8.59486 5.65283L6.87329 3.93247L6.87329 10.125C6.87329 10.5392 6.53751 10.875 6.12329 10.875C5.70908 10.875 5.37329 10.5392 5.37329 10.125L5.37329 3.93578L3.65516 5.65282C3.36218 5.94562 2.8873 5.94547 2.5945 5.65248C2.3017 5.35949 2.30185 4.88462 2.59484 4.59182L5.56462 1.62393Z"
+                fill=""
+              />
+            </svg>
+            {{ formatPercentage(metrics?.growth?.users || 0) }}
+          </span>
+        </div>
       </div>
     </div>
 
     <!-- Commandes Card -->
     <div
-      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 hover:shadow-lg transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-700"
+      class="group sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 sm:dark:bg-white/[0.03] bg-transparent dark:bg-transparent md:p-6 hover:shadow-lg transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-700"
     >
       <div
         class="flex items-center justify-center w-14 h-14 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl dark:from-purple-900/30 dark:to-purple-800/30 group-hover:scale-110 transition-transform duration-300"
@@ -88,49 +87,48 @@
         </svg>
       </div>
 
-      <div class="flex items-end justify-between mt-5">
-        <div>
-          <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Commandes</span>
-          <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
-            <AnimatedCounter :value="metrics?.counts?.orders || 0" :isLoading="isLoading" />
-          </h4>
-        </div>
+      <div class="mt-5">
+        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Commandes</span>
+        <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
+          <AnimatedCounter :value="metrics?.counts?.orders || 0" :isLoading="isLoading" compact />
+        </h4>
 
-        <span
-          :class="[
-            'flex items-center gap-1 rounded-full py-1.5 pl-2 pr-3 text-sm font-semibold shadow-sm',
-            metrics?.growth?.orders >= 0
-              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
-              : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400'
-          ]"
-        >
-          <svg
+        <div class="mt-3 flex">
+          <span
             :class="[
-              'fill-current transition-transform duration-300',
-              metrics?.growth?.orders >= 0 ? '' : 'rotate-180'
+              'flex items-center gap-1 rounded-full py-1.5 pl-2 pr-3 text-sm font-semibold shadow-sm',
+              metrics?.growth?.orders >= 0
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400'
             ]"
-            width="14"
-            height="14"
-            viewBox="0 0 12 12"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
           >
-            <path
-              fill-rule="evenodd"
-              clip-rule="evenodd"
-              d="M5.31462 10.3761C5.45194 10.5293 5.65136 10.6257 5.87329 10.6257C5.8736 10.6257 5.8739 10.6257 5.87421 10.6257C6.0663 10.6259 6.25845 10.5527 6.40505 10.4062L9.40514 7.4082C9.69814 7.11541 9.69831 6.64054 9.40552 6.34754C9.11273 6.05454 8.63785 6.05438 8.34486 6.34717L6.62329 8.06753L6.62329 1.875C6.62329 1.46079 6.28751 1.125 5.87329 1.125C5.45908 1.125 5.12329 1.46079 5.12329 1.875L5.12329 8.06422L3.40516 6.34719C3.11218 6.05439 2.6373 6.05454 2.3445 6.34752C2.0517 6.64051 2.05185 7.11538 2.34484 7.40818L5.31462 10.3761Z"
-              fill=""
-            />
-          </svg>
-
-          {{ formatPercentage(metrics?.growth?.orders || 0) }}
-        </span>
+            <svg
+              :class="[
+                'fill-current transition-transform duration-300',
+                metrics?.growth?.orders >= 0 ? '' : 'rotate-180'
+              ]"
+              width="14"
+              height="14"
+              viewBox="0 0 12 12"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M5.31462 10.3761C5.45194 10.5293 5.65136 10.6257 5.87329 10.6257C5.8736 10.6257 5.8739 10.6257 5.87421 10.6257C6.0663 10.6259 6.25845 10.5527 6.40505 10.4062L9.40514 7.4082C9.69814 7.11541 9.69831 6.64054 9.40552 6.34754C9.11273 6.05454 8.63785 6.05438 8.34486 6.34717L6.62329 8.06753L6.62329 1.875C6.62329 1.46079 6.28751 1.125 5.87329 1.125C5.45908 1.125 5.12329 1.46079 5.12329 1.875L5.12329 8.06422L3.40516 6.34719C3.11218 6.05439 2.6373 6.05454 2.3445 6.34752C2.0517 6.64051 2.05185 7.11538 2.34484 7.40818L5.31462 10.3761Z"
+                fill=""
+              />
+            </svg>
+            {{ formatPercentage(metrics?.growth?.orders || 0) }}
+          </span>
+        </div>
       </div>
     </div>
 
     <!-- Revenus Card -->
     <div
-      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 hover:shadow-lg transition-all duration-300 hover:border-emerald-300 dark:hover:border-emerald-700"
+      class="group sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 sm:dark:bg-white/[0.03] bg-transparent dark:bg-transparent md:p-6 hover:shadow-lg transition-all duration-300 hover:border-emerald-300 dark:hover:border-emerald-700"
     >
       <div
         class="flex items-center justify-center w-14 h-14 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl dark:from-emerald-900/30 dark:to-emerald-800/30 group-hover:scale-110 transition-transform duration-300"
@@ -150,53 +148,53 @@
         </svg>
       </div>
 
-      <div class="flex items-end justify-between mt-5">
-        <div>
-          <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Revenus</span>
-          <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
-            <AnimatedCounter
-              :value="metrics?.counts?.revenue || 0"
-              :isLoading="isLoading"
-              :isCurrency="true"
-            />
-          </h4>
-        </div>
+      <div class="mt-5">
+        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Revenus</span>
+        <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
+          <AnimatedCounter
+            :value="metrics?.counts?.revenue || 0"
+            :isLoading="isLoading"
+            :isCurrency="true"
+            compact
+          />
+        </h4>
 
-        <span
-          :class="[
-            'flex items-center gap-1 rounded-full py-1.5 pl-2 pr-3 text-sm font-semibold shadow-sm',
-            metrics?.growth?.revenue >= 0
-              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
-              : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400'
-          ]"
-        >
-          <svg
+        <div class="mt-3 flex">
+          <span
             :class="[
-              'fill-current transition-transform duration-300',
-              metrics?.growth?.revenue >= 0 ? '' : 'rotate-180'
+              'flex items-center gap-1 rounded-full py-1.5 pl-2 pr-3 text-sm font-semibold shadow-sm',
+              metrics?.growth?.revenue >= 0
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400'
             ]"
-            width="14"
-            height="14"
-            viewBox="0 0 12 12"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
           >
-            <path
-              fill-rule="evenodd"
-              clip-rule="evenodd"
-              d="M5.56462 1.62393C5.70193 1.47072 5.90135 1.37432 6.12329 1.37432C6.1236 1.37432 6.12391 1.37432 6.12422 1.37432C6.31631 1.37415 6.50845 1.44731 6.65505 1.59381L9.65514 4.5918C9.94814 4.88459 9.94831 5.35947 9.65552 5.65246C9.36273 5.94546 8.88785 5.94562 8.59486 5.65283L6.87329 3.93247L6.87329 10.125C6.87329 10.5392 6.53751 10.875 6.12329 10.875C5.70908 10.875 5.37329 10.5392 5.37329 10.125L5.37329 3.93578L3.65516 5.65282C3.36218 5.94562 2.8873 5.94547 2.5945 5.65248C2.3017 5.35949 2.30185 4.88462 2.59484 4.59182L5.56462 1.62393Z"
-              fill=""
-            />
-          </svg>
-
-          {{ formatPercentage(metrics?.growth?.revenue || 0) }}
-        </span>
+            <svg
+              :class="[
+                'fill-current transition-transform duration-300',
+                metrics?.growth?.revenue >= 0 ? '' : 'rotate-180'
+              ]"
+              width="14"
+              height="14"
+              viewBox="0 0 12 12"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M5.56462 1.62393C5.70193 1.47072 5.90135 1.37432 6.12329 1.37432C6.1236 1.37432 6.12391 1.37432 6.12422 1.37432C6.31631 1.37415 6.50845 1.44731 6.65505 1.59381L9.65514 4.5918C9.94814 4.88459 9.94831 5.35947 9.65552 5.65246C9.36273 5.94546 8.88785 5.94562 8.59486 5.65283L6.87329 3.93247L6.87329 10.125C6.87329 10.5392 6.53751 10.875 6.12329 10.875C5.70908 10.875 5.37329 10.5392 5.37329 10.125L5.37329 3.93578L3.65516 5.65282C3.36218 5.94562 2.8873 5.94547 2.5945 5.65248C2.3017 5.35949 2.30185 4.88462 2.59484 4.59182L5.56462 1.62393Z"
+                fill=""
+              />
+            </svg>
+            {{ formatPercentage(metrics?.growth?.revenue || 0) }}
+          </span>
+        </div>
       </div>
     </div>
 
     <!-- Produits Card -->
     <div
-      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 hover:shadow-lg transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-700"
+      class="group sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 sm:dark:bg-white/[0.03] bg-transparent dark:bg-transparent md:p-6 hover:shadow-lg transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-700"
     >
       <div
         class="flex items-center justify-center w-14 h-14 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl dark:from-orange-900/30 dark:to-orange-800/30 group-hover:scale-110 transition-transform duration-300"
@@ -218,39 +216,87 @@
         </svg>
       </div>
 
-      <div class="flex items-end justify-between mt-5">
-        <div>
-          <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Produits</span>
-          <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
-            <AnimatedCounter :value="metrics?.counts?.products || 0" :isLoading="isLoading" />
-          </h4>
-        </div>
+      <div class="mt-5">
+        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Produits</span>
+        <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
+          <AnimatedCounter :value="metrics?.counts?.products || 0" :isLoading="isLoading" compact />
+        </h4>
 
-        <span
-          class="flex items-center gap-1 rounded-full bg-gray-50 py-1.5 pl-2 pr-3 text-sm font-semibold text-gray-600 shadow-sm dark:bg-gray-700/50 dark:text-gray-400"
-        >
-          <svg
-            class="fill-current"
-            width="14"
-            height="14"
-            viewBox="0 0 12 12"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
+        <div class="mt-3 flex">
+          <span
+            class="flex items-center gap-1 rounded-full bg-orange-50 py-1.5 pl-2 pr-3 text-sm font-semibold text-orange-600 shadow-sm dark:bg-orange-500/15 dark:text-orange-400"
           >
-            <path
-              d="M6 9C6.27614 9 6.5 8.77614 6.5 8.5C6.5 8.22386 6.27614 8 6 8C5.72386 8 5.5 8.22386 5.5 8.5C5.5 8.77614 5.72386 9 6 9Z"
-              fill=""
-            />
-            <path
-              fill-rule="evenodd"
-              clip-rule="evenodd"
-              d="M6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1ZM2 6C2 4.34315 3.34315 3 5 3V2C2.79086 2 1 3.79086 1 6C1 8.20914 2.79086 10 5 10V9C3.34315 9 2 7.65685 2 6ZM7 2V3C8.65685 3 10 4.34315 10 6C10 7.65685 8.65685 9 7 9V10C9.20914 10 11 8.20914 11 6C11 3.79086 9.20914 2 7 2Z"
-              fill=""
-            />
-          </svg>
+            <svg
+              class="fill-current"
+              width="14"
+              height="14"
+              viewBox="0 0 12 12"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+               <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1ZM2 6C2 4.34315 3.34315 3 5 3V2C2.79086 2 1 3.79086 1 6C1 8.20914 2.79086 10 5 10V9C3.34315 9 2 7.65685 2 6ZM7 2V3C8.65685 3 10 4.34315 10 6C10 7.65685 8.65685 9 7 9V10C9.20914 10 11 8.20914 11 6C11 3.79086 9.20914 2 7 2Z"
+                fill=""
+              />
+            </svg>
+            Total
+          </span>
+        </div>
+      </div>
+    </div>
 
-          Total
-        </span>
+    <!-- Vendeurs Card -->
+    <div
+      class="group sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 sm:dark:bg-white/[0.03] bg-transparent dark:bg-transparent md:p-6 hover:shadow-lg transition-all duration-300 hover:border-indigo-300 dark:hover:border-indigo-700"
+    >
+      <div
+        class="flex items-center justify-center w-14 h-14 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl dark:from-indigo-900/30 dark:to-indigo-800/30 group-hover:scale-110 transition-transform duration-300"
+      >
+        <svg
+          class="fill-indigo-600 dark:fill-indigo-400"
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"
+            fill=""
+          />
+        </svg>
+      </div>
+
+      <div class="mt-5">
+        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Vendeurs</span>
+        <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
+          <AnimatedCounter :value="metrics?.counts?.sellers || 0" :isLoading="isLoading" compact />
+        </h4>
+
+        <div class="mt-3 flex">
+          <span
+            class="flex items-center gap-1 rounded-full bg-indigo-50 py-1.5 pl-2 pr-3 text-sm font-semibold text-indigo-600 shadow-sm dark:bg-indigo-500/15 dark:text-indigo-400"
+          >
+            <svg
+              class="fill-current"
+              width="14"
+              height="14"
+              viewBox="0 0 12 12"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1ZM2 6C2 4.34315 3.34315 3 5 3V2C2.79086 2 1 3.79086 1 6C1 8.20914 2.79086 10 5 10V9C3.34315 9 2 7.65685 2 6ZM7 2V3C8.65685 3 10 4.34315 10 6C10 7.65685 8.65685 9 7 9V10C9.20914 10 11 8.20914 11 6C11 3.79086 9.20914 2 7 2Z"
+                fill=""
+              />
+            </svg>
+            Total
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -258,7 +304,8 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { statsService } from '@/services/api'
+import { statsService, vendorService } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 import AnimatedCounter from './AnimatedCounter.vue'
 
 const props = defineProps({
@@ -268,6 +315,7 @@ const props = defineProps({
   }
 })
 
+const authStore = useAuthStore()
 const metrics = ref(null)
 const isLoading = ref(true)
 const error = ref(null)
@@ -282,62 +330,95 @@ const fetchMetrics = async () => {
     isLoading.value = true
     error.value = null
 
-    console.log('🔄 Fetching metrics from API...')
-    // Convertir le format de période
-    const periodMap = {
-      'today': '1j',
-      '7days': '7j',
-      '30days': '30j',
-      'year': '12m'
-    }
-    const apiPeriod = periodMap[props.period] || '30j'
-    const response = await statsService.getOverview(apiPeriod)
-    console.log('📊 API Response:', response)
+    const role = authStore.user?.role?.toLowerCase()
     
-    // Handle both old format (nouveauxClients, nbCommandes) and new format (counts.users, counts.orders)
-    if (response.counts) {
-      // New format with counts object
+    if (role === 'seller') {
+      console.log('🔄 Fetching vendor metrics...')
+      const response = await vendorService.getStats()
+      console.log('📊 Vendor API Response:', response)
+      
       metrics.value = {
         counts: {
-          users: response.counts.users || 0,
-          orders: response.counts.orders || 0,
-          revenue: response.counts.revenue || 0,
-          products: response.counts.products || 0
+          users: 0, // Not applicable for vendors
+          orders: response.orders || 0,
+          revenue: response.sales || response.revenue || 0,
+          products: response.products || 0
         },
         growth: {
-          users: response.growth?.users || 0,
-          orders: response.growth?.orders || 0,
-          revenue: response.growth?.revenue || 0,
-          products: response.growth?.products || 0
+          users: 0,
+          orders: 0, // Stats endpoint doesn't return growth yet for vendors
+          revenue: 0,
+          products: 0
         }
       }
     } else {
-      // Old format (fallback)
-      metrics.value = {
-        counts: {
-          users: response.nouveauxClients || 0,
-          orders: response.nbCommandes || 0,
-          revenue: response.chiffreAffaires || 0,
-          products: response.nbProduitsVendus || 0
-        },
-        growth: {
-          users: response.evolutionClients || 0,
-          orders: response.evolutionCommandes || 0,
-          revenue: response.evolutionCA || 0,
-          products: response.evolutionProduits || 0
+      console.log('🔄 Fetching admin metrics...')
+      const periodMap = {
+        'today': '1j',
+        '7days': '7j',
+        '30days': '30j',
+        'year': '12m'
+      }
+      const apiPeriod = periodMap[props.period] || '30j'
+      const response = await statsService.getOverview(apiPeriod)
+      
+      if (response.totalUsers !== undefined) {
+        metrics.value = {
+          counts: {
+            users: response.totalUsers || 0,
+            orders: response.totalOrders || 0,
+            revenue: response.totalRevenue || 0,
+            products: response.totalProducts || 0,
+            sellers: response.totalSellers || 0
+          },
+          growth: {
+            users: response.evolutionClients || 0,
+            orders: response.evolutionCommandes || 0,
+            revenue: response.evolutionCA || 0,
+            products: response.evolutionProduits || 0
+          }
+        }
+      } else if (response.counts) {
+        metrics.value = {
+          counts: {
+            users: response.counts.users || 0,
+            orders: response.counts.orders || 0,
+            revenue: response.counts.revenue || 0,
+            products: response.counts.products || 0,
+            sellers: 0
+          },
+          growth: {
+            users: response.growth?.users || 0,
+            orders: response.growth?.orders || 0,
+            revenue: response.growth?.revenue || 0,
+            products: response.growth?.products || 0
+          }
+        }
+      } else {
+        metrics.value = {
+          counts: {
+            users: response.nouveauxClients || 0,
+            orders: response.nbCommandes || 0,
+            revenue: response.chiffreAffaires || 0,
+            products: response.nbProduitsVendus || 0,
+            sellers: 0
+          },
+          growth: {
+            users: response.evolutionClients || 0,
+            orders: response.evolutionCommandes || 0,
+            revenue: response.evolutionCA || 0,
+            products: response.evolutionProduits || 0
+          }
         }
       }
     }
-    
-    console.log('✅ Metrics transformed:', metrics.value)
   } catch (err) {
     console.error('❌ Erreur lors du chargement des métriques:', err)
     error.value = 'Impossible de charger les métriques'
     
-    // Fallback data
     metrics.value = {
-      counts: { users: 89, orders: 348, revenue: 125487.65, products: 1245 },
-      growth: { users: 5.7, orders: 8.2, revenue: 12.5, products: 15.3 }
+      counts: { users: 0, orders: 0, revenue: 0, products: 0 },
+      growth: { users: 0, orders: 0, revenue: 0, products: 0 }
     }
   } finally {
     isLoading.value = false

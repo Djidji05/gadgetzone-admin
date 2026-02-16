@@ -1,0 +1,677 @@
+<template>
+  <div>
+    <h2 class="text-lg font-semibold text-gray-800 mb-6">Gestion Top Découverte</h2>
+
+    <div v-if="loading" class="flex justify-center py-12">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+
+    <div v-else class="space-y-8">
+      <!-- Section Settings -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hidden">
+        <h3 class="text-base font-medium text-gray-900 mb-4">Configuration</h3>
+        <div class="flex items-center">
+            <input 
+              v-model="config.isActive" 
+              type="checkbox" 
+              id="isActiveSection"
+              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            >
+            <label for="isActiveSection" class="ml-2 block text-sm text-gray-900">Afficher cette section sur l'accueil</label>
+        </div>
+      </div>
+
+      <!-- Live Preview Grid -->
+      <div class="bg-gray-50 p-6 rounded-xl border border-gray-200">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Liste des cartes</h3>
+          <button 
+             @click="openModal()" 
+             class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 transition-colors shadow-sm"
+          >
+            <i class="fas fa-plus"></i> Ajouter une carte
+          </button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <!-- Card Loop -->
+            <div 
+              v-for="(card, index) in items" 
+              :key="index" 
+              class="w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative group flex flex-col items-stretch"
+            >
+              <!-- Edit/Delete Overlay -->
+              <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-white/90 rounded-lg shadow-sm p-1">
+                 <button @click="moveItem(index, -1)" :disabled="index === 0" class="p-1 hover:text-blue-600 disabled:opacity-30"><i class="fas fa-chevron-left"></i></button>
+                 <button @click="moveItem(index, 1)" :disabled="index === items.length - 1" class="p-1 hover:text-blue-600 disabled:opacity-30"><i class="fas fa-chevron-right"></i></button>
+                 <div class="w-px h-3 bg-gray-300 mx-1 self-center"></div>
+                 <button @click="openModal(index)" class="p-1 hover:text-blue-600"><i class="fas fa-edit"></i></button>
+                 <button @click="deleteItem(index)" class="p-1 hover:text-red-600"><i class="fas fa-trash"></i></button>
+              </div>
+
+              <!-- HEADER -->
+              <div class="mb-4">
+                <h4 class="font-bold text-lg text-gray-900 truncate" :title="card.title">{{ card.title || 'Titre de la carte' }}</h4>
+                <p v-if="card.type === 'promo'" class="text-xs text-gray-500 truncate">{{ card.subtitle }}</p>
+              </div>
+
+              <!-- BODY: GRID TYPE -->
+              <div v-if="card.type === 'grid'">
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                  <div v-for="i in 4" :key="i" class="flex flex-col gap-1">
+                    <div class="aspect-square bg-gray-50 rounded-xl overflow-hidden flex items-center justify-center border border-gray-100">
+                      <img 
+                        v-if="card.items[i-1]?.image" 
+                        :src="card.items[i-1].image" 
+                        class="w-full h-full object-cover"
+                      >
+                      <span v-else class="text-gray-300 text-xs text-center px-1">Produit {{ i }}</span>
+                    </div>
+                    <span class="text-xs font-medium text-gray-900 truncate">{{ card.items[i-1]?.name || '---' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- BODY: PROMO TYPE -->
+              <div v-else class="flex flex-col">
+                <div 
+                  class="aspect-square rounded-xl overflow-hidden mb-4 relative flex flex-col items-center justify-center p-4 text-center transition-colors"
+                  :style="card.promoStyle === 'color' ? { backgroundColor: card.backgroundColor || '#2563eb' } : { backgroundColor: '#f3f4f6' }"
+                >
+                   <!-- Background Image -->
+                   <img v-if="card.promoStyle !== 'color' && card.image" :src="card.image" class="absolute inset-0 w-full h-full object-cover z-0">
+                   
+                   <!-- Overlay content -->
+                   <div class="relative z-10 flex flex-col items-center justify-center h-full w-full">
+                     <span 
+                        class="mb-2 drop-shadow-md"
+                        :class="[
+                            card.promoStyle === 'color' ? 'text-white' : 'text-white',
+                            card.promoTextSize || 'text-2xl',
+                            card.promoTextWeight || 'font-bold'
+                        ]"
+                        :style="{ color: card.promoTextColor }"
+                     >
+                       {{ card.promoText }}
+                     </span>
+                     <span 
+                        class="text-sm font-medium opacity-90"
+                         :class="card.promoStyle === 'color' ? 'text-white/90' : 'text-white/90'"
+                     >
+                       {{ card.subtitle }}
+                     </span>
+                   </div>
+
+                   <!-- Dark overlay for better text readability on images -->
+                   <div v-if="card.promoStyle !== 'color' && card.image" class="absolute inset-0 bg-black/30 z-0"></div>
+                </div>
+              </div>
+
+              <!-- FOOTER -->
+              <div class="pt-2 mt-2">
+                <a href="#" class="text-blue-600 text-sm font-medium hover:underline flex items-center gap-1">
+                  {{ card.linkText || 'Voir plus' }} <i class="fas fa-chevron-right text-xs"></i>
+                </a>
+              </div>
+
+            </div>
+        </div>
+      </div>
+
+      <!-- Save Button -->
+      <div class="flex justify-end">
+        <button 
+          @click="saveConfig" 
+          class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm transition-colors flex items-center gap-2"
+          :disabled="saving"
+        >
+          <div v-if="saving" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+          {{ saving ? 'Enregistrement...' : 'Enregistrer les modifications' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN MODAL -->
+    <Teleport to="body">
+      <div v-if="showModal" class="fixed inset-0 z-[200000] flex items-center justify-center p-4 bg-gray-100">
+        <!-- Global Close Button (Plain Red X) -->
+        <button 
+            @click="closeModal" 
+            class="fixed top-6 right-6 z-[200005] text-red-600 hover:text-red-800 transition-all transform hover:scale-110 flex items-center justify-center p-2"
+            title="Fermer"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] relative z-[200001]">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                <h3 class="text-lg font-bold text-gray-900">{{ editingIndex !== null ? 'Modifier le produit' : 'Ajouter un produit' }}</h3>
+                <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+            <!-- Type Selection (Only if new) -->
+            <div v-if="editingIndex === null && !itemForm.type" class="grid grid-cols-2 gap-4">
+              <button 
+                @click="selectType('grid')"
+                class="flex flex-col items-center justify-center p-8 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all gap-3 group"
+              >
+                <div class="grid grid-cols-2 gap-1 w-16 h-16 opacity-50 group-hover:opacity-100">
+                  <div class="bg-gray-300 rounded"></div><div class="bg-gray-300 rounded"></div>
+                  <div class="bg-gray-300 rounded"></div><div class="bg-gray-300 rounded"></div>
+                </div>
+                <span class="font-bold text-gray-700 group-hover:text-blue-600">Grille (4 Produits)</span>
+                <p class="text-xs text-gray-500 text-center">Idéal pour présenter une catégorie avec 4 exemples.</p>
+              </button>
+
+              <button 
+                @click="selectType('promo')"
+                class="flex flex-col items-center justify-center p-8 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all gap-3 group"
+              >
+                <div class="w-16 h-16 bg-gray-300 rounded opacity-50 group-hover:opacity-100"></div>
+                <span class="font-bold text-gray-700 group-hover:text-blue-600">Promo (1 Image)</span>
+                 <p class="text-xs text-gray-500 text-center">Idéal pour une grande image ou une offre spéciale.</p>
+              </button>
+            </div>
+
+            <!-- Form Edit -->
+            <form v-else @submit.prevent="saveItem" class="space-y-6">
+              
+              <!-- Type Indicator & Switcher -->
+              <div class="flex justify-between items-center text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+                <span>Type: <b>{{ itemForm.type === 'grid' ? 'Grille Produits' : 'Carte Promo' }}</b></span>
+                <button @click="itemForm.type = itemForm.type === 'grid' ? 'promo' : 'grid'" type="button" class="text-blue-600 hover:underline">
+                    Changer en {{ itemForm.type === 'grid' ? 'Promo' : 'Grille' }}
+                </button>
+              </div>
+
+              <!-- Common Fields -->
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Titre de la carte</label>
+                  <input v-model="itemForm.title" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500" placeholder="Ex: Univers Gaming">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Lien "Voir plus"</label>
+                  <div class="grid grid-cols-2 gap-2">
+                     <input v-model="itemForm.linkText" type="text" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500" placeholder="Texte (ex: Voir plus)">
+                     <input v-model="itemForm.link" type="text" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500" placeholder="URL (ex: /category/gaming)">
+                  </div>
+                </div>
+              </div>
+
+              <!-- GRID SPECIFIC -->
+              <div v-if="itemForm.type === 'grid'" class="space-y-4">
+                <h4 class="text-sm font-bold text-gray-900 border-b pb-2">Les 4 Produits</h4>
+                
+                <div class="grid grid-cols-2 gap-4">
+                  <div 
+                    v-for="i in 4" 
+                    :key="i" 
+                    class="border border-gray-200 rounded-lg p-3 flex flex-col gap-2 relative group"
+                  >
+                    <div class="aspect-square bg-gray-100 rounded-md overflow-hidden flex items-center justify-center relative">
+                      <img v-if="itemForm.items[i-1]?.image" :src="itemForm.items[i-1].image" class="w-full h-full object-cover">
+                      <span v-else class="text-gray-400 text-xs">Vide</span>
+                      
+                      <!-- Add/Change Button -->
+                      <button 
+                        type="button"
+                        @click="openProductSearch(i-1)"
+                        class="absolute inset-0 bg-black/0 hover:bg-black/10 flex items-center justify-center transition-colors"
+                      >
+                        <span class="bg-white shadow px-2 py-1 rounded text-xs font-medium text-gray-700 hover:text-blue-600">
+                          {{ itemForm.items[i-1] ? 'Changer' : 'Ajouter' }}
+                        </span>
+                      </button>
+                    </div>
+                    <input 
+                      v-model="itemForm.items[i-1].name" 
+                      type="text" 
+                      class="w-full text-xs px-2 py-1 border border-gray-200 rounded focus:border-blue-500"
+                      placeholder="Nom du produit"
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- PROMO SPECIFIC -->
+             <div v-else class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Style de fond</label>
+                <div class="flex gap-4">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" v-model="itemForm.promoStyle" value="image" class="text-blue-600">
+                    <span class="text-sm">Image</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" v-model="itemForm.promoStyle" value="color" class="text-blue-600">
+                    <span class="text-sm">Couleur unie</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Image Upload -->
+              <div v-if="itemForm.promoStyle !== 'color'">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Image de fond</label>
+                
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors cursor-pointer relative" @dragover.prevent @drop.prevent="handleDrop">
+                   <input type="file" @change="handleFileUpload" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="isUploading">
+                   
+                   <div v-if="isUploading" class="py-10">
+                      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p class="text-xs text-gray-500 mt-2">Téléchargement...</p>
+                   </div>
+                   
+                   <div v-else-if="itemForm.image" class="h-32 mx-auto rounded overflow-hidden mb-2 relative group">
+                      <img :src="itemForm.image" class="h-full w-full object-cover">
+                      <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span class="text-white text-xs">Changer</span>
+                      </div>
+                   </div>
+                   <div v-else class="py-4 text-gray-500">
+                      <i class="fas fa-image text-2xl mb-2"></i>
+                      <p class="text-xs">Cliquez ou glissez une image ici</p>
+                   </div>
+                </div>
+              </div>
+
+              <!-- Color Picker -->
+              <div v-else>
+                 <label class="block text-sm font-medium text-gray-700 mb-1">Couleur de fond</label>
+                 <div class="flex items-center gap-3">
+                    <input v-model="itemForm.backgroundColor" type="color" class="h-10 w-20 p-1 rounded border border-gray-300 cursor-pointer">
+                    <span class="text-sm text-gray-500">{{ itemForm.backgroundColor || '#000000' }}</span>
+                 </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sous-titre / Description</label>
+                <input v-model="itemForm.subtitle" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500" placeholder="Ex: Restez au chaud...">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Texte Principal (Promo)</label>
+                <input v-model="itemForm.promoText" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 mb-2" placeholder="Ex: Winter Gear">
+                
+                <!-- Style Options -->
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Taille</label>
+                        <select v-model="itemForm.promoTextSize" class="w-full text-sm px-2 py-1 border border-gray-300 rounded focus:ring-blue-500">
+                            <option value="text-base">Normale</option>
+                            <option value="text-lg">Grande</option>
+                            <option value="text-xl">XL</option>
+                            <option value="text-2xl">2XL</option>
+                            <option value="text-3xl">3XL</option>
+                            <option value="text-4xl text-wrap">4XL</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Graisse</label>
+                         <select v-model="itemForm.promoTextWeight" class="w-full text-sm px-2 py-1 border border-gray-300 rounded focus:ring-blue-500">
+                            <option value="font-normal">Normale</option>
+                            <option value="font-medium">Moyenne</option>
+                            <option value="font-bold">Gras</option>
+                            <option value="font-extrabold">Extra Gras</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Couleur</label>
+                        <div class="flex items-center gap-2">
+                            <input v-model="itemForm.promoTextColor" type="color" class="h-8 w-8 p-0 border border-gray-300 rounded cursor-pointer">
+                            <span class="text-xs text-gray-500 truncate">{{ itemForm.promoTextColor || 'Auto' }}</span>
+                        </div>
+                    </div>
+                </div>
+              </div>
+
+              <!-- Text alignment hint -->
+              <div class="bg-blue-50 text-blue-700 text-xs p-3 rounded-lg">
+                <i class="fas fa-info-circle mr-1"></i>
+                Le texte sera automatiquement centré sur la carte.
+              </div>
+            </div>
+
+              <div class="flex justify-end gap-3 pt-4 border-t">
+                <button type="button" @click="closeModal" class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg">Annuler</button>
+                <button type="submit" class="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700">Valider</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- PRODUCT PICKER COMPONENT (Reused logic) -->
+    <Teleport to="body">
+      <div v-if="showProductPicker" class="fixed inset-0 z-[200001] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+         <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]">
+           <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+             <input 
+               v-model="searchQuery" 
+               @input="searchProducts"
+               ref="searchInput"
+               type="text" 
+               placeholder="Rechercher un produit..." 
+               class="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+             >
+             <button @click="closeProductPicker" class="ml-4 text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+           </div>
+           <div class="flex-1 overflow-y-auto p-4">
+              <div v-if="isSearching" class="text-center py-4"><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div></div>
+              <div v-if="!isSearching && searchResults.length === 0" class="text-center text-gray-500">Aucun résultat</div>
+              <div class="space-y-2">
+                 <div v-for="p in searchResults" :key="p.id" @click="selectProductForSlot(p)" class="flex gap-3 p-2 hover:bg-blue-50 rounded cursor-pointer border border-transparent hover:border-blue-100 items-center">
+                    <img :src="p.image_url" class="h-10 w-10 rounded object-cover bg-gray-100">
+                    <div class="truncate flex-1">
+                      <p class="font-medium text-sm truncate">{{ p.name }}</p>
+                      <p class="text-xs text-gray-500">{{ p.category?.name }}</p>
+                    </div>
+                    <i class="fas fa-plus text-blue-500"></i>
+                 </div>
+              </div>
+           </div>
+         </div>
+      </div>
+    </Teleport>
+
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, computed, watch, onUnmounted, nextTick } from 'vue';
+import PersonalizationService from '@/services/PersonalizationService';
+import { productService } from '@/services/api';
+import api from '@/services/api'; // For image upload
+import { useUIStore } from '@/stores/ui';
+
+const uiStore = useUIStore();
+const loading = ref(false);
+const saving = ref(false);
+const isUploading = ref(false); // New state for upload
+const showModal = ref(false);
+const editingIndex = ref<number | null>(null);
+
+// Watch showModal to lock/unlock body scroll
+watch(showModal, (newVal) => {
+  if (newVal) {
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = '';
+  }
+});
+
+// Ensure cleanup
+onUnmounted(() => {
+  document.body.style.overflow = '';
+});
+
+const config = ref({
+  section: 'top_discovery',
+  isActive: true,
+  content: {
+    items: [] as any[] // List of Cards
+  }
+});
+
+const items = computed(() => config.value.content.items || []);
+
+// Modal Form State
+const itemForm = ref<any>({
+  type: '', // 'grid' | 'promo'
+  title: '',
+  link: '',
+  linkText: 'Voir plus',
+  // Grid specific
+  items: [{}, {}, {}, {}], 
+  // Promo specific
+  subtitle: '',
+  promoText: '',
+  promoTextSize: 'text-2xl',
+  promoTextWeight: 'font-bold',
+  promoTextColor: '#ffffff',
+  image: '',
+  promoStyle: 'image', // 'image' | 'color'
+  backgroundColor: '#2563eb'
+});
+
+// Product Picker State
+const showProductPicker = ref(false);
+const currentSlotIndex = ref(0);
+const searchQuery = ref('');
+const searchResults = ref<any[]>([]);
+const isSearching = ref(false);
+let searchTimeout: any = null;
+const searchInput = ref<HTMLInputElement | null>(null);
+
+const loadConfig = async () => {
+  loading.value = true;
+  try {
+    const response = await PersonalizationService.getSectionConfig('top_discovery');
+    if (response.data) {
+      config.value = { ...response.data, content: { items: [], ...response.data.content } };
+    }
+  } catch (error) {
+    console.error('Failed to load config', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const saveConfig = async () => {
+  saving.value = true;
+  try {
+    const cleanConfig = JSON.parse(JSON.stringify(config.value));
+    
+    cleanConfig.content.items = cleanConfig.content.items.map((card: any) => {
+        // Respect the TYPE selected in the form.
+        if (card.type === 'grid') {
+             // Ensure 4 items exist
+             if (!card.items) card.items = [];
+             while(card.items.length < 4) card.items.push({});
+             // We can optionally clean promo fields, but let's keep them in case they switch back, 
+             // or clean them to save space. Given the issue, let's just ensure structure.
+        } else {
+            // Promo
+            card.type = 'promo'; 
+            card.items = []; // Clear items so it doesn't look like a grid to the frontend
+        }
+        return card;
+    });
+
+    await PersonalizationService.updateSectionConfig('top_discovery', cleanConfig);
+    await loadConfig();
+    await api.post('/personalization/sections/top_discovery', config.value);
+    uiStore.addToast('Configuration enregistrée avec succès', 'success');
+  } catch (error: any) {
+    console.error('Failed to save config', error);
+    uiStore.addToast('Erreur lors de l\'enregistrement : ' + (error.response?.data?.error || error.message), 'error');
+  } finally {
+    saving.value = false;
+  }
+};
+
+// Modal Actions
+const openModal = (index: number | null = null) => {
+  editingIndex.value = index;
+  if (index !== null) {
+    // Edit existing
+    const existing = items.value[index];
+    itemForm.value = JSON.parse(JSON.stringify(existing)); // Deep copy
+    // Ensure grid items structure
+    if (itemForm.value.type === 'grid' && (!itemForm.value.items || itemForm.value.items.length !== 4)) {
+        itemForm.value.items = itemForm.value.items || [];
+        while(itemForm.value.items.length < 4) itemForm.value.items.push({});
+    }
+  } else {
+    // New
+    resetForm();
+  }
+  showModal.value = true;
+};
+
+const resetForm = () => {
+    itemForm.value = {
+      type: '',
+      title: '',
+      link: '',
+      linkText: 'Voir plus',
+      items: [{}, {}, {}, {}],
+      subtitle: '',
+      image: '',
+      promoTextSize: 'text-2xl',
+      promoTextWeight: 'font-bold',
+      promoTextColor: '#ffffff'
+    };
+};
+
+const selectType = (type: string) => {
+    itemForm.value.type = type;
+};
+
+const closeModal = () => {
+  showModal.value = false;
+};
+
+const saveItem = () => {
+  if (editingIndex.value !== null) {
+    config.value.content.items[editingIndex.value] = { ...itemForm.value };
+  } else {
+    config.value.content.items.push({ ...itemForm.value });
+  }
+  closeModal();
+};
+
+const deleteItem = async (index: number) => {
+  const confirmed = await uiStore.confirm({
+    title: 'Supprimer la carte',
+    message: 'Êtes-vous sûr de vouloir supprimer cette carte ?',
+    type: 'danger',
+    confirmText: 'Supprimer'
+  });
+  if (confirmed) config.value.content.items.splice(index, 1);
+};
+
+const moveItem = (index: number, dir: number) => {
+    const newIndex = index + dir;
+    if (newIndex >= 0 && newIndex < items.value.length) {
+        const item = config.value.content.items.splice(index, 1)[0];
+        config.value.content.items.splice(newIndex, 0, item);
+    }
+};
+
+// File Upload Logic
+const handleFileUpload = async (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+        await uploadImage(input.files[0]);
+    }
+};
+
+const handleDrop = async (event: DragEvent) => {
+    if (event.dataTransfer?.files && event.dataTransfer.files[0]) {
+        await uploadImage(event.dataTransfer.files[0]);
+    }
+};
+
+const uploadImage = async (file: File) => {
+    isUploading.value = true;
+    const formData = new FormData();
+    formData.append('images', file);
+
+    try {
+        const response = await api.post('/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        if (response.data.urls && response.data.urls.length > 0) {
+            // The backend returns a full URL path like /uploads/products/xyz.jpg
+            // We need to ensure it's absolute or relative depending on how it's served.
+            // Usually, we save the path relative to the domain (e.g. /uploads/...)
+            // but we might need to prepend the API base URL if serving from a different port
+            // For now, let's assume the website serves /uploads proxy or static.
+            // Actually, based on previous files, image_url often comes full or relative.
+            // Let's store what the backend returned.
+            // Since the website and admin might be on different ports/domains in dev,
+            // strict relative paths might assume same origin.
+            // But let's stick to what the backend returns.
+            // Assuming `response.data.urls[0]` is `/uploads/products/filename.ext`
+            
+            // NOTE: The website needs to be able to access this.
+            // If the website is on 5173 and backend on 3003, `/uploads/...` on the website checks the website's public folder.
+            // We likely need to prepend the backend URL if in dev, or ensure proxy.
+            // However, the `api.ts` shows `API_BASE_URL` is `http://localhost:3003/api`.
+            // The uploads are likely served at `http://localhost:3003/uploads`.
+            // Let's check if we need to prepend the base URL.
+            
+            const url = response.data.urls[0];
+            // Provide a full URL for safety in dev environment if it starts with /
+            if (url.startsWith('/')) {
+                // Determine base URL from environment or hardcoded fallback
+                const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3003';
+                itemForm.value.image = `${baseUrl}${url}`;
+            } else {
+                itemForm.value.image = url;
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        uiStore.addToast('Erreur lors du téléchargement de l\'image', 'error');
+    } finally {
+        isUploading.value = false;
+    }
+};
+
+// Product Picker Actions
+const openProductSearch = (slotIndex: number) => {
+    currentSlotIndex.value = slotIndex;
+    searchQuery.value = '';
+    searchResults.value = [];
+    showProductPicker.value = true;
+    searchProducts();
+    nextTick(() => searchInput.value?.focus());
+};
+
+const closeProductPicker = () => {
+    showProductPicker.value = false;
+};
+
+const searchProducts = () => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    isSearching.value = true;
+    searchTimeout = setTimeout(async () => {
+        try {
+            const all = await productService.getAll();
+            if (searchQuery.value) {
+                const q = searchQuery.value.toLowerCase();
+                searchResults.value = all.filter((p: any) => p.name.toLowerCase().includes(q) || p.category?.name?.toLowerCase().includes(q));
+            } else {
+                searchResults.value = all.slice(0, 10);
+            }
+        } catch(e) { console.error(e); }
+        finally { isSearching.value = false; }
+    }, 300);
+};
+
+const selectProductForSlot = (product: any) => {
+    // Update the specific slot in itemForm
+    itemForm.value.items[currentSlotIndex.value] = {
+        id: product.id,
+        name: product.name, // Auto name
+        image: product.image_url, // Auto image
+        link: `/products/${product.id}`
+    };
+    closeProductPicker();
+};
+
+onMounted(() => {
+  loadConfig();
+});
+</script>

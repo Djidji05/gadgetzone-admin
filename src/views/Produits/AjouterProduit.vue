@@ -1,12 +1,12 @@
 <template>
-  <div class="p-6">
+  <div class="p-4 sm:p-6">
     <PageBreadcrumb :pageTitle="currentPageTitle" />
 
     <div class="max-w-6xl mx-auto">
       <div class="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <!-- Header -->
-        <div class="border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-primary-50 to-primary-100 dark:from-gray-800 dark:to-gray-900 p-6">
-          <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+        <div class="border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-primary-50 to-primary-100 dark:from-gray-800 dark:to-gray-900 p-4 sm:p-6">
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-3">
             <div class="p-2 bg-primary-600 rounded-lg">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -19,7 +19,7 @@
           </p>
         </div>
 
-        <form @submit.prevent="submitForm" class="p-6 space-y-8">
+        <form @submit.prevent="submitForm" class="p-4 sm:p-6 space-y-8">
           <!-- Section 1: Informations de base -->
           <div class="space-y-6">
             <div class="flex items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
@@ -330,7 +330,7 @@
           </div>
 
           <!-- Actions -->
-          <div class="flex justify-end gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
             <button
               type="button"
               @click="$router.go(-1)"
@@ -340,7 +340,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                Annuler
+                <span class="hidden sm:inline">Annuler</span>
               </span>
             </button>
             <button
@@ -356,7 +356,7 @@
                 <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
-                <span class="text-white font-bold">
+                <span class="text-white font-bold hidden sm:inline">
                   {{ loading ? 'Enregistrement...' : (isEditing ? 'Mettre à jour le produit' : 'Enregistrer le produit') }}
                 </span>
               </span>
@@ -394,10 +394,13 @@ if (productId) {
       price: 120000,
       stock: 25,
       category_id: 1,
-      image_url: 'https://via.placeholder.com/40/007bff/ffffff?text=i15',
-      images: ['https://via.placeholder.com/40/007bff/ffffff?text=i15'], // Init images array
+      image_url: 'https://placehold.co/300x300/3B82F6/FFFFFF?text=Product',
+      images: ['https://placehold.co/300x300/3B82F6/FFFFFF?text=Product'], // Init images array
       is_featured: false,
       is_new: false,
+      brand_id: null,
+      features: [],
+      specifications: {}
     };
     loading.value = false;
   }, 500);
@@ -407,7 +410,7 @@ const categories = ref<any[]>([]);
 
 const loadCategories = async () => {
   try {
-    const data = await categoryService.getAll();
+    const data = await categoryService.getAll() as any;
     categories.value = Array.isArray(data) ? data : (data.categories || []);
   } catch (error) {
     console.error('Erreur chargement catégories', error);
@@ -486,7 +489,7 @@ const loadProduit = async () => {
       produit.value = {
         id: product.id,
         name: product.name,
-        description: product.description,
+        description: product.description || '',
         price: product.price,
         stock: product.stock,
         category_id: product.category_id || null,

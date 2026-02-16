@@ -259,14 +259,22 @@ const submitForm = async () => {
       return;
     }
 
+    const userData: any = {
+      name: `${formData.value.firstName} ${formData.value.lastName}`,
+      email: formData.value.email,
+      phone: formData.value.phone,
+      role: formData.value.role === 'gestionnaire' ? 'user' : 'admin',
+      password: formData.value.password || undefined
+    };
+
     if (isEditing.value && userId.value) {
       // Mode Mise à jour
-      await authService.updateUser(userId.value, formData.value);
+      await authService.updateUser(userId.value, userData);
       alert('Utilisateur modifié avec succès !');
       router.push('/utilisateurs/liste');
     } else {
       // Mode Création
-      await authService.createUser(formData.value);
+      await authService.createUser(userData);
       alert('Utilisateur créé avec succès !');
       router.push('/utilisateurs/liste');
     }

@@ -97,7 +97,10 @@
             <strong>Admin:</strong> admin@gadgetzone.com / password123
           </div>
           <div>
-            <strong>Client:</strong> jean.dupont@example.com / password123
+            <strong>Gestionnaire:</strong> (Créer un compte avec ce rôle)
+          </div>
+          <div class="text-gray-400 italic mt-1">
+            * Les comptes clients ne sont pas autorisés.
           </div>
         </div>
       </div>

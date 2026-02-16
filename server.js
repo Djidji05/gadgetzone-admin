@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -19,9 +20,17 @@ import { initSentry, sentryRequestHandler, sentryTracingHandler, sentryErrorHand
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config();
+dotenv.config({ path: '.env.backend' });
+dotenv.config({ path: '.env.backend' });
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
+
+// Passport Config
+import passport from 'passport';
+import configurePassport from './src/backend/config/passport.js';
+configurePassport();
+app.use(passport.initialize());
 
 // Initialize Sentry (must be first)
 initSentry(app);
@@ -29,26 +38,29 @@ app.use(sentryRequestHandler());
 app.use(sentryTracingHandler());
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 app.use(compression());
-app.use(morgan('combined'));
+app.use(cookieParser());
+app.use(morgan('combined', {
+  skip: (req) => req.method === 'GET' && req.url.includes('/api/notifications')
+}));
 app.use(advancedLogger);
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:5175',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
-    'http://127.0.0.1:5175'
-  ],
-  credentials: true
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://localhost:5174', 'http://localhost:5175'], // Frontend URLs
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Apply rate limiting to all API routes
 app.use('/api', generalLimiter);
+
+// Serve static files from public directory
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // Swagger API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
@@ -120,7 +132,7 @@ const startServer = async () => {
     // Initialiser la base de données
     await initDatabase();
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Backend server running on port ${PORT}`);
       console.log(`📊 API available at: http://localhost:${PORT}/api`);
       console.log(`🏥 Health check: http://localhost:${PORT}/health`);

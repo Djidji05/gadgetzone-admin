@@ -31,7 +31,7 @@ export const seedDatabase = async () => {
         price: 1299.99,
         stock: 25,
         category_id: 1,
-        image_url: 'https://via.placeholder.com/300x300/3B82F6/FFFFFF?text=iPhone+15+Pro+Max'
+        image_url: 'https://placehold.co/300x300/3B82F6/FFFFFF?text=iPhone+15+Pro+Max'
       },
       {
         name: 'MacBook Pro 16"',
@@ -39,7 +39,7 @@ export const seedDatabase = async () => {
         price: 2499.99,
         stock: 15,
         category_id: 2,
-        image_url: 'https://via.placeholder.com/300x300/6366F1/FFFFFF?text=MacBook+Pro+16'
+        image_url: 'https://placehold.co/300x300/6366F1/FFFFFF?text=MacBook+Pro+16'
       },
       {
         name: 'iPad Pro 12.9"',
@@ -47,7 +47,7 @@ export const seedDatabase = async () => {
         price: 1099.99,
         stock: 20,
         category_id: 3,
-        image_url: 'https://via.placeholder.com/300x300/8B5CF6/FFFFFF?text=iPad+Pro+12.9'
+        image_url: 'https://placehold.co/300x300/8B5CF6/FFFFFF?text=iPad+Pro+12.9'
       },
       {
         name: 'AirPods Pro 2',
@@ -55,7 +55,7 @@ export const seedDatabase = async () => {
         price: 249.99,
         stock: 50,
         category_id: 5,
-        image_url: 'https://via.placeholder.com/300x300/10B981/FFFFFF?text=AirPods+Pro+2'
+        image_url: 'https://placehold.co/300x300/10B981/FFFFFF?text=AirPods+Pro+2'
       },
       {
         name: 'PlayStation 5',
@@ -63,7 +63,7 @@ export const seedDatabase = async () => {
         price: 499.99,
         stock: 30,
         category_id: 6,
-        image_url: 'https://via.placeholder.com/300x300/F59E0B/FFFFFF?text=PlayStation+5'
+        image_url: 'https://placehold.co/300x300/F59E0B/FFFFFF?text=PlayStation+5'
       },
       {
         name: 'Samsung Galaxy S24 Ultra',
@@ -71,7 +71,7 @@ export const seedDatabase = async () => {
         price: 1199.99,
         stock: 18,
         category_id: 1,
-        image_url: 'https://via.placeholder.com/300x300/EF4444/FFFFFF?text=Galaxy+S24+Ultra'
+        image_url: 'https://placehold.co/300x300/EF4444/FFFFFF?text=Galaxy+S24+Ultra'
       },
       {
         name: 'Dell XPS 15',
@@ -79,7 +79,7 @@ export const seedDatabase = async () => {
         price: 1799.99,
         stock: 12,
         category_id: 2,
-        image_url: 'https://via.placeholder.com/300x300/64748B/FFFFFF?text=Dell+XPS+15'
+        image_url: 'https://placehold.co/300x300/64748B/FFFFFF?text=Dell+XPS+15'
       },
       {
         name: 'Sony WH-1000XM5',
@@ -87,7 +87,7 @@ export const seedDatabase = async () => {
         price: 399.99,
         stock: 35,
         category_id: 5,
-        image_url: 'https://via.placeholder.com/300x300/84CC16/FFFFFF?text=Sony+WH-1000XM5'
+        image_url: 'https://placehold.co/300x300/84CC16/FFFFFF?text=Sony+WH-1000XM5'
       }
     ]);
     console.log(`✅ ${products.length} produits créés`);

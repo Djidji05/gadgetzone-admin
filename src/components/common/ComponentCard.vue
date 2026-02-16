@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]',
+      'sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white bg-transparent dark:bg-transparent sm:dark:border-gray-800 sm:dark:bg-white/[0.03]',
       className,
     ]"
   >

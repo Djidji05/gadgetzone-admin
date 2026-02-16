@@ -3,7 +3,7 @@
     <div v-if="!props.data || !props.data.labels || props.data.labels.length === 0" class="flex items-center justify-center h-full">
       <p class="text-gray-500">No data available</p>
     </div>
-    <Line v-else :data="props.data" :options="chartOptions" />
+    <Line v-else :data="props.data" :options="chartOptions as any" />
   </div>
 </template>
 

@@ -5,7 +5,7 @@
         Rôles & Permissions
       </h2>
       <button 
-        @click="showCreateModal = true"
+        @click="openCreateModal"
         class="rounded bg-primary px-6 py-3 text-white hover:bg-opacity-90"
       >
         Nouveau rôle
@@ -35,7 +35,7 @@
             </span>
           </div>
           <span class="rounded-full bg-primary bg-opacity-10 px-3 py-1 text-sm font-medium text-primary">
-            {{ role.usersCount }} utilisateur{{ role.usersCount > 1 ? 's' : '' }}
+            {{ role.usersCount || 0 }} utilisateur{{ (role.usersCount || 0) > 1 ? 's' : '' }}
           </span>
         </div>
         <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">{{ role.description }}</p>
@@ -84,20 +84,27 @@
       </div>
     </div>
 
-    <!-- Empty State -->
-    <div v-if="!isLoading && roles.length === 0" class="text-center py-12">
-      <p class="text-gray-600">Aucun rôle pour le moment</p>
-    </div>
+    <!-- Role Modal -->
+    <RoleModal
+      v-if="showCreateModal"
+      :role="selectedRole"
+      :is-loading="isSaving"
+      @close="closeModal"
+      @save="handleSave"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { rolesService, type Role } from '@/services/roles';
+import RoleModal from '@/components/Utilisateurs/RoleModal.vue';
 
 const roles = ref<Role[]>([]);
 const isLoading = ref(true);
+const isSaving = ref(false);
 const showCreateModal = ref(false);
+const selectedRole = ref<Role | null>(null);
 
 const loadRoles = async () => {
   try {
@@ -112,11 +119,47 @@ const loadRoles = async () => {
   }
 };
 
+const openCreateModal = () => {
+  selectedRole.value = null;
+  showCreateModal.value = true;
+};
+
 const editRole = (role: Role) => {
   if (role.isSystem) return;
-  // TODO: Implement edit modal
-  console.log('Edit role:', role);
-  alert('Fonctionnalité d\'édition à implémenter');
+  selectedRole.value = role;
+  showCreateModal.value = true;
+};
+
+const closeModal = () => {
+  showCreateModal.value = false;
+  selectedRole.value = null;
+};
+
+const handleSave = async (roleData: any) => {
+  try {
+    isSaving.value = true;
+    
+    // Convert permissions proxy to array if needed
+    const data = {
+      ...roleData,
+      permissions: Array.from(roleData.permissions)
+    };
+
+    if (data.id) {
+      await rolesService.update(data.id, data);
+    } else {
+      await rolesService.create(data);
+    }
+
+    await loadRoles();
+    closeModal();
+  } catch (error: any) {
+    console.error('Error saving role:', error);
+    const message = error.response?.data?.message || 'Erreur lors de l\'enregistrement';
+    alert(message);
+  } finally {
+    isSaving.value = false;
+  }
 };
 
 const deleteRole = async (id: number) => {

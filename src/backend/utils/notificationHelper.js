@@ -1,4 +1,6 @@
 import { Notification, User } from '../models/index.js';
+import { sendEmail } from '../services/emailService.js';
+import { sendWhatsApp } from '../services/whatsappService.js';
 
 /**
  * Utilitaire pour créer des notifications
@@ -98,11 +100,17 @@ export async function notifyByRole(role, type, title, message, options = {}) {
  * @param {object} order - Objet commande
  * @returns {Promise<number>}
  */
+/**
+ * Notifie pour une nouvelle commande
+ * @param {object} order - Objet commande
+ * @returns {Promise<number>}
+ */
 export async function notifyNewOrder(order) {
-    const title = `Nouvelle commande #${order.id}`;
-    const message = `Commande de ${order.user?.name || 'Client'} pour ${order.total_amount}€`;
+    const title = `Nouvelle commande #${order.order_number || order.id}`;
+    const message = `Commande de ${order.user?.name || 'Client'} pour ${order.total_amount} HTG`;
 
-    return await notifyAllAdmins('order', title, message, {
+    // 1. Notification Interne (Admin)
+    await notifyAllAdmins('order', title, message, {
         relatedId: order.id,
         relatedType: 'order',
         metadata: {
@@ -111,6 +119,29 @@ export async function notifyNewOrder(order) {
             userId: order.user_id
         }
     });
+
+    // 2. Notification Externe (Client) - Email & WhatsApp
+    if (order.user) {
+        // Email
+        if (order.user.email) {
+            const emailSubject = `Confirmation de commande #${order.order_number || order.id}`;
+            const emailBody = `Bonjour ${order.user.name},\n\nVotre commande a bien été reçue.\nTotal: ${order.total_amount} HTG.\nMerci de votre confiance.`;
+            sendEmail(order.user.email, emailSubject, emailBody);
+        }
+
+        // WhatsApp (using order shipping phone or user phone)
+        const phone = order.shipping_address?.phone || order.user.phone || order.user.whatsapp;
+        if (phone) {
+            const waMessage = `Bonjour ${order.user.name}, votre commande #${order.order_number || order.id} est confirmée. Total: ${order.total_amount} HTG.`;
+            sendWhatsApp(phone, waMessage);
+        }
+
+        // 3. Persistent In-App Notification (Client)
+        await createNotification(order.user_id, 'order', 'Commande reçue', `Votre commande #${order.order_number || order.id} a été bien reçue.`, {
+            relatedId: order.id,
+            relatedType: 'order'
+        });
+    }
 }
 
 /**
@@ -123,18 +154,20 @@ export async function notifyNewOrder(order) {
 export async function notifyOrderStatusChange(order, oldStatus, newStatus) {
     const statusLabels = {
         pending: 'En attente',
+        confirmed: 'Confirmée',
         processing: 'En traitement',
         shipped: 'Expédiée',
         delivered: 'Livrée',
         cancelled: 'Annulée'
     };
 
-    const title = `Commande #${order.id} - ${statusLabels[newStatus]}`;
+    const title = `Commande #${order.order_number || order.id} - ${statusLabels[newStatus]}`;
     const message = `Statut changé de "${statusLabels[oldStatus]}" à "${statusLabels[newStatus]}"`;
 
     const type = newStatus === 'cancelled' ? 'warning' : 'info';
 
-    return await notifyAllAdmins(type, title, message, {
+    // 1. Notification Interne (Admin)
+    await notifyAllAdmins(type, title, message, {
         relatedId: order.id,
         relatedType: 'order',
         metadata: {
@@ -143,6 +176,34 @@ export async function notifyOrderStatusChange(order, oldStatus, newStatus) {
             newStatus
         }
     });
+
+    // 2. Notification Externe (Client) - Seulement si "delivered" (ou shipped/cancelled si souhaité)
+    // Le client a demandé: "Quand la commande est livree"
+    if (newStatus === 'delivered' && order.user) {
+        // Email
+        if (order.user.email) {
+            const emailSubject = `Commande #${order.order_number || order.id} Livrée ! 🎁`;
+            const emailBody = `Bonjour ${order.user.name},\n\nBonne nouvelle ! Votre commande a été livrée.\nMerci de faire vos achats chez nous.`;
+            sendEmail(order.user.email, emailSubject, emailBody);
+        }
+
+        // WhatsApp
+        const phone = order.shipping_address?.phone || order.user.phone || order.user.whatsapp;
+        if (phone) {
+            const waMessage = `Bonjour ${order.user.name}, votre commande #${order.order_number || order.id} a été livrée ! 🎁 Merci !`;
+            sendWhatsApp(phone, waMessage);
+        }
+    }
+
+    // 3. Persistent In-App Notification (Client) - Pour tout changement important
+    if (order.user_id) {
+        await createNotification(order.user_id, type === 'warning' ? 'warning' : 'order', title, message, {
+            relatedId: order.id,
+            relatedType: 'order'
+        });
+    }
+
+    return 1;
 }
 
 /**
@@ -181,6 +242,29 @@ export async function notifyLowStock(product) {
             productId: product.id,
             productName: product.name,
             stock: product.stock
+        }
+    });
+}
+
+/**
+ * Notifie pour une nouvelle candidature vendeur
+ * @param {object} store - Objet store (candidature)
+ * @param {object} user - Objet utilisateur qui a soumis la candidature
+ * @returns {Promise<number>}
+ */
+export async function notifyNewVendorApplication(store, user) {
+    const title = `🏪 Nouvelle candidature vendeur`;
+    const message = `${user.name} souhaite ouvrir une boutique "${store.name}"`;
+
+    return await notifyAllAdmins('vendor_application', title, message, {
+        relatedId: store.id,
+        relatedType: 'store',
+        metadata: {
+            storeId: store.id,
+            storeName: store.name,
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email
         }
     });
 }

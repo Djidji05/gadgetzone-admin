@@ -18,6 +18,14 @@ import pageRoutes from './pages.js';
 import blogRoutes from './blog.js';
 import roleRoutes from './roles.js';
 import notificationRoutes from './notifications.js';
+import addressRoutes from './addresses.js'; // Import Address Route
+import reviewRoutes from './reviews.js';
+import vendorRoutes from './vendors.js';
+import adminVendorRoutes from './admin-vendors.js';
+import uploadRoutes from './upload.js';
+import personalizationRoutes from './personalization.js';
+import messageRoutes from './messages.js';
+import userRoutes from './users.js';
 
 const router = express.Router();
 
@@ -30,6 +38,9 @@ router.use('/categories', categoryRoutes);
 router.use('/brands', brandRoutes);
 router.use('/promotions', promotionRoutes);
 router.use('/clients', clientRoutes);
+router.use('/users', userRoutes);
+router.use('/addresses', addressRoutes); // Register Address Route
+router.use('/reviews', reviewRoutes); // Register Review Route
 router.use('/orders', orderRoutes);
 router.use('/cart', cartRoutes);
 router.use('/finance', financeRoutes);
@@ -39,6 +50,11 @@ router.use('/pages', pageRoutes);
 router.use('/blog', blogRoutes);
 router.use('/roles', roleRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/vendors', vendorRoutes);
+router.use('/admin/vendors', adminVendorRoutes);
+router.use('/upload', uploadRoutes);
+router.use('/personalization', personalizationRoutes);
+router.use('/messages', messageRoutes);
 router.use('/test', testRoutes);
 
 // Route de test

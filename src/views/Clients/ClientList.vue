@@ -92,7 +92,7 @@ import { clientService } from '@/services/api'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const clients = ref([])
+const clients = ref<any[]>([]);
 const isLoading = ref(true)
 const searchQuery = ref('')
 
@@ -104,24 +104,32 @@ const filteredClients = computed(() => {
   )
 })
 
-const formatDate = (dateString) => {
+const formatDate = (dateString: any) => {
   return new Date(dateString).toLocaleDateString('fr-FR')
 }
 
-const getRoleClass = (role) => {
-  const classes = {
+const getRoleClass = (role: any) => {
+  const classes: Record<string, string> = {
     admin: 'bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs',
     user: 'bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs'
   }
   return classes[role] || 'bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs'
 }
 
-const getRoleText = (role) => {
-  const texts = {
+const getRoleText = (role: any) => {
+  const texts: Record<string, string> = {
     admin: 'Admin',
     user: 'Client'
   }
   return texts[role] || role
+}
+
+const roleLabel = (role: any) => {
+  const labels: Record<string, string> = {
+    admin: 'Administrateur',
+    user: 'Utilisateur'
+  }
+  return labels[role] || role
 }
 
 const fetchClients = async () => {
@@ -136,15 +144,15 @@ const fetchClients = async () => {
   }
 }
 
-const viewClient = (id) => {
+const viewClient = (id: any) => {
   router.push(`/admin/clients/${id}`)
 }
 
-const editClient = (id) => {
+const editClient = (id: any) => {
   router.push(`/admin/clients/${id}/edit`)
 }
 
-const deleteClient = async (id) => {
+const deleteClient = async (id: any) => {
   if (confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
     try {
       await clientService.deleteClient(id)

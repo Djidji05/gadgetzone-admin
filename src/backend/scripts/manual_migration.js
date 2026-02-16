@@ -33,6 +33,9 @@ async function runMigration() {
         console.log('Adding is_new column...');
         await sequelize.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS is_new BOOLEAN DEFAULT false;`);
 
+        console.log('Adding original_price column...');
+        await sequelize.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS original_price DECIMAL(10,2) DEFAULT NULL;`);
+
         console.log('Migration completed successfully.');
     } catch (error) {
         console.error('Migration failed:', error);

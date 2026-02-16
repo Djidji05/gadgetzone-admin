@@ -5,9 +5,11 @@ export interface User {
   name: string
   email: string
   phone?: string
-  role: 'admin' | 'user'
+  role: 'admin' | 'user' | 'seller' | 'gestionnaire'
   created_at: string
   updated_at: string
+  storeStatus?: 'pending' | 'active' | 'suspended' | 'closed'
+  storeId?: number
 }
 
 export interface Category {

@@ -3,9 +3,6 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  scrollBehavior(to, from, savedPosition) {
-    return savedPosition || { left: 0, top: 0 }
-  },
   routes: [
     {
       path: '/',
@@ -13,6 +10,7 @@ const router = createRouter({
       component: () => import('../views/Ecommerce.vue'),
       meta: {
         title: 'Tableau de bord',
+        requiresAdmin: true, // Protect Dashboard
       },
     },
     // Routes pour les clients
@@ -52,9 +50,18 @@ const router = createRouter({
     {
       path: '/liste-commandes',
       name: 'ListeCommandes',
-      component: () => import('../views/Commandes/ListeCommandes.vue'),
+      component: () => import('../views/Commandes/OrderList.vue'),
       meta: {
         title: 'Liste des commandes',
+      },
+    },
+    // Détail commande
+    {
+      path: '/commandes/:id',
+      name: 'CommandeDetail',
+      component: () => import('../views/Commandes/OrderDetail.vue'),
+      meta: {
+        title: 'Détails de la commande',
       },
     },
     // Redirect /commandes to /liste-commandes
@@ -120,14 +127,7 @@ const router = createRouter({
         title: 'Finance - Vue d\'ensemble',
       },
     },
-    {
-      path: '/personnalisation',
-      name: 'Personnalisation',
-      component: () => import('../views/Personnalisation/PersonnalisationAccueil.vue'),
-      meta: {
-        title: 'Personnalisation',
-      },
-    },
+
     {
       path: '/rapports',
       name: 'Rapports',
@@ -198,6 +198,12 @@ const router = createRouter({
     },
 
     {
+      path: '/rescue',
+      name: 'RescueLogin',
+      component: () => import('../views/LoginRescue.vue'),
+      meta: { requiresAuth: false, guest: true, layout: 'auth' }
+    },
+    {
       path: '/signin',
       name: 'Signin',
       component: () => import('../views/Auth/Signin.vue'),
@@ -207,27 +213,14 @@ const router = createRouter({
       },
     },
 
-    // Redirection de /personnalisation vers /personnalisation/accueil
+
+    // SEO Configuration
     {
-      path: '/personnalisation',
-      redirect: '/personnalisation/accueil'
-    },
-    // Route de personnalisation de l'accueil
-    {
-      path: '/personnalisation/accueil',
-      name: 'PersonnalisationAccueil',
-      component: () => import('../views/Personnalisation/PersonnalisationAccueil.vue'),
+      path: '/seo',
+      name: 'SEO',
+      component: () => import('../views/SEOView.vue'),
       meta: {
-        title: 'Personnalisation de la page d\'accueil',
-      },
-    },
-    // API Management
-    {
-      path: '/api-management',
-      name: 'ApiManagement',
-      component: () => import('../views/ApiManagement.vue'),
-      meta: {
-        title: 'API Management',
+        title: 'Gestion SEO',
         requiresAdmin: true,
       },
     },
@@ -266,6 +259,43 @@ const router = createRouter({
       component: () => import('../views/Notifications/NotificationsPage.vue'),
       meta: {
         title: 'Notifications',
+      },
+    },
+    // Messages
+    {
+      path: '/messages',
+      name: 'Messages',
+      component: () => import('../views/Messages/MessagesView.vue'),
+      meta: {
+        title: 'Messages',
+      },
+    },
+    // Personalization
+    {
+      path: '/personalization',
+      name: 'Personalization',
+      component: () => import('../views/Personalization/Personalization.vue'),
+      meta: {
+        title: 'Personnalisation',
+        requiresAdmin: true,
+      },
+    },
+    // Vendor Applications
+    {
+      path: '/vendors/applications',
+      name: 'VendorApplications',
+      component: () => import('../views/Vendors/VendorApplications.vue'),
+      meta: {
+        title: 'Candidatures Vendeur',
+        requiresAdmin: true,
+      },
+    },
+    {
+      path: '/vendors/settings',
+      name: 'VendorSettings',
+      component: () => import('../views/Vendors/StoreSettings.vue'),
+      meta: {
+        title: 'Ma Boutique',
       },
     },
     {
@@ -314,16 +344,6 @@ const router = createRouter({
         requiresAdmin: true,
       },
     },
-    // Logs & Activité
-    {
-      path: '/logs',
-      name: 'Logs',
-      component: () => import('../views/Logs.vue'),
-      meta: {
-        title: 'Logs & Activité',
-        requiresAdmin: true,
-      },
-    },
     // Support
     {
       path: '/support/tickets',
@@ -351,14 +371,6 @@ const router = createRouter({
     },
     // Marketing
     {
-      path: '/marketing/campagnes',
-      name: 'MarketingCampagnes',
-      component: () => import('../views/Marketing/Campagnes.vue'),
-      meta: {
-        title: 'Campagnes marketing',
-      },
-    },
-    {
       path: '/marketing/newsletter',
       name: 'MarketingNewsletter',
       component: () => import('../views/Marketing/Newsletter.vue'),
@@ -366,70 +378,19 @@ const router = createRouter({
         title: 'Newsletter',
       },
     },
-    {
-      path: '/marketing/promotions',
-      name: 'MarketingPromotions',
-      component: () => import('../views/Marketing/Promotions.vue'),
-      meta: {
-        title: 'Promotions',
-      },
-    },
-    // CMS
-    {
-      path: '/cms/pages',
-      name: 'CMSPages',
-      component: () => import('../views/CMS/Pages.vue'),
-      meta: {
-        title: 'CMS - Pages',
-      },
-    },
-    {
-      path: '/cms/blog',
-      name: 'CMSBlog',
-      component: () => import('../views/CMS/Blog.vue'),
-      meta: {
-        title: 'CMS - Blog',
-      },
-    },
-    {
-      path: '/cms/medias',
-      name: 'CMSMedias',
-      component: () => import('../views/CMS/Medias.vue'),
-      meta: {
-        title: 'CMS - Médias',
-      },
-    },
-    // Intégrations
-    {
-      path: '/integrations/apps',
-      name: 'IntegrationsApps',
-      component: () => import('../views/Integrations/Apps.vue'),
-      meta: {
-        title: 'Intégrations - Applications',
-      },
-    },
-    {
-      path: '/integrations/webhooks',
-      name: 'IntegrationsWebhooks',
-      component: () => import('../views/Integrations/Webhooks.vue'),
-      meta: {
-        title: 'Intégrations - Webhooks',
-      },
-    },
-    {
-      path: '/integrations/api-keys',
-      name: 'IntegrationsApiKeys',
-      component: () => import('../views/Integrations/ApiKeys.vue'),
-      meta: {
-        title: 'Intégrations - API Keys',
-      },
-    },
   ],
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    } else {
+      return { top: 0 }
+    }
+  },
 })
 
 export default router
 
-// Guards de navigation
+// Navigation guards
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
@@ -454,16 +415,32 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // Vérifier les routes admin
-  if (to.meta.requiresAdmin && !authStore.isAdmin) {
-    // Rediriger vers le dashboard si pas admin
-    next('/')
+  // Vérifier les routes admin (ENFORCED FOR EVERYTHING NOT PUBLIC)
+  // GadgetZone Admin est réservé aux admins et gestionnaires
+  const isPublic = publicPages.some(page => to.path.startsWith(page)) || to.meta.public;
+
+  if (!isPublic && authStore.isAuthenticated && !authStore.isAdmin && authStore.userRole?.toLowerCase() !== 'seller') {
+    // Si l'utilisateur est connecté mais n'est ni admin ni vendeur
+    console.log("Accès refusé: User role is " + authStore.userRole);
+
+    await authStore.logout()
+    next({
+      path: '/signin',
+      query: { error: 'access_denied' }
+    })
     return
   }
 
+  /* 
+  // Old check only for specific routes
+  if (to.meta.requiresAdmin && !authStore.isAdmin) {
+      // ...
+  }
+  */
+
   // Si l'utilisateur est connecté et va sur une page d'auth
   if (authStore.isAuthenticated && (to.path.startsWith('/signin') || to.path.startsWith('/signup'))) {
-    // Rediriger vers le dashboard ou la page demandée
+    // Rediriger vers le dashboard
     const redirect = (to.query.redirect as string) || '/'
     next(redirect)
     return
@@ -474,7 +451,6 @@ router.beforeEach(async (to, from, next) => {
 
 // Gestion du titre de page
 router.afterEach((to) => {
-  // Mettre à jour le titre de la page
   if (to.meta.title) {
     document.title = `${to.meta.title} - GadgetZone Admin`
   } else {

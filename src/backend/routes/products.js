@@ -1,50 +1,142 @@
 import express from 'express';
 import { Op } from 'sequelize';
-import { Product, Category, Brand } from '../models/index.js';
+import db, { Product, Category, Brand, Store } from '../models/index.js';
+import sequelize from '../config/database.js';
+import { authenticateToken, isSeller, checkStoreActive, requireAdmin, optionalAuth } from '../middleware/auth.js';
 import { notifyLowStock } from '../utils/notificationHelper.js';
 
 const router = express.Router();
 
 /**
+ * POST /api/products/search/image
+ * Recherche des produits par image (Simulé pour l'instant)
+ */
+router.post('/search/image', async (req, res) => {
+  try {
+    const { image } = req.body; // Expecting Base64 string
+
+    if (!image) {
+      return res.status(400).json({ error: 'Image requise' });
+    }
+
+    // TODO: Implement actual AI image analysis here.
+    // For now, return random products to simulate "visual similarity".
+
+    // Fetch 5 random products
+    const products = await Product.findAll({
+      order: sequelize.random(),
+      limit: 5,
+      attributes: ['id']
+    });
+
+    if (!products.length) {
+      return res.status(404).json({ error: 'Aucun produit similaire trouvé' });
+    }
+
+    // Return IDs
+    const ids = products.map(p => p.id);
+
+    // Simulate processing delay
+    setTimeout(() => {
+      res.json({ ids });
+    }, 1500);
+
+  } catch (error) {
+    console.error('Erreur recherche image:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'analyse de l\'image' });
+  }
+});
+
+/**
  * GET /api/products
  * Récupère tous les produits
  */
-router.get('/', async (req, res) => {
+
+// ... (other imports)
+
+
+// Apply optionalAuth to allow checking user role
+router.get('/', optionalAuth, async (req, res) => {
   try {
-    const { page = 1, limit = 10, search, category, brand, is_new } = req.query;
+
+    const { page = 1, limit = 10, search, category, brand, is_new, promotions } = req.query;
     const offset = (page - 1) * limit;
 
+    const conditions = [];
     const whereClause = {};
 
-    // Filtrer par recherche
+    // Filter by search
     if (search) {
-      whereClause[Op.or] = [
-        { name: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } }
-      ];
+      conditions.push({
+        [Op.or]: [
+          { name: { [Op.iLike]: `%${search}%` } },
+          { description: { [Op.iLike]: `%${search}%` } }
+        ]
+      });
     }
 
-    // Filtrer par catégorie
+    // Check if filtering by specific IDs (e.g. from image search)
+    if (req.query.ids) {
+      const ids = req.query.ids.split(',').map(id => parseInt(id));
+      if (ids.length > 0) {
+        conditions.push({ id: { [Op.in]: ids } });
+      }
+    }
+
+    // Filter by category
     if (category) {
-      whereClause.category_id = category;
+      conditions.push({ category_id: category });
     }
 
-    // Filtrer par marque
+    // Filter by brand
     if (brand) {
-      whereClause.brand_id = brand;
+      conditions.push({ brand_id: brand });
     }
 
-    // Filtrer par nouveauté
+    // Filter by novelty
     if (is_new === 'true') {
-      whereClause.is_new = true;
+      conditions.push({ is_new: true });
     }
+
+    // Filter by promotions
+    if (promotions === 'true') {
+      conditions.push({ original_price: { [Op.gt]: sequelize.col('price') } });
+    }
+
+
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'gestionnaire';
+    if (!isAdmin) {
+      // If not admin, ensure product is active AND belongs to an active store (or admin)
+      conditions.push({ status: 'active' });
+      conditions.push({
+        [Op.or]: [
+          { storeId: null },
+          { '$store.status$': 'active' }
+        ]
+      });
+    }
+
+    if (conditions.length > 0) {
+      whereClause[Op.and] = conditions;
+    }
+
+    // Unified store identification
+    const storeInclude = {
+      model: Store,
+      as: 'store',
+      attributes: ['id', 'name', 'status'],
+      required: false
+    };
+
 
     const products = await Product.findAndCountAll({
       where: whereClause,
       include: [
         { model: Category, as: 'category', attributes: ['id', 'name'] },
-        { model: Brand, as: 'brand', attributes: ['id', 'name', 'logo_url'] }
+        { model: Brand, as: 'brand', attributes: ['id', 'name', 'logo_url'] },
+        storeInclude
       ],
+      subQuery: false,
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['created_at', 'DESC']]
@@ -60,8 +152,12 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Erreur produits:', error);
-    res.status(500).json({ error: 'Erreur lors de la récupération des produits' });
+    console.error('❌ Erreur produits:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la récupération des produits',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -72,7 +168,30 @@ router.get('/', async (req, res) => {
 router.get('/featured', async (req, res) => {
   try {
     const featuredProducts = await Product.findAll({
-      where: { is_featured: true },
+      where: {
+        is_featured: true,
+        status: 'active'
+      },
+      attributes: {
+        include: [
+          [
+            sequelize.literal(`(
+              SELECT COALESCE(AVG(rating), 0)
+              FROM reviews AS r
+              WHERE r.product_id = "Product"."id" AND r.status = 'approved'
+            )`),
+            'rating'
+          ],
+          [
+            sequelize.literal(`(
+              SELECT COUNT(*)
+              FROM reviews AS r
+              WHERE r.product_id = "Product"."id" AND r.status = 'approved'
+            )`),
+            'reviews_count'
+          ]
+        ]
+      },
       include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }],
       limit: 8,
       order: [['created_at', 'DESC']]
@@ -89,16 +208,20 @@ router.get('/featured', async (req, res) => {
  * GET /api/products/:id
  * Récupère un produit spécifique
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'gestionnaire';
 
     const product = await Product.findByPk(id, {
-      include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }]
+      include: [
+        { model: Category, as: 'category', attributes: ['id', 'name'] },
+        { model: Store, as: 'store', attributes: ['id', 'name', 'status'] }
+      ]
     });
 
-    if (!product) {
-      return res.status(404).json({ error: 'Produit non trouvé' });
+    if (!product || (product.status !== 'active' && !isAdmin)) {
+      return res.status(404).json({ error: 'Produit non trouvé ou retiré' });
     }
 
     res.json(product);
@@ -108,17 +231,27 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+
+
 /**
  * POST /api/products
  * Crée un nouveau produit
  */
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, isSeller, checkStoreActive, async (req, res) => {
   try {
     const { name, description, price, stock, category_id, image_url, images, features, specifications, is_featured, is_new } = req.body;
 
     if (!name || !price) {
       return res.status(400).json({ error: 'Le nom et le prix sont obligatoires' });
     }
+
+    // Force creation under the user's store if seller?
+    // Current Product model doesn't seem to have store_id, or does it?
+    // Let's assume it's global for now or we rely on logic elsewhere. 
+    // Wait, multi-vendor implies products belong to a store. 
+    // Checking Product model might be wise, but for now let's just secure the route.
+
+    // For now, if store is suspended, they can't create. Good.
 
     const newProduct = await Product.create({
       name,
@@ -130,8 +263,10 @@ router.post('/', async (req, res) => {
       images: images || [],
       features: features || [],
       specifications: specifications || {},
-      is_featured: is_featured || false,
-      is_new: is_new || false
+      is_featured: req.user.role === 'admin' ? (is_featured || false) : false,
+      is_new: is_new || false,
+      storeId: req.store ? req.store.id : null
+      // associated store logic should be here if table has storeId
     });
 
     // Récupérer le produit avec sa catégorie
@@ -154,7 +289,7 @@ router.post('/', async (req, res) => {
  * PUT /api/products/:id
  * Met à jour un produit
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, isSeller, checkStoreActive, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, price, stock, category_id, image_url, images, features, specifications, is_featured, is_new } = req.body;
@@ -163,6 +298,11 @@ router.put('/:id', async (req, res) => {
 
     if (!product) {
       return res.status(404).json({ error: 'Produit non trouvé' });
+    }
+
+    // Check ownership if seller
+    if (req.user.role === 'seller' && product.storeId !== req.store.id) {
+      return res.status(403).json({ error: 'Accès refusé : ce produit ne vous appartient pas' });
     }
 
     await product.update({
@@ -200,7 +340,7 @@ router.put('/:id', async (req, res) => {
  * DELETE /api/products/:id
  * Supprime un produit
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, isSeller, checkStoreActive, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -208,6 +348,24 @@ router.delete('/:id', async (req, res) => {
 
     if (!product) {
       return res.status(404).json({ error: 'Produit non trouvé' });
+    }
+
+    // Check ownership if seller
+    if (req.user.role === 'seller' && product.storeId !== req.store.id) {
+      return res.status(403).json({ error: 'Accès refusé : ce produit ne vous appartient pas' });
+    }
+
+    // Admin deletion with reason -> Logical delete
+    if ((req.user.role === 'admin' || req.user.role === 'gestionnaire') && req.body.reason) {
+      await product.update({
+        status: 'deleted',
+        admin_note: req.body.reason
+      });
+      return res.json({
+        message: 'Produit marqué comme supprimé avec motif',
+        status: 'deleted',
+        admin_note: req.body.reason
+      });
     }
 
     await product.destroy();

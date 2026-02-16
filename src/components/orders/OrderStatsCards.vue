@@ -1,8 +1,8 @@
 <template>
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
     <!-- Total Commandes -->
     <div
-      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] hover:shadow-lg transition-all duration-300 hover:border-blue-300 dark:hover:border-blue-700"
+      class="group sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 bg-transparent dark:bg-transparent sm:dark:bg-white/[0.03] hover:shadow-lg transition-all duration-300 hover:border-blue-300 dark:hover:border-blue-700"
     >
       <div class="flex items-center justify-between">
         <div
@@ -52,7 +52,7 @@
 
     <!-- Revenus du Mois -->
     <div
-      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] hover:shadow-lg transition-all duration-300 hover:border-emerald-300 dark:hover:border-emerald-700"
+      class="group sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 bg-transparent dark:bg-transparent sm:dark:bg-white/[0.03] hover:shadow-lg transition-all duration-300 hover:border-emerald-300 dark:hover:border-emerald-700"
     >
       <div class="flex items-center justify-between">
         <div
@@ -102,7 +102,7 @@
 
     <!-- En Attente -->
     <div
-      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] hover:shadow-lg transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-700"
+      class="group sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 bg-transparent dark:bg-transparent sm:dark:bg-white/[0.03] hover:shadow-lg transition-all duration-300 hover:border-orange-300 dark:hover:border-orange-700"
     >
       <div class="flex items-center justify-between">
         <div
@@ -136,7 +136,7 @@
 
     <!-- Taux de Livraison -->
     <div
-      class="group rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] hover:shadow-lg transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-700"
+      class="group sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 bg-transparent dark:bg-transparent sm:dark:bg-white/[0.03] hover:shadow-lg transition-all duration-300 hover:border-purple-300 dark:hover:border-purple-700"
     >
       <div class="flex items-center justify-between">
         <div

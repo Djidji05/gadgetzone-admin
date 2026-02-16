@@ -29,6 +29,18 @@ const Order = sequelize.define('Order', {
   updated_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
+  },
+  delivered_at: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  confirmed_at: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  shipped_at: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   tableName: 'orders',

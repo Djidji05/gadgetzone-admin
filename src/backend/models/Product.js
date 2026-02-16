@@ -18,6 +18,10 @@ const Product = sequelize.define('Product', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
   },
+  original_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true
+  },
   stock: {
     type: DataTypes.INTEGER,
     defaultValue: 0
@@ -27,6 +31,10 @@ const Product = sequelize.define('Product', {
     allowNull: true
   },
   brand_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  storeId: {
     type: DataTypes.INTEGER,
     allowNull: true
   },
@@ -52,6 +60,14 @@ const Product = sequelize.define('Product', {
   is_new: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  status: {
+    type: DataTypes.STRING,
+    defaultValue: 'active' // 'active', 'deleted'
+  },
+  admin_note: {
+    type: DataTypes.TEXT,
+    allowNull: true
   },
   created_at: {
     type: DataTypes.DATE,

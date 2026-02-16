@@ -422,14 +422,14 @@ const stats = ref({
   evolutionClients: 0
 });
 
-const topProduits = ref([]);
-const topClients = ref([]);
-const sourcesTrafic = ref([]);
+const topProduits = ref<any[]>([]);
+const topClients = ref<any[]>([]);
+const sourcesTrafic = ref<any[]>([]);
 const tauxConversionGlobal = ref(0);
-const evolutionConversion = ref([]);
+const evolutionConversion = ref<any[]>([]);
 
-const alertes = ref([]);
-const actionsRecommandees = ref([]);
+const alertes = ref<any[]>([]);
+const actionsRecommandees = ref<any[]>([]);
 
 // Configuration des graphiques
 const revenueChartOptions = ref({
@@ -549,7 +549,7 @@ const loadStatsData = async () => {
       statsService.getAlerts()
     ]);
 
-    stats.value = overviewData;
+    stats.value = (overviewData as any).data || overviewData;
     topProduits.value = topProductsData;
     topClients.value = topClientsData;
     sourcesTrafic.value = trafficData;

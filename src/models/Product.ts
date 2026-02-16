@@ -1,4 +1,4 @@
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Model, type Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 // Interface pour les attributs du modèle
@@ -16,7 +16,7 @@ interface ProductAttributes {
 }
 
 // Interface pour les attributs optionnels lors de la création
-interface ProductCreationAttributes extends Optional<ProductAttributes, 'id' | 'description' | 'imageUrl' | 'category' | 'deletedAt'> {}
+interface ProductCreationAttributes extends Optional<ProductAttributes, 'id' | 'description' | 'imageUrl' | 'category' | 'deletedAt'> { }
 
 class Product extends Model<ProductAttributes, ProductCreationAttributes> implements ProductAttributes {
   public id!: number;
@@ -26,7 +26,7 @@ class Product extends Model<ProductAttributes, ProductCreationAttributes> implem
   public stock!: number;
   public imageUrl!: string | null;
   public category!: string | null;
-  
+
   // timestamps
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;

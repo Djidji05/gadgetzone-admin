@@ -217,8 +217,8 @@ const filteredNotifications = computed(() => {
 const loadNotifications = async () => {
   try {
     loading.value = true
-    const data = await notificationService.getAll({ limit: 100 })
-    notifications.value = data.notifications || []
+    const data = await notificationService.getAll()
+    notifications.value = (data as any).notifications || data || []
   } catch (error) {
     console.error('Erreur chargement notifications:', error)
   } finally {

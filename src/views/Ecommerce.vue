@@ -2,11 +2,11 @@
   <div class="grid grid-cols-12 gap-4 md:gap-6">
     <!-- Header with filters -->
     <div class="col-span-12">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
+      <div class="flex flex-row flex-wrap items-center justify-between gap-4 mb-2">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tableau de Bord</h1>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Panneau d'Administration</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Vue d'ensemble de votre activité e-commerce
+            Bienvenue dans l'interface de gestion GadgetZone
           </p>
         </div>
         

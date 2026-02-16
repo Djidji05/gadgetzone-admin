@@ -125,14 +125,16 @@ const loading = ref(false)
 
 const notifying = computed(() => unreadCount.value > 0)
 
-const loadNotifications = async () => {
+const loadNotifications = async (silent = false) => {
   // Ne charger que si l'utilisateur est authentifié
   if (!authStore.isAuthenticated) {
     return
   }
 
   try {
-    loading.value = true
+    if (!silent) {
+      loading.value = true
+    }
     const data = await notificationService.getAll({ limit: 10 })
     notifications.value = data.notifications || []
     unreadCount.value = data.unreadCount || 0
@@ -142,7 +144,9 @@ const loadNotifications = async () => {
       console.error('Erreur chargement notifications:', error)
     }
   } finally {
-    loading.value = false
+    if (!silent) {
+      loading.value = false
+    }
   }
 }
 
@@ -216,12 +220,12 @@ onMounted(() => {
   if (authStore.isAuthenticated) {
     loadNotifications()
     
-    // Rafraîchir toutes les 30 secondes
+    // Rafraîchir toutes les 30 secondes (en mode silencieux)
     const interval = setInterval(() => {
       if (authStore.isAuthenticated) {
-        loadNotifications()
+        loadNotifications(true)
       }
-    }, 30000)
+    }, 60000)
     
     onUnmounted(() => {
       clearInterval(interval)

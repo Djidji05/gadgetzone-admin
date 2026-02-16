@@ -25,8 +25,8 @@
           v-if="isExpanded || isHovered || isMobileOpen"
           :src="logoLight"
           alt="Logo"
-          width="180"
-          height="48"
+          width="140"
+          height="35"
         />
         <img
           v-else
@@ -106,6 +106,7 @@
                 <router-link
                   v-else-if="item.path"
                   :to="item.path"
+                  @click="isMobileOpen = false"
                   :class="[
                     'menu-item group',
                     {
@@ -145,6 +146,7 @@
                       <li v-for="subItem in item.subItems" :key="subItem.name">
                         <router-link
                           :to="subItem.path || ''"
+                          @click="isMobileOpen = false"
                           :class="[
                             'menu-dropdown-item',
                             {
@@ -198,8 +200,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { Component } from "vue";
-const logoLight = '/images/logo/logo.png';
-const logoDark = '/images/logo/logo-dark.svg';  // Utilisation du SVG existant
+const logoLight = '/images/logo/logo-gadgetzone.png';
+const logoDark = '/images/logo/logo-gadgetzone.png';  // Utilisation du PNG pour les deux modes
 const logoIcon = '/images/logo/logo-icon.svg';  // Utilisation du SVG existant
 import { useRoute } from "vue-router";
 
@@ -229,9 +231,11 @@ import CreditCardIcon from '@/icons/CreditCardIcon.vue';
 import PlugInIcon from '@/icons/PlugInIcon.vue';
 import HorizontalDots from '@/icons/HorizontalDots.vue';
 import ChevronDownIcon from '@/icons/ChevronDownIcon.vue';
-import SidebarWidget from "./SidebarWidget.vue";
+import ChatIcon from "@/icons/ChatIcon.vue";
+import SettingsIcon from "@/icons/SettingsIcon.vue";
 import { useSidebar } from "@/composables/useSidebar";
 import { useAuthStore } from "@/stores/auth";
+import SidebarWidget from "./SidebarWidget.vue";
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -242,6 +246,11 @@ const allMenuGroups: MenuGroup[] = [
   {
     title: "Menu",
     items: [
+      {
+        icon: ChatIcon,
+        name: "Messages",
+        path: "/messages"
+      },
       {
         icon: GridIcon,
         name: "Tableau de bord",
@@ -280,10 +289,24 @@ const allMenuGroups: MenuGroup[] = [
         icon: TableIcon,
         path: "/rapports",
       },
+
       {
-        name: "Personnalisation",
-        icon: PageIcon,
-        path: "/personnalisation",
+        name: "SEO Management",
+        icon: PieChartIcon,
+        path: "/seo",
+      },
+      {
+        icon: SettingsIcon,
+        name: "Ma Boutique",
+        path: "/vendors/settings",
+      },
+      {
+        icon: BoxCubeIcon,
+        name: "Vendeurs",
+        subItems: [
+          { name: "Candidatures", path: "/vendors/applications" },
+          { name: "Messages", path: "/messages" },
+        ],
       },
     ],
   },
@@ -294,18 +317,8 @@ const allMenuGroups: MenuGroup[] = [
         icon: PieChartIcon,
         name: "Marketing",
         subItems: [
-          { name: "Campagnes", path: "/marketing/campagnes" },
           { name: "Newsletter", path: "/marketing/newsletter" },
-          { name: "Promotions", path: "/marketing/promotions" },
-        ],
-      },
-      {
-        icon: PageIcon,
-        name: "CMS",
-        subItems: [
-          { name: "Pages", path: "/cms/pages" },
-          { name: "Blog", path: "/cms/blog" },
-          { name: "Médias", path: "/cms/medias" },
+          { name: "Personnalisation", path: "/personalization" },
         ],
       },
     ],
@@ -320,25 +333,6 @@ const allMenuGroups: MenuGroup[] = [
           { name: "Liste utilisateurs", path: "/utilisateurs/liste" },
           { name: "Rôles & Permissions", path: "/utilisateurs/roles" },
         ],
-      },
-      {
-        icon: PlugInIcon,
-        name: "API Management",
-        path: "/api-management",
-      },
-      {
-        icon: GridIcon,
-        name: "Intégrations",
-        subItems: [
-          { name: "Applications", path: "/integrations/apps" },
-          { name: "Webhooks", path: "/integrations/webhooks" },
-          { name: "API Keys", path: "/integrations/api-keys" },
-        ],
-      },
-      {
-        icon: TableIcon,
-        name: "Logs & Activité",
-        path: "/logs",
       },
       {
         icon: GridIcon,
@@ -374,11 +368,44 @@ const allMenuGroups: MenuGroup[] = [
 ];
 
 const menuGroups = computed(() => {
-  // Masquer le groupe "Système" si l'utilisateur n'est pas admin
-  if (authStore.user?.role !== 'admin') {
-    return allMenuGroups.filter(group => group.title !== 'Système');
-  }
-  return allMenuGroups;
+  const role = authStore.user?.role;
+  
+  // Filter groups
+  const filteredGroups = allMenuGroups.filter(group => {
+    // System group is for Admins only
+    if (group.title === 'Système' && role !== 'admin') {
+      return false;
+    }
+    // Marketing group is for Admins only (for now)
+    if (group.title === 'Marketing & Contenu' && role === 'seller') {
+      return false;
+    }
+    return true;
+  });
+
+  return filteredGroups.map(group => {
+    if (group.title === 'Menu') {
+      let filteredItems = group.items;
+
+      // For Sellers: Hide specific admin-only items
+      // Messages is ok for sellers.
+      if (role === 'seller') {
+        filteredItems = filteredItems.filter(item => 
+          !['Clients', 'Finance', 'SEO Management', 'Vendeurs'].includes(item.name)
+        );
+      } else {
+        // For Admins (or others): 
+        // Hide top-level "Messages" because it's now inside "Vendeurs"
+        filteredItems = filteredItems.filter(item => item.name !== 'Messages');
+      }
+
+      return {
+        ...group,
+        items: filteredItems
+      };
+    }
+    return group;
+  });
 });
 
 const isActive = (path: string): boolean => {
@@ -406,7 +433,7 @@ const isSubmenuOpenWithRoute = (groupIndex: number, itemIndex: number): boolean 
     (isAnySubmenuRouteActive.value &&
       menuGroups.value[groupIndex].items[itemIndex].subItems?.some((subItem) =>
         isActive(subItem.path!)
-      ))
+      )) || false
   );
 };
 

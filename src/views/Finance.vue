@@ -1,22 +1,23 @@
 <template>
-  <div class="p-6 space-y-6">
+  <div class="p-4 sm:p-6 space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Finance</h1>
-        <p class="text-gray-600 dark:text-gray-400 mt-1">Vue d'ensemble financière de l'entreprise</p>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Finance</h1>
+        <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">Vue d'ensemble financière de l'entreprise</p>
       </div>
-      <div class="flex gap-3">
+      <div class="flex flex-wrap gap-3 w-full sm:w-auto">
         <button 
           @click="showExpenseModal = true"
-          class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+          class="flex-1 sm:flex-none justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
-          Ajouter une dépense
+          <span class="whitespace-nowrap">Ajouter une dépense</span>
         </button>
-        <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+        <select class="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
           <option>Ce mois</option>
           <option>Ce trimestre</option>
           <option>Cette année</option>
@@ -27,71 +28,95 @@
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <!-- Revenue Card -->
-      <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-blue-500 hover:shadow-md transition-all group">
         <div class="flex items-center justify-between mb-4">
-          <div class="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+          <div class="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <span class="text-sm font-medium bg-white/20 px-3 py-1 rounded-full">{{ revenueGrowth > 0 ? '+' : '' }}{{ revenueGrowth }}%</span>
+          <div 
+            class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
+            :class="revenueGrowth >= 0 ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'"
+          >
+            <i :class="['fas', revenueGrowth >= 0 ? 'fa-arrow-up' : 'fa-arrow-down']"></i>
+            {{ Math.abs(revenueGrowth) }}%
+          </div>
         </div>
-        <h3 class="text-sm font-medium opacity-90">Revenus Totaux</h3>
-        <p class="text-3xl font-bold mt-2">{{ formatCurrency(totalRevenue) }}</p>
+        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Revenus Totaux</h3>
+        <p class="text-2xl font-black text-gray-900 dark:text-white mt-1">{{ formatCurrency(totalRevenue) }}</p>
       </div>
 
       <!-- Expenses Card -->
-      <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-red-500 hover:shadow-md transition-all group">
         <div class="flex items-center justify-between mb-4">
-          <div class="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+          <div class="p-2 bg-red-50 dark:bg-red-900/30 rounded-lg text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
-          <span class="text-sm font-medium bg-white/20 px-3 py-1 rounded-full">{{ expensesGrowth > 0 ? '+' : '' }}{{ expensesGrowth }}%</span>
+          <div 
+            class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
+            :class="expensesGrowth <= 0 ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'"
+          >
+            <i :class="['fas', expensesGrowth <= 0 ? 'fa-arrow-down' : 'fa-arrow-up']"></i>
+            {{ Math.abs(expensesGrowth) }}%
+          </div>
         </div>
-        <h3 class="text-sm font-medium opacity-90">Dépenses Totales</h3>
-        <p class="text-3xl font-bold mt-2">{{ formatCurrency(totalExpenses) }}</p>
+        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Dépenses Totales</h3>
+        <p class="text-2xl font-black text-gray-900 dark:text-white mt-1">{{ formatCurrency(totalExpenses) }}</p>
       </div>
 
       <!-- Profit Card -->
-      <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-green-500 hover:shadow-md transition-all group">
         <div class="flex items-center justify-between mb-4">
-          <div class="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+          <div class="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
-          <span class="text-sm font-medium bg-white/20 px-3 py-1 rounded-full">{{ profitGrowth > 0 ? '+' : '' }}{{ profitGrowth }}%</span>
+          <div 
+            class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
+            :class="profitGrowth >= 0 ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'"
+          >
+            <i :class="['fas', profitGrowth >= 0 ? 'fa-arrow-up' : 'fa-arrow-down']"></i>
+            {{ Math.abs(profitGrowth) }}%
+          </div>
         </div>
-        <h3 class="text-sm font-medium opacity-90">Profit Net</h3>
-        <p class="text-3xl font-bold mt-2">{{ formatCurrency(netProfit) }}</p>
+        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Profit Net</h3>
+        <p class="text-2xl font-black text-gray-900 dark:text-white mt-1">{{ formatCurrency(netProfit) }}</p>
       </div>
 
       <!-- Payments Card -->
-      <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-purple-500 hover:shadow-md transition-all group">
         <div class="flex items-center justify-between mb-4">
-          <div class="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+          <div class="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
           </div>
-          <span class="text-sm font-medium bg-white/20 px-3 py-1 rounded-full">{{ paymentsGrowth > 0 ? '+' : '' }}{{ paymentsGrowth }}%</span>
+          <div 
+            class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
+            :class="paymentsGrowth >= 0 ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'"
+          >
+            <i :class="['fas', paymentsGrowth >= 0 ? 'fa-arrow-up' : 'fa-arrow-down']"></i>
+            {{ Math.abs(paymentsGrowth) }}%
+          </div>
         </div>
-        <h3 class="text-sm font-medium opacity-90">Paiements Reçus</h3>
-        <p class="text-3xl font-bold mt-2">{{ formatCurrency(totalPayments) }}</p>
+        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Paiements Reçus</h3>
+        <p class="text-2xl font-black text-gray-900 dark:text-white mt-1">{{ formatCurrency(totalPayments) }}</p>
       </div>
     </div>
 
     <!-- Charts Row 1 -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Revenue Chart -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
         <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">Évolution des Revenus</h2>
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white">Évolution des Revenus</h2>
           <div class="flex gap-2">
-            <button class="px-3 py-1 text-sm rounded-lg bg-blue-100 text-blue-600 font-medium">Mois</button>
-            <button class="px-3 py-1 text-sm rounded-lg text-gray-600 hover:bg-gray-100">Année</button>
+            <button class="px-3 py-1.5 text-xs rounded-lg bg-blue-50 text-blue-600 font-bold dark:bg-blue-900/30 dark:text-blue-400">Mois</button>
+            <button class="px-3 py-1.5 text-xs rounded-lg text-gray-500 hover:bg-gray-50 font-medium dark:hover:bg-gray-700 transition-colors">Année</button>
           </div>
         </div>
         <apexchart
@@ -103,8 +128,8 @@
       </div>
 
       <!-- Expenses Breakdown -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Répartition des Dépenses</h2>
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Répartition des Dépenses</h2>
         <apexchart
           type="donut"
           height="300"
@@ -117,8 +142,8 @@
     <!-- Charts Row 2 -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Profit Trend -->
-      <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Tendance Profit/Perte</h2>
+      <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Tendance Profit/Perte</h2>
         <apexchart
           type="bar"
           height="300"
@@ -128,8 +153,8 @@
       </div>
 
       <!-- Payment Methods -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Méthodes de Paiement</h2>
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Méthodes de Paiement</h2>
         <apexchart
           type="radialBar"
           height="300"
@@ -140,17 +165,17 @@
     </div>
 
     <!-- Expenses List Section -->
-    <div id="expenses-section" class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg scroll-mt-6">
-      <div class="flex items-center justify-between mb-6">
+    <div id="expenses-section" class="scroll-mt-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
           <h2 class="text-xl font-bold text-gray-900 dark:text-white">Liste des Dépenses</h2>
           <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ filteredExpenses.length }} dépense(s) trouvée(s)</p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex flex-col sm:flex-row gap-3">
           <!-- Filter by Category -->
           <select 
             v-model="expenseFilter" 
-            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white w-full sm:w-auto"
           >
             <option value="all">Toutes les catégories</option>
             <option value="salaires">Salaires</option>
@@ -166,7 +191,7 @@
           <!-- Print Button -->
           <button 
             @click="printExpenses"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -176,8 +201,59 @@
         </div>
       </div>
 
-      <!-- Expenses Table -->
-      <div class="overflow-x-auto" id="expenses-print-area">
+      <!-- Expenses Mobile Cards -->
+      <div class="sm:hidden space-y-4">
+        <div v-if="filteredExpenses.length === 0" class="text-center py-12">
+           <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+           </svg>
+           <p class="text-gray-600 dark:text-gray-400 font-medium">Aucune dépense trouvée</p>
+        </div>
+        <div v-else v-for="expense in filteredExpenses" :key="expense.id" class="p-4 bg-white dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <div class="text-sm font-bold text-gray-900 dark:text-white">{{ expense.date }}</div>
+              <span class="inline-block px-2 py-0.5 mt-1 rounded text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                {{ getCategoryLabel(expense.category) }}
+              </span>
+            </div>
+            <div class="text-right font-bold text-red-600 dark:text-red-400 text-lg">
+              -{{ formatCurrency(expense.amount) }}
+            </div>
+          </div>
+          <div class="text-sm text-gray-800 dark:text-gray-200 mb-3">
+            {{ expense.description }}
+            <div v-if="expense.notes" class="text-xs text-gray-500 mt-1 italic">{{ expense.notes }}</div>
+          </div>
+          <div class="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-gray-600">
+            <div class="text-xs text-gray-500 flex items-center gap-1">
+               <span>{{ getPaymentMethodLabel(expense.paymentMethod) }}</span>
+            </div>
+            <div class="flex gap-2">
+              <button 
+                @click="viewExpenseDetails(expense)"
+                class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+              </button>
+              <button 
+                @click="deleteExpense(expense.id)"
+                class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expenses Table (Hidden on Mobile) -->
+      <div class="hidden sm:block overflow-x-auto" id="expenses-print-area">
         <table class="w-full">
           <thead>
             <tr class="border-b-2 border-gray-200 dark:border-gray-700">
@@ -261,7 +337,7 @@
     </div>
 
     <!-- Recent Transactions -->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+    <div>
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white">Transactions Récentes</h2>
         <button 
@@ -271,7 +347,28 @@
           Voir tout →
         </button>
       </div>
-      <div class="overflow-x-auto">
+      <div class="sm:hidden space-y-4">
+        <div v-for="transaction in recentTransactions" :key="transaction.id" class="p-4 bg-white dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <div class="font-bold text-gray-900 dark:text-white">{{ transaction.description }}</div>
+              <div class="text-xs text-gray-500 mt-0.5">{{ transaction.date }}</div>
+            </div>
+            <div :class="['font-bold', transaction.type === 'revenue' ? 'text-green-600' : 'text-red-600']">
+              {{ transaction.type === 'revenue' ? '+' : '-' }}{{ formatCurrency(transaction.amount) }}
+            </div>
+          </div>
+          <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100 dark:border-gray-600">
+             <span :class="['px-2 py-1 rounded text-xs font-medium', transaction.type === 'revenue' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700']">
+                {{ transaction.type === 'revenue' ? 'Revenu' : 'Dépense' }}
+             </span>
+             <span :class="['px-2 py-1 rounded text-xs font-medium', transaction.status === 'completed' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700']">
+                {{ transaction.status === 'completed' ? 'Complété' : 'En attente' }}
+             </span>
+          </div>
+        </div>
+      </div>
+      <div class="hidden sm:block overflow-x-auto">
         <table class="w-full">
           <thead>
             <tr class="border-b border-gray-200 dark:border-gray-700">
@@ -415,7 +512,7 @@
             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Méthode de paiement <span class="text-red-500">*</span>
             </label>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 type="button"
                 v-for="method in paymentMethods"
@@ -660,7 +757,7 @@ const revenueChartSeries = ref([{
   data: [] as number[]
 }]);
 
-const revenueChartOptions = ref({
+const revenueChartOptions = ref<any>({
   chart: {
     type: 'area',
     toolbar: { show: false },
@@ -694,24 +791,91 @@ const revenueChartOptions = ref({
 
 // Expenses Chart
 const expensesChartSeries = ref<number[]>([]);
-const expensesChartOptions = ref({
-  chart: { type: 'donut' },
+const expensesChartOptions = ref<any>({
+  chart: { 
+    type: 'donut',
+    fontFamily: 'inherit'
+  },
   labels: [] as string[],
-  colors: ['#EF4444', '#F59E0B', '#8B5CF6', '#3B82F6', '#6B7280', '#10B981', '#EC4899', '#14B8A6'],
-  legend: { position: 'bottom' },
+  colors: [
+    '#0ea5e9', // Sky 500
+    '#22c55e', // Green 500
+    '#eab308', // Yellow 500
+    '#f97316', // Orange 500
+    '#ef4444', // Red 500
+    '#8b5cf6', // Violet 500
+    '#ec4899', // Pink 500
+    '#64748b'  // Slate 500
+  ],
+  stroke: {
+    show: true,
+    width: 2,
+    colors: ['#ffffff'] // White stroke for separation (or use bg color if dark mode handled)
+  },
+  dataLabels: { enabled: false },
+  legend: { 
+    position: 'bottom',
+    fontFamily: 'inherit',
+    fontWeight: 500,
+    labels: {
+      colors: '#6b7280' // Gray 500
+    },
+    itemMargin: {
+      horizontal: 10,
+      vertical: 5
+    }
+  },
   plotOptions: {
     pie: {
       donut: {
-        size: '70%',
+        size: '75%',
         labels: {
           show: true,
+          name: {
+            show: true,
+            fontSize: '14px',
+            fontFamily: 'inherit',
+            fontWeight: 500,
+            color: '#6b7280',
+            offsetY: -10
+          },
+          value: {
+            show: true,
+            fontSize: '24px',
+            fontFamily: 'inherit',
+            fontWeight: 700,
+            color: '#111827', // Gray 900
+            offsetY: 10,
+            formatter: () => formatCurrency(totalExpenses.value)
+          },
           total: {
             show: true,
+            showAlways: true,
             label: 'Total',
-            formatter: () => formatCurrency(totalExpenses.value)
+            fontSize: '14px',
+            fontFamily: 'inherit',
+            fontWeight: 500,
+            color: '#6b7280',
+            formatter: function (w: any) {
+              const total = w.globals.seriesTotals.reduce((a: number, b: number, index: number) => {
+                // exclude hidden series
+                return w.globals.collapsedSeriesIndices.indexOf(index) === -1 ? a + b : a
+              }, 0)
+              return formatCurrency(total)
+            }
           }
         }
       }
+    }
+  },
+  tooltip: {
+    theme: 'light',
+    style: {
+      fontSize: '12px',
+      fontFamily: 'inherit'
+    },
+    y: {
+      formatter: (value: number) => formatCurrency(value)
     }
   }
 });
@@ -728,7 +892,7 @@ const profitChartSeries = ref([
   }
 ]);
 
-const profitChartOptions = ref({
+const profitChartOptions = ref<any>({
   chart: {
     type: 'bar',
     toolbar: { show: false }
@@ -761,7 +925,7 @@ const profitChartOptions = ref({
 
 // Payment Methods Chart
 const paymentMethodsSeries = ref<number[]>([]);
-const paymentMethodsChartOptions = ref({
+const paymentMethodsChartOptions = ref<any>({
   chart: { type: 'radialBar' },
   plotOptions: {
     radialBar: {
@@ -1015,7 +1179,7 @@ const printExpenses = () => {
 };
 
 // Delete Expense
-const deleteExpense = async (id: number) => {
+const deleteExpense = async (id: number | string) => {
   if (confirm('Êtes-vous sûr de vouloir supprimer cette dépense ?')) {
     try {
       // Extraire l'ID réel (format: "expense-123" -> 123)
@@ -1023,7 +1187,7 @@ const deleteExpense = async (id: number) => {
         ? parseInt(id.split('-')[1]) 
         : id;
       
-      await financeService.deleteExpense(expenseId);
+      await financeService.deleteExpense(expenseId as any);
       await loadFinanceData();
     } catch (err) {
       console.error('❌ Erreur suppression dépense:', err);

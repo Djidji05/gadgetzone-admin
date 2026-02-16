@@ -1,8 +1,8 @@
 <template>
   <div
-    class="overflow-hidden rounded-2xl border border-gray-200 bg-white px-4 pb-3 pt-4 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6"
+    class="overflow-hidden sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white bg-transparent dark:bg-transparent sm:dark:bg-white/[0.03] px-4 pb-3 pt-4 sm:dark:border-gray-800 sm:px-6"
   >
-    <div class="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex flex-row items-center justify-between gap-4 mb-6">
       <div>
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Commandes Récentes</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -144,9 +144,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { orderService } from '@/services/api'
+import { orderService, vendorService } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const orders = ref([])
 const isLoading = ref(true)
 const error = ref(null)
@@ -183,9 +185,22 @@ const loadOrders = async () => {
     isLoading.value = true
     error.value = null
 
-    const allOrders = await orderService.getAll()
-    // Get only the 5 most recent orders
-    orders.value = allOrders.slice(0, 5)
+    const role = authStore.user?.role?.toLowerCase()
+    
+    if (role === 'seller') {
+      console.log('🔄 Loading vendor orders...')
+      const response = await vendorService.getOrders(1, 5)
+      // Map vendor orders to match the component's expected format
+      orders.value = response.orders.map(order => ({
+        ...order,
+        user_name: order.user?.name || 'Client inconnu',
+        user_email: order.user?.email || ''
+      }))
+    } else {
+      console.log('🔄 Loading admin orders...')
+      const allOrders = await orderService.getAll()
+      orders.value = allOrders.slice(0, 5)
+    }
   } catch (err) {
     console.error('Erreur lors du chargement des commandes:', err)
     error.value = 'Impossible de charger les commandes'

@@ -9,6 +9,8 @@ const router = express.Router();
 const getStartDate = (period) => {
   const now = new Date();
   switch (period) {
+    case '1j':
+      return new Date(now.setDate(now.getDate() - 1));
     case '7j':
       return new Date(now.setDate(now.getDate() - 7));
     case '30j':
@@ -93,6 +95,7 @@ router.get('/overview', async (req, res) => {
       SELECT COUNT(*) as count
       FROM users
       WHERE created_at >= :startDate
+      AND role = 'user'
     `, {
       replacements: { startDate },
       type: sequelize.QueryTypes.SELECT
@@ -104,6 +107,7 @@ router.get('/overview', async (req, res) => {
       FROM users
       WHERE created_at >= :previousStartDate
         AND created_at < :previousEndDate
+        AND role = 'user'
     `, {
       replacements: { previousStartDate, previousEndDate },
       type: sequelize.QueryTypes.SELECT
@@ -136,6 +140,18 @@ router.get('/overview', async (req, res) => {
       ? parseFloat(((newUsersCount - previousNewUsersCount) / previousNewUsersCount * 100).toFixed(1))
       : 0;
 
+    // --- GLOBAL TOTALS (Requested by user) ---
+    const [globalTotals] = await sequelize.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM users WHERE role IN ('user', 'seller')) as totalUsers,
+        (SELECT COUNT(*) FROM products) as totalProducts,
+        (SELECT COUNT(*) FROM orders) as totalOrders,
+        (SELECT COUNT(*) FROM stores WHERE status = 'active') as totalSellers,
+        (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE status = 'delivered') as totalRevenue
+    `, {
+      type: sequelize.QueryTypes.SELECT
+    });
+
     const stats = {
       chiffreAffaires,
       evolutionCA,
@@ -144,7 +160,13 @@ router.get('/overview', async (req, res) => {
       nbProduitsVendus,
       evolutionProduits,
       nouveauxClients: newUsersCount,
-      evolutionClients
+      evolutionClients,
+      // Global Totals
+      totalUsers: parseInt(globalTotals.totalusers || 0),
+      totalProducts: parseInt(globalTotals.totalproducts || 0),
+      totalOrders: parseInt(globalTotals.totalorders || 0),
+      totalSellers: parseInt(globalTotals.totalsellers || 0),
+      totalRevenue: parseFloat(globalTotals.totalrevenue || 0)
     };
 
     console.log('📊 Stats overview - Period:', period, 'Stats:', stats);
@@ -246,19 +268,17 @@ router.get('/top-clients', async (req, res) => {
 
 /**
  * GET /api/stats/traffic-sources
- * Sources de trafic (mock pour l'instant)
+ * Sources de trafic (Données réelles ou vides)
  */
 router.get('/traffic-sources', async (req, res) => {
   try {
+    // Note: Nécessite une table "visits" pour être réel.
+    // Pour l'instant, on retourne vide ou "Direct" par défaut pour ne pas afficher de faux chiffres.
     const sources = [
-      { source: 'Recherche Google', visits: 1250, percentage: 45.5 },
-      { source: 'Réseaux sociaux', visits: 680, percentage: 24.7 },
-      { source: 'Direct', visits: 520, percentage: 18.9 },
-      { source: 'Email', visits: 180, percentage: 6.5 },
-      { source: 'Autres', visits: 120, percentage: 4.4 }
+      { source: 'Direct / Inconnu', visits: 0, percentage: 100 }
     ];
 
-    console.log('📊 Traffic sources - Mock data');
+    console.log('📊 Traffic sources - Real/Empty data');
     res.json(sources);
 
   } catch (error) {
@@ -269,26 +289,21 @@ router.get('/traffic-sources', async (req, res) => {
 
 /**
  * GET /api/stats/conversion-rate
- * Taux de conversion (mock pour l'instant)
+ * Taux de conversion (Basé sur les commandes réelles vs 1 visite min pour éviter div/0)
  */
 router.get('/conversion-rate', async (req, res) => {
   try {
     const period = req.query.period || '30j';
 
+    // Sans tracking de visiteurs, le taux de conversion est impossible à calculer précisément.
+    // On retourne 0 pour l'instant.
+
     const conversionData = {
-      current: 3.2,
-      evolution: [
-        { date: '2024-12-01', rate: 2.8 },
-        { date: '2024-12-02', rate: 3.1 },
-        { date: '2024-12-03', rate: 3.0 },
-        { date: '2024-12-04', rate: 3.2 },
-        { date: '2024-12-05', rate: 3.4 },
-        { date: '2024-12-06', rate: 3.3 },
-        { date: '2024-12-07', rate: 3.2 }
-      ]
+      current: 0,
+      evolution: [] // Pas d'historique de conversion sans tracking
     };
 
-    console.log('📊 Conversion rate - Period:', period, 'Mock data');
+    console.log('📊 Conversion rate - Real (0% due to missing visitor tracking)');
     res.json(conversionData);
 
   } catch (error) {
@@ -693,6 +708,150 @@ router.get('/customer-demographics', async (req, res) => {
   } catch (error) {
     console.error('❌ Error in customer demographics:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des données démographiques' });
+  }
+});
+
+/**
+ * GET /api/stats/monthly-sales
+ * Ventes mensuelles (graphique barres simple)
+ */
+router.get('/monthly-sales', async (req, res) => {
+  try {
+    const { year = new Date().getFullYear() } = req.query;
+    const targetYear = parseInt(year);
+
+    console.log(`📊 Generating monthly sales for year: ${targetYear}`);
+
+    const stats = await sequelize.query(`
+      WITH months AS (
+        SELECT generate_series(
+          date_trunc('year', make_date(:year, 1, 1)),
+          date_trunc('year', make_date(:year, 1, 1)) + interval '11 months',
+          '1 month'
+        ) as month
+      )
+      SELECT 
+        EXTRACT(MONTH FROM m.month) as month_num,
+        COALESCE(COUNT(o.id), 0) as sales_count
+      FROM months m
+      LEFT JOIN orders o ON date_trunc('month', o.created_at) = m.month 
+        AND o.status != 'cancelled'
+      GROUP BY m.month
+      ORDER BY m.month;
+    `, {
+      replacements: { year: targetYear },
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    const sales = stats.map(s => parseInt(s.sales_count));
+
+    console.log(`✅ Monthly sales generated: ${sales.length} points`);
+    res.json({ sales });
+
+  } catch (error) {
+    console.error('❌ Error in monthly sales:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des ventes mensuelles' });
+  }
+});
+
+/**
+ * GET /api/stats/sales-data
+ * Données de ventes et revenus pour le graphique (supporte monthly, quarterly, annually)
+ */
+router.get('/sales-data', async (req, res) => {
+  try {
+    const { period = 'monthly', year = new Date().getFullYear() } = req.query;
+    const targetYear = parseInt(year);
+
+    console.log(`📊 Generating chart data for period: ${period}, year: ${targetYear}`);
+
+    let stats;
+    // Initialiser les tableaux de résultats
+    let sales = [];
+    let revenue = [];
+
+    if (period === 'monthly') {
+      // Pour chaque mois (1-12)
+      // On utilise une requête qui génère la série des mois pour s'assurer d'avoir 12 points
+      stats = await sequelize.query(`
+        WITH months AS (
+          SELECT generate_series(
+            date_trunc('year', make_date(:year, 1, 1)),
+            date_trunc('year', make_date(:year, 1, 1)) + interval '11 months',
+            '1 month'
+          ) as month
+        )
+        SELECT 
+          to_char(m.month, 'Mon') as label,
+          EXTRACT(MONTH FROM m.month) as month_num,
+          COALESCE(COUNT(o.id), 0) as sales_count,
+          COALESCE(SUM(o.total_amount), 0) as total_revenue
+        FROM months m
+        LEFT JOIN orders o ON date_trunc('month', o.created_at) = m.month 
+          AND o.status != 'cancelled'
+        GROUP BY m.month
+        ORDER BY m.month;
+      `, {
+        replacements: { year: targetYear },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      sales = stats.map(s => parseInt(s.sales_count));
+      revenue = stats.map(s => parseFloat(s.total_revenue)); // Garder les valeurs réelles, pas de division par 1000 ici, le front gère l'affichage (k)
+
+    } else if (period === 'quarterly') {
+      stats = await sequelize.query(`
+        WITH quarters AS (
+          SELECT generate_series(
+            date_trunc('year', make_date(:year, 1, 1)),
+            date_trunc('year', make_date(:year, 1, 1)) + interval '9 months',
+            '3 months'
+          ) as quarter
+        )
+        SELECT 
+          EXTRACT(QUARTER FROM q.quarter) as quarter_num,
+          COALESCE(COUNT(o.id), 0) as sales_count,
+          COALESCE(SUM(o.total_amount), 0) as total_revenue
+        FROM quarters q
+        LEFT JOIN orders o ON date_trunc('quarter', o.created_at) = q.quarter 
+          AND o.status != 'cancelled'
+        GROUP BY q.quarter
+        ORDER BY q.quarter;
+      `, {
+        replacements: { year: targetYear },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      sales = stats.map(s => parseInt(s.sales_count));
+      revenue = stats.map(s => parseFloat(s.total_revenue));
+
+    } else {
+      // Annually (just one point or comparison?)
+      // Pour l'instant on retourne le total de l'année
+      const [stat] = await sequelize.query(`
+        SELECT 
+          COALESCE(COUNT(id), 0) as sales_count,
+          COALESCE(SUM(total_amount), 0) as total_revenue
+        FROM orders
+        WHERE EXTRACT(YEAR FROM created_at) = :year
+          AND status != 'cancelled'
+      `, {
+        replacements: { year: targetYear },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      sales = [parseInt(stat.sales_count)];
+      revenue = [parseFloat(stat.total_revenue)];
+    }
+
+    console.log(`✅ Chart data generated. Sales points: ${sales.length}`);
+
+    // Le front attend { sales: [], revenue: [] }
+    res.json({ sales, revenue });
+
+  } catch (error) {
+    console.error('❌ Error in sales data:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des données du graphique' });
   }
 });
 
