@@ -205,6 +205,38 @@ router.get('/featured', async (req, res) => {
 });
 
 /**
+ * GET /api/products/search
+ * Recherche des produits (Utilisé par PersonalizedSlider)
+ */
+router.get('/search', async (req, res) => {
+  try {
+    const { q = '', limit = 10 } = req.query;
+
+    const products = await Product.findAll({
+      where: {
+        status: 'active',
+        [Op.or]: [
+          { name: { [Op.iLike]: `%${q}%` } },
+          { description: { [Op.iLike]: `%${q}%` } }
+        ]
+      },
+      include: [
+        { model: Category, as: 'category', attributes: ['id', 'name'] },
+        { model: Brand, as: 'brand', attributes: ['id', 'name', 'logo_url'] },
+        { model: Store, as: 'store', attributes: ['id', 'name', 'status'] }
+      ],
+      limit: parseInt(limit),
+      order: [['created_at', 'DESC']]
+    });
+
+    res.json(products);
+  } catch (error) {
+    console.error('❌ Erreur search API:', error);
+    res.status(500).json({ error: 'Erreur lors de la recherche des produits' });
+  }
+});
+
+/**
  * GET /api/products/:id
  * Récupère un produit spécifique
  */
