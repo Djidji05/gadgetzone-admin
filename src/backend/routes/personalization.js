@@ -81,8 +81,8 @@ router.get('/sections/:section', async (req, res) => {
         // Logic for Deals to Discover - Automatic Mode
         if (section === 'deals_to_discover' && config.content && config.content.mode === 'automatic') {
             try {
-                // Fetch discounted active products
-                const products = await Product.findAll({
+                // 1. Primary: Fetch discounted active products
+                let products = await Product.findAll({
                     where: {
                         original_price: { [Op.gt]: sequelize.col('price') },
                         status: 'active'
@@ -90,6 +90,33 @@ router.get('/sections/:section', async (req, res) => {
                     limit: 40,
                     order: [['updated_at', 'DESC']]
                 });
+
+                let sectionTitle = 'Réductions du moment';
+
+                // 2. Fallback A: Top Rated (if no discounts)
+                if (products.length === 0) {
+                    products = await Product.findAll({
+                        where: { status: 'active' },
+                        limit: 12,
+                        order: [['created_at', 'DESC']] // Or rating if available, using created_at for freshness
+                    });
+
+                    // Filter for "Community Favorites" (simulated by latest high-quality additions)
+                    sectionTitle = 'Pépites de la communauté';
+                }
+
+                // 3. Fallback B: Low Stock (if still empty)
+                if (products.length === 0) {
+                    products = await Product.findAll({
+                        where: {
+                            status: 'active',
+                            stock: { [Op.gt]: 0, [Op.lt]: 5 }
+                        },
+                        limit: 12,
+                        order: [['stock', 'ASC']]
+                    });
+                    sectionTitle = 'Dernières opportunités';
+                }
 
                 // Generate Grid Cards
                 const autoCards = [];
@@ -108,28 +135,26 @@ router.get('/sections/:section', async (req, res) => {
                         autoCards.push({
                             id: `auto-deal-${autoCards.length}`,
                             type: 'grid',
-                            title: 'Réductions du moment',
+                            title: sectionTitle,
                             items: currentItems
                         });
                         currentItems = [];
                     }
                 });
 
-                // Handle remaining items (if any, creating a partial card)
+                // Handle remaining items
                 if (currentItems.length > 0) {
                     autoCards.push({
                         id: `auto-deal-${autoCards.length}`,
                         type: 'grid',
-                        title: 'Dernières offres',
+                        title: sectionTitle,
                         items: currentItems
                     });
                 }
 
-                // Combine with manual items (if exists in content)
-                // We use 'manualItems' to store manual cards in auto mode
+                // Combine with manual items
                 const manualItems = config.content.manualItems || [];
 
-                // Return computed config with combined items
                 const computedConfig = config.toJSON();
                 computedConfig.content.items = [...autoCards, ...manualItems];
 
