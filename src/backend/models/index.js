@@ -23,6 +23,8 @@ import Banner from './Banner.js';
 import HomepageConfig from './HomepageConfig.js';
 import Conversation from './Conversation.js';
 import Message from './Message.js';
+import Promotion from './Promotion.js';
+import Deposit from './Deposit.js';
 
 // Définir les associations
 Order.hasMany(OrderItem, { foreignKey: 'order_id', as: 'items' });
@@ -64,6 +66,12 @@ Product.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
 
 Store.hasMany(Payout, { foreignKey: 'storeId', as: 'payouts' });
 Payout.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
+
+Store.hasMany(Promotion, { foreignKey: 'storeId', as: 'promotions' });
+Promotion.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
+
+Store.hasMany(Deposit, { foreignKey: 'storeId', as: 'deposits' });
+Deposit.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
 
 // Cart associations
 Cart.hasMany(CartItem, { foreignKey: 'cartId' });
@@ -121,8 +129,10 @@ const db = {
   Banner,
   HomepageConfig,
   Conversation,
-  Message
+  Message,
+  Promotion,
+  Deposit
 };
 
-export { Product, User, Address, Order, OrderItem, Category, Cart, CartItem, Brand, Expense, Newsletter, Campaign, Page, BlogPost, Role, Notification, Review, Store, Payout, OrderLog, Banner, HomepageConfig, Conversation, Message };
+export { Product, User, Address, Order, OrderItem, Category, Cart, CartItem, Brand, Expense, Newsletter, Campaign, Page, BlogPost, Role, Notification, Review, Store, Payout, OrderLog, Banner, HomepageConfig, Conversation, Message, Promotion, Deposit };
 export default db;

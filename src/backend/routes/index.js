@@ -21,6 +21,7 @@ import notificationRoutes from './notifications.js';
 import addressRoutes from './addresses.js'; // Import Address Route
 import reviewRoutes from './reviews.js';
 import vendorRoutes from './vendors.js';
+import vendorPromotionsRoutes from './vendors-promotions.js';
 import adminVendorRoutes from './admin-vendors.js';
 import uploadRoutes from './upload.js';
 import personalizationRoutes from './personalization.js';
@@ -51,6 +52,7 @@ router.use('/blog', blogRoutes);
 router.use('/roles', roleRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/vendors', vendorRoutes);
+router.use('/vendors/promotions', vendorPromotionsRoutes);
 router.use('/admin/vendors', adminVendorRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/personalization', personalizationRoutes);

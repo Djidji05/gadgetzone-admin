@@ -1,9 +1,13 @@
 import express from 'express';
-import { Banner, HomepageConfig, Product, Store } from '../models/index.js';
+import { Banner, HomepageConfig, Product, Store, Promotion } from '../models/index.js';
 import sequelize from '../config/database.js';
 import { Op } from 'sequelize';
 
 const router = express.Router();
+
+const formatPrice = (price) => {
+    return `${Math.round(price)} G`;
+};
 
 // --- Banners ---
 
@@ -81,10 +85,31 @@ router.get('/sections/:section', async (req, res) => {
         // Logic for Deals to Discover - Automatic Mode
         if (section === 'deals_to_discover' && config.content && config.content.mode === 'automatic') {
             try {
-                // 1. Primary: Fetch discounted active products
+                // 1. Fetch Active Direct Promotions (No Code)
+                const activePromos = await Promotion.findAll({
+                    where: {
+                        code: null,
+                        isActive: true,
+                        startDate: { [Op.lte]: new Date() },
+                        endDate: { [Op.gte]: new Date() }
+                    }
+                });
+
+                // Extract all applicable product IDs
+                let promoProductIds = [];
+                activePromos.forEach(promo => {
+                    if (Array.isArray(promo.applicableProducts)) {
+                        promoProductIds = [...promoProductIds, ...promo.applicableProducts];
+                    }
+                });
+
+                // 2. Fetch products with manual original_price > price OR from activePromos
                 let products = await Product.findAll({
                     where: {
-                        original_price: { [Op.gt]: sequelize.col('price') },
+                        [Op.or]: [
+                            { original_price: { [Op.gt]: sequelize.col('price') } },
+                            { id: { [Op.in]: promoProductIds } }
+                        ],
                         status: 'active'
                     },
                     limit: 40,
@@ -118,38 +143,88 @@ router.get('/sections/:section', async (req, res) => {
                     sectionTitle = 'Dernières opportunités';
                 }
 
-                // Generate Grid Cards
+                // Generate Grid Cards based on count
                 const autoCards = [];
-                let currentItems = [];
 
-                products.forEach(p => {
-                    currentItems.push({
-                        name: p.name,
+                if (products.length === 1) {
+                    // Rule: 1 product uses promo grid (large card)
+                    const p = products[0];
+                    const promo = activePromos.find(pr => Array.isArray(pr.applicableProducts) && pr.applicableProducts.includes(p.id));
+
+                    let displayPrice = p.price;
+                    let displayOriginalPrice = p.original_price;
+
+                    if (promo) {
+                        displayOriginalPrice = p.price;
+                        if (promo.discountType === 'percentage') {
+                            displayPrice = p.price * (1 - promo.discount / 100);
+                        } else {
+                            displayPrice = Math.max(0, p.price - promo.discount);
+                        }
+                    }
+
+                    autoCards.push({
+                        id: `auto-promo-${p.id}`,
+                        type: 'promo',
+                        title: p.name,
+                        subtitle: sectionTitle,
                         image: p.image_url,
                         link: `/products/${p.id}`,
-                        price: p.price,
-                        originalPrice: p.original_price
+                        linkText: 'Profiter de l\'offre',
+                        promoText: `${formatPrice(displayPrice)}`,
+                        promoTextColor: '#ffffff',
+                        promoStyle: 'image'
+                    });
+                } else if (products.length > 1) {
+                    // Rule: 2+ products use grid of 4
+                    let currentItems = [];
+
+                    products.forEach(p => {
+                        const promo = activePromos.find(pr => Array.isArray(pr.applicableProducts) && pr.applicableProducts.includes(p.id));
+
+                        let displayPrice = p.price;
+                        let displayOriginalPrice = p.original_price;
+
+                        if (promo) {
+                            displayOriginalPrice = p.price;
+                            if (promo.discountType === 'percentage') {
+                                displayPrice = p.price * (1 - promo.discount / 100);
+                            } else {
+                                displayPrice = Math.max(0, p.price - promo.discount);
+                            }
+                        }
+
+                        currentItems.push({
+                            id: p.id,
+                            name: p.name,
+                            image: p.image_url,
+                            link: `/products/${p.id}`,
+                            price: displayPrice,
+                            originalPrice: displayOriginalPrice
+                        });
+
+                        if (currentItems.length === 4) {
+                            autoCards.push({
+                                id: `auto-deal-${autoCards.length}`,
+                                type: 'grid',
+                                title: sectionTitle,
+                                cols: 4,
+                                items: currentItems
+                            });
+                            currentItems = [];
+                        }
                     });
 
-                    if (currentItems.length === 4) {
+                    // Remaining items (e.g. if we have 2, they will be in a grid of 4 with 2 spaces empty)
+                    if (currentItems.length > 0) {
                         autoCards.push({
                             id: `auto-deal-${autoCards.length}`,
                             type: 'grid',
                             title: sectionTitle,
+                            cols: 4,
                             items: currentItems
                         });
-                        currentItems = [];
                     }
-                });
-
-                // Handle remaining items
-                if (currentItems.length > 0) {
-                    autoCards.push({
-                        id: `auto-deal-${autoCards.length}`,
-                        type: 'grid',
-                        title: sectionTitle,
-                        items: currentItems
-                    });
                 }
 
                 // Combine with manual items

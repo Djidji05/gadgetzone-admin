@@ -59,11 +59,24 @@ router.post('/search/image', async (req, res) => {
 router.get('/', optionalAuth, async (req, res) => {
   try {
 
-    const { page = 1, limit = 10, search, category, brand, is_new, promotions } = req.query;
+    const { page = 1, limit = 10, search, category, brand, is_new, promotions, vendor, storeId: queryStoreId } = req.query;
     const offset = (page - 1) * limit;
 
     const conditions = [];
     const whereClause = {};
+
+    // Filter by vendor/store
+    const filterStoreId = vendor || queryStoreId;
+    if (filterStoreId && filterStoreId !== 'undefined') {
+      if (filterStoreId === 'null') {
+        conditions.push({ storeId: null });
+      } else {
+        const storeIdNum = parseInt(filterStoreId);
+        if (!isNaN(storeIdNum)) {
+          conditions.push({ storeId: storeIdNum });
+        }
+      }
+    }
 
     // Filter by search
     if (search) {
@@ -100,7 +113,30 @@ router.get('/', optionalAuth, async (req, res) => {
 
     // Filter by promotions
     if (promotions === 'true') {
-      conditions.push({ original_price: { [Op.gt]: sequelize.col('price') } });
+      // Fetch active direct promotions to get product IDs
+      const activePromos = await db.Promotion.findAll({
+        where: {
+          code: null,
+          isActive: true,
+          startDate: { [Op.lte]: new Date() },
+          endDate: { [Op.gte]: new Date() }
+        },
+        attributes: ['applicableProducts']
+      });
+
+      let promoProductIds = [];
+      activePromos.forEach(promo => {
+        if (Array.isArray(promo.applicableProducts)) {
+          promoProductIds = [...promoProductIds, ...promo.applicableProducts];
+        }
+      });
+
+      conditions.push({
+        [Op.or]: [
+          { original_price: { [Op.gt]: sequelize.col('price') } },
+          { id: { [Op.in]: promoProductIds } }
+        ]
+      });
     }
 
 

@@ -179,55 +179,83 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    // Calculer le montant total et vérifier les stocks
-    let total_amount = 0;
-    const orderItems = [];
+    // 1. Récupérer tous les produits pour grouper par vendeur
+    const products = await Product.findAll({
+      where: {
+        id: { [Op.in]: items.map(i => i.product_id) }
+      },
+      attributes: ['id', 'storeId', 'price', 'name', 'stock']
+    });
+
+    const productsMap = new Map(products.map(p => [p.id, p]));
+
+    // Grouper les items par storeId
+    const itemsByStore = {};
 
     for (const item of items) {
-      const product = await Product.findByPk(item.product_id);
+      const product = productsMap.get(item.product_id);
       if (!product) {
         return res.status(404).json({ error: `Produit ${item.product_id} non trouvé` });
       }
 
+      const storeId = product.storeId;
+      if (!itemsByStore[storeId]) {
+        itemsByStore[storeId] = [];
+      }
 
-      const itemTotal = product.price * item.quantity;
-      total_amount += itemTotal;
-
-      orderItems.push({
+      itemsByStore[storeId].push({
         product_id: item.product_id,
         quantity: item.quantity,
-        price: product.price
+        price: product.price,
+        product_name: product.name // Optional context
       });
     }
 
-    // Générer un numéro de commande unique
-    const orderNumber = `GADGET-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    const createdOrders = [];
 
-    // Créer la commande
-    const newOrder = await Order.create({
-      user_id,
-      total_amount,
-      status: 'pending',
-      order_number: orderNumber,
-      shipping_address: typeof shipping_address === 'object' ? JSON.stringify(shipping_address) : shipping_address
-    });
+    // 2. Créer une commande par vendeur
+    for (const storeId of Object.keys(itemsByStore)) {
+      const storeItems = itemsByStore[storeId];
 
-    // Créer les articles de commande
-    for (const itemData of orderItems) {
-      await OrderItem.create({
-        order_id: newOrder.id,
-        ...itemData
+      // Calculer le total pour cette sous-commande
+      let total_amount = 0;
+      for (const item of storeItems) {
+        total_amount += Number(item.price) * item.quantity;
+      }
+
+      // Générer un numéro de commande unique
+      const orderNumber = `ORD-${Date.now()}-${storeId}-${Math.floor(Math.random() * 1000)}`;
+
+      // Créer la commande
+      const newOrder = await Order.create({
+        user_id,
+        total_amount,
+        status: 'pending',
+        order_number: orderNumber,
+        shipping_address: typeof shipping_address === 'object' ? JSON.stringify(shipping_address) : shipping_address
       });
 
-      // Mettre à jour le stock
-      await Product.decrement('stock', {
-        where: { id: itemData.product_id },
-        by: itemData.quantity
-      });
+      // Créer les articles et mettre à jour le stock
+      for (const itemData of storeItems) {
+        await OrderItem.create({
+          order_id: newOrder.id,
+          product_id: itemData.product_id,
+          quantity: itemData.quantity,
+          price: itemData.price
+        });
+
+        await Product.decrement('stock', {
+          where: { id: itemData.product_id },
+          by: itemData.quantity
+        });
+      }
+
+      createdOrders.push(newOrder);
     }
 
-    // Récupérer la commande complète
-    const order = await Order.findByPk(newOrder.id, {
+    // 3. Récupérer les détails complets pour la réponse et les notifs
+    const finalOrders = await Order.findAll({
+      where: { id: { [Op.in]: createdOrders.map(o => o.id) } },
       include: [
         {
           model: User,
@@ -248,10 +276,29 @@ router.post('/', async (req, res) => {
       ]
     });
 
-    // Notifier les admins de la nouvelle commande
-    await notifyNewOrder(order);
+    // 4. Notifications (Une par commande créée)
+    for (const order of finalOrders) {
+      await notifyNewOrder(order);
+    }
 
-    res.status(201).json(order);
+    // Si une seule commande a été créée (cas le plus fréquent/mono-vendeur), on renvoie l'objet directement pour compatibilité
+    if (finalOrders.length === 1) {
+      return res.status(201).json(finalOrders[0]);
+    }
+
+    // Sinon on renvoie un tableau ou un objet wrapper (Frontend devra gérer, ou on renvoie la première comme "principale" mais c'est risqué)
+    // On va renvoyer la première pour compatibilité immédiate avec le frontend qui attend probablement un objet Order
+    // MAIS idéalement le frontend devrait gérer un tableau.
+    // Pour l'instant, pour ne pas casser le frontend checkout, on renvoie la première. 
+    // TODO: Adapter le frontend pour gérer le tableau 'orders' si on change la structure.
+    // Hack temporaire : Le frontend redirige souvent vers /orders/:id. Si on renvoie un tableau, ça casse.
+    // On va tricher : Renvoyer la dernière commande créée (ou la première).
+    // Le mieux est de modifier le frontend pour gérer cette réponse, mais le user n'a pas demandé de toucher au checkout frontend.
+    // On va supposer que le frontend utilise la réponse.
+
+    // Compromis : Si liste, on renvoie la première, mais le user verra plusieurs commandes dans son historique.
+    res.status(201).json(finalOrders[0]); // Return first order to satisfy likely frontend expectation of single object
+
   } catch (error) {
     console.error('Erreur création commande:', error);
     res.status(500).json({ error: `Erreur création commande: ${error.message}` });

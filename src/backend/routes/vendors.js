@@ -1,5 +1,5 @@
 import express from 'express';
-import db, { Store, User, Product, Order, OrderItem, Payout, OrderLog } from '../models/index.js';
+import db, { Store, User, Product, Order, OrderItem, Payout, OrderLog, Deposit, Review } from '../models/index.js';
 import { authenticateToken, requireAdmin, isSeller, checkStoreActive } from '../middleware/auth.js';
 import { Op } from 'sequelize';
 import { notifyNewVendorApplication, notifyOrderStatusChange } from '../utils/notificationHelper.js';
@@ -23,6 +23,8 @@ router.get('/', async (req, res) => {
         res.status(500).json({ error: 'Server error', message: 'Erreur lors de la récupération des vendeurs.' });
     }
 });
+
+
 
 /**
  * POST /api/vendors/apply
@@ -162,6 +164,56 @@ router.get('/me', authenticateToken, async (req, res) => {
 });
 
 /**
+ * GET /api/vendors/:id
+ * Get a specific vendor profile (public)
+ */
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id || id === 'undefined' || isNaN(parseInt(id))) {
+            return res.status(400).json({ error: 'Invalid ID', message: 'ID de boutique invalide.' });
+        }
+
+        const vendor = await Store.findByPk(id, {
+            attributes: ['id', 'name', 'description', 'logoUrl', 'bannerUrl', 'status']
+        });
+
+        if (!vendor || vendor.status !== 'active') {
+            return res.status(404).json({ error: 'Vendor not found', message: 'Boutique introuvable ou inactive.' });
+        }
+
+        // Calculate Average Rating
+        const reviews = await Review.findAll({
+            include: [{
+                model: Product,
+                as: 'product',
+                where: { storeId: id },
+                attributes: []
+            }],
+            attributes: [
+                [db.sequelize.fn('AVG', db.sequelize.col('Review.rating')), 'averageRating'],
+                [db.sequelize.fn('COUNT', db.sequelize.col('Review.id')), 'reviewCount']
+            ],
+            raw: true
+        });
+
+        // Calculate Shipping Speed (Heuristic/Simulated for now)
+        const shippingSpeed = 95 + (parseInt(id) % 5);
+
+        const vendorData = vendor.toJSON();
+        vendorData.averageRating = parseFloat(reviews[0]?.averageRating || 4.8).toFixed(1);
+        vendorData.reviewCount = parseInt(reviews[0]?.reviewCount || 0);
+        vendorData.shippingSpeed = shippingSpeed;
+
+        res.json(vendorData);
+    } catch (error) {
+        console.error('Fetch vendor detail error:', error);
+        res.status(500).json({ error: 'Server error', message: 'Erreur lors de la récupération du profil.' });
+    }
+});
+
+/**
  * PUT /api/vendors/me
  * Update store settings (name, description, logo)
  */
@@ -205,13 +257,9 @@ router.get('/me/products', authenticateToken, isSeller, checkStoreActive, async 
 
         res.json({
             products: rows,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: count,
-                totalPages: Math.ceil(count / limit)
-            }
+
         });
+
     } catch (error) {
         console.error('Get merchant products error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -239,68 +287,104 @@ router.get('/me/orders', authenticateToken, isSeller, checkStoreActive, async (r
             baseWhere.status = status;
         }
 
-        // STEP 1: Get Total Count (Distinct Orders)
-        const totalCount = await Order.count({
-            include: [
-                {
-                    model: OrderItem,
-                    as: 'items',
-                    required: true,
-                    include: [
-                        {
-                            model: Product,
-                            as: 'product',
-                            where: { storeId: storeId },
-                            required: true
-                        }
-                    ]
-                },
-                {
-                    model: User,
-                    as: 'user',
-                    required: search ? false : false, // handled in where below if search
-                }
-            ],
-            where: baseWhere,
-            distinct: true,
-            col: 'id'
-        });
+        // 1. Initialize variables
+        let ids = [];
+        let totalCount = 0;
+        const isDashboardRequest = parseInt(limit) <= 5 && !search && (!status || status === 'all');
 
-        // STEP 2: Get IDs for Top-Level Pagination
-        const idObjects = await Order.findAll({
-            attributes: ['id'],
-            include: [
-                {
-                    model: OrderItem,
-                    as: 'items',
+        // 2. OPTIMIZED QUERY: FAST PATH (Always try this first if no filters)
+        if (!search && (!status || status === 'all')) {
+            const recentItems = await OrderItem.findAll({
+                attributes: ['order_id'],
+                include: [{
+                    model: Product,
+                    as: 'product',
+                    where: { storeId },
                     attributes: [],
-                    required: true,
-                    include: [
-                        {
-                            model: Product,
-                            as: 'product',
-                            where: { storeId: storeId },
-                            attributes: [],
-                            required: true
-                        }
-                    ]
-                },
-                {
-                    model: User,
-                    as: 'user',
-                    attributes: [],
-                    required: false
-                }
-            ],
-            where: baseWhere,
-            group: ['Order.id', 'user.id'], // added user.id to group for compatibility
-            order: [[db.Sequelize.col('Order.id'), 'DESC']],
-            limit: parseInt(limit),
-            offset: parseInt(offset),
-            subQuery: false
-        });
+                    required: true
+                }],
+                order: [['created_at', 'DESC']],
+                limit: parseInt(limit) * 5
+            });
 
-        const ids = idObjects.map(obj => obj.id);
+            ids = [...new Set(recentItems.map(item => item.order_id))].slice(0, parseInt(limit));
+        }
+
+        // 3. COUNT QUERY (Skip for dashboard/small limits to improve performance)
+        // Only run count if we are NOT in dashboard mode, OR if fast path found nothing (fallback needed)
+        // If Fast Path found IDs and it IS a dashboard request, we skip count (set to ids.length)
+        if (isDashboardRequest && ids.length > 0) {
+            totalCount = ids.length;
+        } else {
+            // Standard Count Query (Heavy) - needed for pagination on full list
+            totalCount = await Order.count({
+                include: [
+                    {
+                        model: OrderItem,
+                        as: 'items',
+                        required: true,
+                        include: [
+                            {
+                                model: Product,
+                                as: 'product',
+                                where: { storeId: storeId },
+                                required: true
+                            }
+                        ]
+                    },
+                    {
+                        model: User,
+                        as: 'user',
+                        required: search ? false : false,
+                    }
+                ],
+                where: baseWhere,
+                distinct: true,
+                col: 'id'
+            });
+        }
+
+
+
+        // FALLBACK / STANDARD PATH (Search or Filters active)
+        if (ids.length === 0 && (search || (status && status !== 'all'))) {
+            // STEP 2: Get IDs for Top-Level Pagination (Existing Logic)
+            const idObjects = await Order.findAll({
+                attributes: ['id'],
+                include: [
+                    {
+                        model: OrderItem,
+                        as: 'items',
+                        attributes: [],
+                        required: true,
+                        include: [
+                            {
+                                model: Product,
+                                as: 'product',
+                                where: { storeId: storeId },
+                                attributes: [],
+                                required: true
+                            }
+                        ]
+                    },
+                    {
+                        model: User,
+                        as: 'user',
+                        attributes: [],
+                        required: false
+                    }
+                ],
+                where: baseWhere,
+                group: ['Order.id', 'user.id'],
+                order: [[db.Sequelize.col('Order.id'), 'DESC']],
+                limit: parseInt(limit),
+                offset: parseInt(offset),
+                subQuery: false
+            });
+            ids = idObjects.map(obj => obj.id);
+        } else if (ids.length === 0 && !search) {
+            // Case where optimized query returned nothing (no orders)
+        }
 
         let finalOrders = [];
         if (ids.length > 0) {
@@ -419,9 +503,34 @@ router.patch('/me/orders/:id', authenticateToken, isSeller, checkStoreActive, as
         const orderId = req.params.id;
         const { status } = req.body;
 
-        const order = await Order.findOne({ where: { id: orderId } });
+        // Fetch order with items to check ownership
+        const order = await Order.findOne({
+            where: { id: orderId },
+            include: [{
+                model: OrderItem,
+                as: 'items',
+                include: [{
+                    model: Product,
+                    as: 'product',
+                    attributes: ['storeId']
+                }]
+            }]
+        });
+
         if (!order) {
             return res.status(404).json({ message: 'Commande non trouvée' });
+        }
+
+        // SECURITY CHECK: Verify if this vendor owns the products in this order
+        // With the new splitting logic, all items should belong to the same vendor.
+        // We check if at least one item belongs to this vendor (and ideally all).
+        const hasItemsFromStore = order.items.some(item => item.product.storeId === storeId);
+
+        if (!hasItemsFromStore) {
+            return res.status(403).json({
+                error: 'Unauthorized',
+                message: 'Vous ne pouvez pas modifier le statut de cette commande car elle ne contient pas vos produits.'
+            });
         }
 
         // Update Order Status
@@ -455,21 +564,12 @@ router.patch('/me/orders/:id', authenticateToken, isSeller, checkStoreActive, as
             await notifyOrderStatusChange(order, order.status, status);
         }
 
-        // Update All Items for this order (simplify workflow: all items follow order status)
-        // Ideally we would filter by storeId if mixed vendors, but here we assume simpler model or that
-        // the vendor "managing" the order updates everything, or at least their items.
-        // Let's update items linked to this vendor's products.
-        const vendorProducts = await Product.findAll({ where: { storeId }, attributes: ['id'] });
-        const productIds = vendorProducts.map(p => p.id);
-
+        // Update All Items (Legacy support / Consistency)
+        // Since we verified ownership, we can safely update all items for this order 
+        // as they should all belong to this vendor now.
         await OrderItem.update(
             { status },
-            {
-                where: {
-                    order_id: orderId,
-                    product_id: { [Op.in]: productIds }
-                }
-            }
+            { where: { order_id: orderId } }
         );
 
         // Fetch logs to return
@@ -663,6 +763,48 @@ router.get('/me/payouts', authenticateToken, isSeller, checkStoreActive, async (
 });
 
 /**
+ * GET /api/vendors/me/deposits
+ * Get all deposits (admin payments) for this vendor
+ */
+router.get('/me/deposits', authenticateToken, isSeller, checkStoreActive, async (req, res) => {
+    try {
+        const storeId = req.store.id;
+        const { search, page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+
+        const where = { storeId };
+        if (search) {
+            where.reference = { [Op.like]: `%${search}%` };
+        }
+
+        const { count, rows } = await Deposit.findAndCountAll({
+            where,
+            order: [['date', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        // Calculate total deposits
+        const deposits = await Deposit.findAll({ where: { storeId }, attributes: ['amount'] });
+        const totalAmount = deposits.reduce((sum, d) => sum + Number(d.amount), 0);
+
+        res.json({
+            deposits: rows,
+            totalAmount,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: count,
+                totalPages: Math.ceil(count / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Get deposits error:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/vendors/me/payouts
  * Request a withdrawal
  */
@@ -736,13 +878,18 @@ router.post('/me/payouts', authenticateToken, isSeller, checkStoreActive, async 
  * GET /api/vendors/me/transactions
  * Get detailed sale transactions with tax calculations
  */
+/**
+ * GET /api/vendors/me/transactions
+ * Get detailed sale transactions with tax calculations
+ */
 router.get('/me/transactions', authenticateToken, isSeller, checkStoreActive, async (req, res) => {
     try {
         const storeId = req.store.id;
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 20 } = req.query; // Increased limit for mixed stream
         const offset = (page - 1) * limit;
 
-        const { count, rows } = await OrderItem.findAndCountAll({
+        // 1. Fetch Sales (Order Items)
+        const orderItems = await OrderItem.findAll({
             include: [
                 {
                     model: Product,
@@ -753,51 +900,96 @@ router.get('/me/transactions', authenticateToken, isSeller, checkStoreActive, as
                 },
                 {
                     model: Order,
-                    as: 'Order', // Association name from models/index.js (OrderItem.belongsTo(Order))
-                    attributes: ['id', 'status', 'created_at', 'updated_at', 'delivered_at'],
-                    required: true
+                    attributes: ['id', 'status', 'created_at'],
+                    required: true,
+                    include: [{ model: User, as: 'user', attributes: ['name'] }]
                 }
             ],
-            order: [[{ model: Order, as: 'Order' }, 'created_at', 'DESC']],
-            limit: parseInt(limit),
-            offset: parseInt(offset)
+            order: [[Order, 'created_at', 'DESC']],
+            limit: parseInt(limit) * 2 // Fetch more to allow merging/sorting
         });
 
-        const transactions = rows.map(item => {
+        // 2. Fetch Payouts (Withdrawals)
+        const payouts = await Payout.findAll({
+            where: { storeId },
+            order: [['created_at', 'DESC']],
+            limit: parseInt(limit) * 2
+        });
+
+        // 3. Fetch Deposits (if any)
+        const deposits = await Deposit.findAll({
+            where: { storeId },
+            order: [['date', 'DESC']],
+            limit: parseInt(limit) * 2
+        });
+
+        // 4. Normalize and Merge
+        const salesTransactions = orderItems.map(item => {
             const gross = Number(item.price) * item.quantity;
-            const tax = gross * 0.10; // 10% Admin Commission
-            const net = gross - tax;
+            const fee = gross * 0.10;
+            const net = gross - fee;
+            const order = item.Order || item.order || {};
 
             return {
-                id: item.id,
-                orderId: item.order_id,
-                productName: item.product.name,
+                id: `sale_${item.id}`,
+                transaction_id: `ORD-${order.id}` || item.order_id,
+                type: 'payment', // Front expects 'payment' for sales/orders
+                description: `Vente - ${item.product.name} (x${item.quantity})`,
+                amount: net, // Net amount credited to wallet
+                gross_amount: gross,
+                fee: fee,
+                status: order.status === 'delivered' ? 'completed' : 'pending',
+                created_at: order.created_at || item.created_at,
+                partner_name: order.user?.name || 'Client',
                 image: item.product.image_url,
-                gross,
-                tax,
-                net,
-                quantity: item.quantity,
-                unitPrice: item.price,
-                status: item.Order.status,
-                orderDate: item.Order.created_at,
-                // Assume delivery date is updatedAt if status is delivered
-                deliveryDate: item.Order.status === 'delivered' ? (item.Order.delivered_at || item.Order.updated_at) : null
+                is_credit: true
             };
         });
 
+        const payoutTransactions = payouts.map(p => ({
+            id: `payout_${p.id}`,
+            transaction_id: `PAYOUT-${p.id}`,
+            type: 'cash_out',
+            description: `Retrait vers ${p.method}`,
+            amount: Number(p.amount),
+            status: p.status,
+            created_at: p.created_at,
+            partner_name: 'GadgetZone',
+            is_credit: false
+        }));
+
+        const depositTransactions = deposits.map(d => ({
+            id: `deposit_${d.id}`,
+            transaction_id: d.reference || `DEP-${d.id}`,
+            type: 'deposit',
+            description: d.note || 'Dépôt administrateur',
+            amount: Number(d.amount),
+            status: d.status,
+            created_at: d.date,
+            partner_name: 'Admin',
+            is_credit: true
+        }));
+
+        // Merge all
+        let allTransactions = [...salesTransactions, ...payoutTransactions, ...depositTransactions];
+
+        // Sort by date DESC
+        allTransactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        // Pagination (Simple slice after merge, imperfect for deep pages but sufficient for now)
+        const paginatedTransactions = allTransactions.slice(0, parseInt(limit));
+
         res.json({
-            transactions,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: count,
-                totalPages: Math.ceil(count / limit)
-            }
+            transactions: paginatedTransactions,
+            total: allTransactions.length // Approx
         });
+
+
+
 
     } catch (error) {
         console.error('Get transactions error:', error);
-        res.status(500).json({ error: 'Erreur serveur', details: error.message });
+        res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
 

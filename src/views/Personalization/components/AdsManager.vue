@@ -216,7 +216,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import PersonalizationService from '@/services/PersonalizationService';
-import { api } from '@/services/api';
+import api from '@/services/api';
 import { useUIStore } from '@/stores/ui';
 
 const uiStore = useUIStore();
