@@ -1,8 +1,8 @@
-# Backend GadgetZone Admin - Version Finalisée
+# Backend HTFasil Admin - Version Finalisée
 
 ## 🎉 Finalisation Complète
 
-Le backend de GadgetZone Admin est maintenant **complètement finalisé** avec toutes les fonctionnalités modernes et best practices implémentées.
+Le backend de HTFasil Admin est maintenant **complètement finalisé** avec toutes les fonctionnalités modernes et best practices implémentées.
 
 ## ✅ Fonctionnalités Implémentées
 
@@ -130,7 +130,7 @@ NODE_ENV=development
 # Base de données
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=gadgetzone
+DB_NAME=htfasil
 DB_USER=postgres
 DB_PASSWORD=admin
 
@@ -153,7 +153,7 @@ FRONTEND_URL=http://localhost:5173
 ```
 
 ### Comptes de Test (après init:database)
-- **Admin**: `admin@gadgetzone.com` / `password123`
+- **Admin**: `admin@htfasil.com` / `password123`
 - **Client**: `jean.dupont@example.com` / `password123`
 
 ## 📊 Endpoints API
@@ -229,4 +229,4 @@ Le backend est **production-ready**. Pour aller plus loin :
 
 ---
 
-**🎯 Le backend GadgetZone Admin est maintenant finalisé et prêt pour la production !**
+**🎯 Le backend HTFasil Admin est maintenant finalisé et prêt pour la production !**

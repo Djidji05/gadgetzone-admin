@@ -64,8 +64,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { statsService } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 const demographics = ref({
   totalCustomers: 0,
@@ -76,8 +77,14 @@ const demographics = ref({
 })
 
 const isLoading = ref(true)
+const authStore = useAuthStore()
 
 const fetchDemographics = async () => {
+  if (!authStore.isAuthenticated) {
+    console.log('🛑 Skip fetchDemographics: User not authenticated')
+    return
+  }
+
   try {
     isLoading.value = true
     const data = await statsService.getCustomerDemographics()
@@ -91,6 +98,16 @@ const fetchDemographics = async () => {
 }
 
 onMounted(() => {
-  fetchDemographics()
+  if (authStore.isAuthenticated) {
+    fetchDemographics()
+  }
+})
+
+// Watch for authentication to trigger initial fetch
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    console.log('🔐 Auth detected, fetching demographics data...')
+    fetchDemographics()
+  }
 })
 </script>

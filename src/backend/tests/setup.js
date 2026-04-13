@@ -7,7 +7,7 @@ config({ path: '.env.test' });
 // Variables d'environnement par défaut pour les tests
 process.env.NODE_ENV = 'test';
 process.env.BACKEND_PORT = '3002';
-process.env.DB_NAME = 'gadgetzone_test';
+process.env.DB_NAME = 'htfasil_test';
 process.env.JWT_SECRET = 'test-jwt-secret-key';
 process.env.JWT_EXPIRES_IN = '1h';
 
@@ -18,6 +18,6 @@ process.env.DB_USER = process.env.DB_USER || 'postgres';
 process.env.DB_PASSWORD = process.env.DB_PASSWORD || 'admin';
 
 // Désactiver les logs pendant les tests
-console.log = jest.fn();
-console.error = jest.fn();
-console.warn = jest.fn();
+console.log = () => { };
+console.error = () => { };
+console.warn = () => { };

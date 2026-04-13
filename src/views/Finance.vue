@@ -17,20 +17,43 @@
           </svg>
           <span class="whitespace-nowrap">Ajouter une dépense</span>
         </button>
-        <select class="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-          <option>Ce mois</option>
-          <option>Ce trimestre</option>
-          <option>Cette année</option>
+        <select 
+          v-model="selectedPeriod"
+          class="flex-1 sm:flex-none min-w-[140px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg shadow-sm"
+        >
+          <option value="month">Ce mois</option>
+          <option value="quarter">Ce trimestre</option>
+          <option value="year">Cette année</option>
+          <option value="all">Historique complet</option>
         </select>
       </div>
     </div>
 
-    <!-- KPI Cards -->
+    <!-- KPI Performance -->
+    <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-2 mb-4">Performance Globale</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <!-- Revenue Card -->
+      <!-- Volume Affaire Card -->
       <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-blue-500 hover:shadow-md transition-all group">
         <div class="flex items-center justify-between mb-4">
           <div class="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+          </div>
+          <div 
+            class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+          >
+            GMV
+          </div>
+        </div>
+        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Volume d'Affaire (GMV)</h3>
+        <p class="text-2xl font-black text-gray-900 dark:text-white mt-1">{{ formatCurrency(totalGMV) }}</p>
+      </div>
+
+      <!-- Marketplace Commissions Card -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-indigo-500 hover:shadow-md transition-all group">
+        <div class="flex items-center justify-between mb-4">
+          <div class="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -43,7 +66,7 @@
             {{ Math.abs(revenueGrowth) }}%
           </div>
         </div>
-        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Revenus Totaux</h3>
+        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Commissions M-Place</h3>
         <p class="text-2xl font-black text-gray-900 dark:text-white mt-1">{{ formatCurrency(totalRevenue) }}</p>
       </div>
 
@@ -86,13 +109,18 @@
         <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Profit Net</h3>
         <p class="text-2xl font-black text-gray-900 dark:text-white mt-1">{{ formatCurrency(netProfit) }}</p>
       </div>
+    </div>
 
+    <!-- KPI Trésorerie & Ledger -->
+    <h2 class="text-lg font-bold text-gray-900 dark:text-white mt-8 mb-4">Trésorerie & Livre des Comptes</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      
       <!-- Payments Card -->
       <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-purple-500 hover:shadow-md transition-all group">
         <div class="flex items-center justify-between mb-4">
           <div class="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
           <div 
@@ -103,9 +131,58 @@
             {{ Math.abs(paymentsGrowth) }}%
           </div>
         </div>
-        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Paiements Reçus</h3>
+        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Paiements Nets Reçus</h3>
         <p class="text-2xl font-black text-gray-900 dark:text-white mt-1">{{ formatCurrency(totalPayments) }}</p>
       </div>
+
+      <!-- Refunds Card -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-orange-500 hover:shadow-md transition-all group">
+        <div class="flex items-center justify-between mb-4">
+          <div class="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
+            Retour
+          </div>
+        </div>
+        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Remboursements</h3>
+        <p class="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">-{{ formatCurrency(totalRefunds) }}</p>
+      </div>
+
+      <!-- Available Ledger Card -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-teal-500 hover:shadow-md transition-all group">
+        <div class="flex items-center justify-between mb-4">
+          <div class="p-2 bg-teal-50 dark:bg-teal-900/30 rounded-lg text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+          </div>
+          <div class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400">
+            Livrées
+          </div>
+        </div>
+        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Solde Disponible (Vendeurs)</h3>
+        <p class="text-2xl font-black text-gray-900 dark:text-white mt-1">{{ formatCurrency(ledgerAvailable) }}</p>
+      </div>
+
+      <!-- Pending Ledger Card -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-pink-500 hover:shadow-md transition-all group">
+        <div class="flex items-center justify-between mb-4">
+          <div class="p-2 bg-pink-50 dark:bg-pink-900/30 rounded-lg text-pink-600 dark:text-pink-400 group-hover:scale-110 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-pink-50 text-pink-600 dark:bg-pink-900/20 dark:text-pink-400">
+            En Transit
+          </div>
+        </div>
+        <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Solde En Attente (Vendeurs)</h3>
+        <p class="text-2xl font-black text-gray-900 dark:text-white mt-1">{{ formatCurrency(ledgerPending) }}</p>
+      </div>
+
     </div>
 
     <!-- Charts Row 1 -->
@@ -115,8 +192,20 @@
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-lg font-bold text-gray-900 dark:text-white">Évolution des Revenus</h2>
           <div class="flex gap-2">
-            <button class="px-3 py-1.5 text-xs rounded-lg bg-blue-50 text-blue-600 font-bold dark:bg-blue-900/30 dark:text-blue-400">Mois</button>
-            <button class="px-3 py-1.5 text-xs rounded-lg text-gray-500 hover:bg-gray-50 font-medium dark:hover:bg-gray-700 transition-colors">Année</button>
+            <button 
+              @click="revenuePeriod = 'monthly'"
+              :class="[revenuePeriod === 'monthly' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700']"
+              class="px-3 py-1 text-xs font-medium rounded-md transition-all"
+            >
+              Mois
+            </button>
+            <button 
+              @click="revenuePeriod = 'yearly'"
+              :class="[revenuePeriod === 'yearly' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700']"
+              class="px-3 py-1 text-xs font-medium rounded-md transition-all"
+            >
+              Année
+            </button>
           </div>
         </div>
         <apexchart
@@ -188,15 +277,15 @@
             <option value="autres">Autres</option>
           </select>
           
-          <!-- Print Button -->
+          <!-- Export PDF Button -->
           <button 
-            @click="printExpenses"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
+            @click="exportExpensesPDF"
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shadow-sm"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
-            Imprimer
+            Exporter en PDF
           </button>
         </div>
       </div>
@@ -253,7 +342,7 @@
       </div>
 
       <!-- Expenses Table (Hidden on Mobile) -->
-      <div class="hidden sm:block overflow-x-auto" id="expenses-print-area">
+      <div class="hidden sm:block overflow-x-auto">
         <table class="w-full">
           <thead>
             <tr class="border-b-2 border-gray-200 dark:border-gray-700">
@@ -262,7 +351,7 @@
               <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Description</th>
               <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Méthode</th>
               <th class="text-right py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Montant</th>
-              <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400 print:hidden">Actions</th>
+              <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -289,7 +378,7 @@
                   -{{ formatCurrency(expense.amount) }}
                 </span>
               </td>
-              <td class="py-4 px-4 text-center print:hidden">
+              <td class="py-4 px-4 text-center">
                 <div class="flex items-center justify-center gap-2">
                   <button 
                     @click="viewExpenseDetails(expense)"
@@ -320,7 +409,7 @@
               <td class="py-4 px-4 text-right font-bold text-red-600 dark:text-red-400 text-lg">
                 -{{ formatCurrency(totalExpensesFiltered) }}
               </td>
-              <td class="print:hidden"></td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
@@ -715,13 +804,13 @@
             Fermer
           </button>
           <button
-            @click="printExpenseDetails()"
-            class="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            @click="exportExpenseDetailsPDF()"
+            class="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
-            Imprimer
+            Exporter en PDF
           </button>
         </div>
       </div>
@@ -730,20 +819,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import { financeService } from '@/services/api';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const apexchart = VueApexCharts;
+
+// États de filtrage
+const selectedPeriod = ref('month');
+const revenuePeriod = ref('monthly');
 
 // États de chargement
 const isLoading = ref(true);
 const error = ref<string | null>(null);
 
 // Data
+const totalGMV = ref(0);
 const totalRevenue = ref(0);
 const totalExpenses = ref(0);
 const totalPayments = ref(0);
+const totalRefunds = ref(0);
+const ledgerAvailable = ref(0);
+const ledgerPending = ref(0);
 const revenueGrowth = ref(0);
 const expensesGrowth = ref(0);
 const profitGrowth = ref(0);
@@ -971,9 +1070,9 @@ const loadFinanceData = async () => {
     isLoading.value = true;
     error.value = null;
 
-    console.log('📊 Chargement des données financières...');
+    console.log(`📊 Chargement des données financières pour la période: ${selectedPeriod.value}...`);
 
-    // Charger toutes les données en parallèle
+    // Charger toutes les données en parallèle avec le filtre de période
     const [
       overview,
       revenueChart,
@@ -983,31 +1082,46 @@ const loadFinanceData = async () => {
       paymentMethods,
       transactions
     ] = await Promise.all([
-      financeService.getOverview(),
-      financeService.getRevenueChart(),
-      financeService.getExpenses(),
-      financeService.getExpensesBreakdown(),
-      financeService.getProfitTrend(),
-      financeService.getPaymentMethods(),
-      financeService.getTransactions(10)
+      financeService.getOverview(selectedPeriod.value),
+      financeService.getRevenueChart(revenuePeriod.value),
+      financeService.getExpenses('all'), // Les dépenses listées restent filtrables manuellement
+      financeService.getExpensesBreakdown(selectedPeriod.value),
+      financeService.getProfitTrend(selectedPeriod.value),
+      financeService.getPaymentMethods(selectedPeriod.value),
+      financeService.getTransactions(10, 'all', selectedPeriod.value)
     ]);
 
     console.log('✅ Données chargées:', { overview, revenueChart, expensesBreakdown });
 
     // Mettre à jour les KPIs
+    totalGMV.value = overview.totalGMV;
     totalRevenue.value = overview.totalRevenue;
     totalExpenses.value = overview.totalExpenses;
     totalPayments.value = overview.totalPayments;
-    revenueGrowth.value = overview.growth.revenue;
-    expensesGrowth.value = overview.growth.expenses;
-    profitGrowth.value = overview.growth.profit;
-    paymentsGrowth.value = overview.growth.payments;
+    totalRefunds.value = overview.totalRefunds || 0;
+    
+    if (overview.ledger) {
+      ledgerAvailable.value = overview.ledger.available || 0;
+      ledgerPending.value = overview.ledger.pending || 0;
+    }
+
+    revenueGrowth.value = overview.growth?.revenue || 0;
+    expensesGrowth.value = overview.growth?.expenses || 0;
+    profitGrowth.value = overview.growth?.profit || 0;
+    paymentsGrowth.value = overview.growth?.payments || 0;
 
     // Mettre à jour le graphique des revenus
     revenueChartSeries.value = [{
       name: 'Revenus',
       data: revenueChart.data
     }];
+    revenueChartOptions.value = {
+      ...revenueChartOptions.value,
+      xaxis: {
+        ...revenueChartOptions.value.xaxis,
+        categories: revenueChart.labels
+      }
+    };
 
     // Mettre à jour le graphique des dépenses
     expensesChartSeries.value = expensesBreakdown.values;
@@ -1021,6 +1135,7 @@ const loadFinanceData = async () => {
 
     // Mettre à jour les méthodes de paiement
     paymentMethodsSeries.value = paymentMethods.percentages;
+    paymentMethodsChartOptions.value.labels = paymentMethods.methods;
 
     // Mettre à jour les transactions récentes
     recentTransactions.value = transactions.transactions;
@@ -1076,106 +1191,65 @@ const totalExpensesFiltered = computed(() => {
   return filteredExpenses.value.reduce((sum, expense) => sum + expense.amount, 0);
 });
 
-// Print Expenses
-const printExpenses = () => {
-  const printContent = document.getElementById('expenses-print-area');
-  if (!printContent) return;
+// Export PDF Expenses
+const exportExpensesPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
 
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
+    // En-tête style HTFasil
+    doc.setFontSize(22);
+    doc.setTextColor(220, 38, 38); // Red-600
+    doc.text('HTFasil', 14, 20);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(107, 114, 128);
+    doc.text('Système de Gestion Financière', 14, 26);
 
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Liste des Dépenses - GadgetZone</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          padding: 20px;
-          color: #000;
-        }
-        h1 {
-          text-align: center;
-          color: #333;
-          margin-bottom: 10px;
-        }
-        .header-info {
-          text-align: center;
-          color: #666;
-          margin-bottom: 30px;
-          font-size: 14px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        th, td {
-          border: 1px solid #ddd;
-          padding: 12px;
-          text-align: left;
-        }
-        th {
-          background-color: #f3f4f6;
-          font-weight: bold;
-          color: #374151;
-        }
-        tr:nth-child(even) {
-          background-color: #f9fafb;
-        }
-        .amount {
-          text-align: right;
-          font-weight: bold;
-          color: #dc2626;
-        }
-        .category {
-          background-color: #e9d5ff;
-          color: #7c3aed;
-          padding: 4px 12px;
-          border-radius: 12px;
-          font-size: 12px;
-          display: inline-block;
-        }
-        tfoot {
-          font-weight: bold;
-          background-color: #f3f4f6;
-        }
-        .print-hidden {
-          display: none;
-        }
-        @media print {
-          .print-hidden {
-            display: none !important;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      <h1>GadgetZone - Liste des Dépenses</h1>
-      <div class="header-info">
-        <p>Date d'impression: ${new Date().toLocaleDateString('fr-FR', { 
-          day: '2-digit', 
-          month: 'long', 
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })}</p>
-        <p>Filtre: ${expenseFilter.value === 'all' ? 'Toutes les catégories' : getCategoryLabel(expenseFilter.value)}</p>
-        <p>Nombre de dépenses: ${filteredExpenses.value.length}</p>
-      </div>
-      ${printContent.innerHTML}
-    </body>
-    </html>
-  `);
+    doc.setFontSize(16);
+    doc.setTextColor(31, 41, 55);
+    doc.text('Rapport des Dépenses', 14, 40);
 
-  printWindow.document.close();
-  printWindow.focus();
-  
-  setTimeout(() => {
-    printWindow.print();
-    printWindow.close();
-  }, 250);
+    // Infos filtre et date
+    doc.setFontSize(10);
+    const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    doc.text(`Date d'export : ${dateStr}`, 14, 48);
+    doc.text(`Période : ${selectedPeriod.value === 'month' ? 'Ce mois' : selectedPeriod.value === 'quarter' ? 'Ce trimestre' : selectedPeriod.value === 'year' ? 'Cette année' : 'Tout'}`, 14, 53);
+    doc.text(`Catégorie : ${expenseFilter.value === 'all' ? 'Toutes' : getCategoryLabel(expenseFilter.value)}`, 14, 58);
+
+    // Tableau des dépenses
+    const tableData = filteredExpenses.value.map(e => [
+        e.date,
+        getCategoryLabel(e.category),
+        e.description,
+        getPaymentMethodLabel(e.paymentMethod),
+        `-${e.amount.toLocaleString()} HTG`
+    ]);
+
+    autoTable(doc, {
+        startY: 65,
+        head: [['Date', 'Catégorie', 'Description', 'Méthode', 'Montant']],
+        body: tableData,
+        headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [249, 250, 251] },
+        margin: { top: 65 },
+        styles: { fontSize: 9 },
+        columnStyles: {
+            4: { halign: 'right', fontStyle: 'bold' }
+        },
+        foot: [[
+            { content: 'TOTAL DES DÉPENSES', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } },
+            { content: `-${totalExpensesFiltered.value.toLocaleString()} HTG`, styles: { halign: 'right', fontStyle: 'bold', textColor: [220, 38, 38] } }
+        ]],
+        didDrawPage: (data) => {
+            // Footer
+            const str = 'Page ' + doc.internal.getNumberOfPages();
+            doc.setFontSize(10);
+            doc.text(str, data.settings.margin.left, doc.internal.pageSize.getHeight() - 10);
+        }
+    });
+
+    const fileName = `Expenses_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
 };
 
 // Delete Expense
@@ -1229,175 +1303,64 @@ const viewExpenseDetails = (expense: any) => {
   showDetailsModal.value = true;
 };
 
-const printExpenseDetails = () => {
-  if (!selectedExpense.value) return;
+const exportExpenseDetailsPDF = () => {
+    if (!selectedExpense.value) return;
 
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(220, 38, 38);
+    doc.text('HTFasil', 14, 20);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(31, 41, 55);
+    doc.text('Fiche de Dépense', 14, 40);
 
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Détails Dépense #${selectedExpense.value.id} - GadgetZone</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          padding: 40px;
-          color: #000;
-          max-width: 800px;
-          margin: 0 auto;
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 40px;
-          border-bottom: 3px solid #dc2626;
-          padding-bottom: 20px;
-        }
-        h1 {
-          color: #dc2626;
-          margin-bottom: 10px;
-        }
-        .amount-box {
-          background: #fee2e2;
-          border: 2px solid #dc2626;
-          border-radius: 12px;
-          padding: 30px;
-          text-align: center;
-          margin: 30px 0;
-        }
-        .amount {
-          font-size: 48px;
-          font-weight: bold;
-          color: #dc2626;
-        }
-        .details-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 20px;
-          margin: 30px 0;
-        }
-        .detail-item {
-          background: #f9fafb;
-          padding: 20px;
-          border-radius: 8px;
-          border: 1px solid #e5e7eb;
-        }
-        .detail-label {
-          font-size: 12px;
-          color: #6b7280;
-          font-weight: 600;
-          text-transform: uppercase;
-          margin-bottom: 8px;
-        }
-        .detail-value {
-          font-size: 16px;
-          color: #111827;
-          font-weight: 500;
-        }
-        .description-box {
-          background: #f9fafb;
-          padding: 20px;
-          border-radius: 8px;
-          margin: 20px 0;
-          border: 1px solid #e5e7eb;
-        }
-        .notes-box {
-          background: #fef3c7;
-          padding: 20px;
-          border-radius: 8px;
-          margin: 20px 0;
-          border: 1px solid #fbbf24;
-        }
-        .recurring-badge {
-          background: #dbeafe;
-          color: #1e40af;
-          padding: 10px 20px;
-          border-radius: 8px;
-          display: inline-block;
-          margin: 20px 0;
-          font-weight: 600;
-        }
-        .footer {
-          margin-top: 40px;
-          padding-top: 20px;
-          border-top: 2px solid #e5e7eb;
-          text-align: center;
-          color: #6b7280;
-          font-size: 12px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>GadgetZone - Détails de la Dépense</h1>
-        <p>ID: #${selectedExpense.value.id}</p>
-        <p>Imprimé le: ${new Date().toLocaleDateString('fr-FR', { 
-          day: '2-digit', 
-          month: 'long', 
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })}</p>
-      </div>
+    doc.setFontSize(10);
+    doc.setTextColor(107, 114, 128);
+    doc.text(`ID Transaction: #${selectedExpense.value.id}`, 14, 48);
+    doc.text(`Généré le: ${new Date().toLocaleString('fr-FR')}`, 14, 53);
 
-      <div class="amount-box">
-        <div style="font-size: 14px; color: #991b1b; margin-bottom: 10px;">Montant de la dépense</div>
-        <div class="amount">-${formatCurrency(selectedExpense.value.amount)}</div>
-      </div>
+    // Infos Principales
+    autoTable(doc, {
+        startY: 60,
+        body: [
+            ['Montant', `-${formatCurrency(selectedExpense.value.amount)}`],
+            ['Date', selectedExpense.value.date],
+            ['Catégorie', getCategoryLabel(selectedExpense.value.category)],
+            ['Méthode', getPaymentMethodLabel(selectedExpense.value.paymentMethod)],
+            ['Statut', selectedExpense.value.status === 'completed' ? 'Complété' : 'En attente'],
+        ],
+        theme: 'plain',
+        styles: { fontSize: 11, cellPadding: 5 },
+        columnStyles: {
+            0: { fontStyle: 'bold', width: 50 },
+            1: { halign: 'right' }
+        }
+    });
 
-      <div class="details-grid">
-        <div class="detail-item">
-          <div class="detail-label">Date</div>
-          <div class="detail-value">${selectedExpense.value.date}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Catégorie</div>
-          <div class="detail-value">${getCategoryLabel(selectedExpense.value.category)}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Méthode de paiement</div>
-          <div class="detail-value">${getPaymentMethodLabel(selectedExpense.value.paymentMethod)}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Statut</div>
-          <div class="detail-value">${selectedExpense.value.status === 'completed' ? 'Complété' : 'En attente'}</div>
-        </div>
-      </div>
+    // Description & Notes
+    doc.setFontSize(12);
+    doc.setTextColor(31, 41, 55);
+    doc.text('Description', 14, (doc as any).lastAutoTable.finalY + 15);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(75, 85, 99);
+    const splitDesc = doc.splitTextToSize(selectedExpense.value.description, 180);
+    doc.text(splitDesc, 14, (doc as any).lastAutoTable.finalY + 22);
 
-      <div class="description-box">
-        <div class="detail-label">Description</div>
-        <div class="detail-value">${selectedExpense.value.description}</div>
-      </div>
+    if (selectedExpense.value.notes) {
+        doc.setFontSize(12);
+        doc.setTextColor(31, 41, 55);
+        doc.text('Notes', 14, (doc as any).lastAutoTable.finalY + 40);
+        
+        doc.setFontSize(10);
+        const splitNotes = doc.splitTextToSize(selectedExpense.value.notes, 180);
+        doc.text(splitNotes, 14, (doc as any).lastAutoTable.finalY + 47);
+    }
 
-      ${selectedExpense.value.notes ? `
-        <div class="notes-box">
-          <div class="detail-label">Notes</div>
-          <div class="detail-value">${selectedExpense.value.notes}</div>
-        </div>
-      ` : ''}
-
-      ${selectedExpense.value.recurring ? `
-        <div class="recurring-badge">
-          🔄 Dépense récurrente (mensuelle)
-        </div>
-      ` : ''}
-
-      <div class="footer">
-        <p>GadgetZone - Système de gestion financière</p>
-        <p>Document confidentiel</p>
-      </div>
-    </body>
-    </html>
-  `);
-
-  printWindow.document.close();
-  printWindow.focus();
-  
-  setTimeout(() => {
-    printWindow.print();
-    printWindow.close();
-  }, 250);
+    doc.save(`Depense_${selectedExpense.value.id}.pdf`);
 };
 
 // Scroll to expenses section
@@ -1415,6 +1378,26 @@ const scrollToExpenses = () => {
 const formatCurrency = (value: number) => {
   return `${value.toLocaleString()} HTG`;
 };
+
+// Watchers pour rechargement automatique
+watch(selectedPeriod, () => {
+  loadFinanceData();
+});
+
+watch(revenuePeriod, async (newVal) => {
+  try {
+    const revenueChart = await financeService.getRevenueChart(newVal);
+    // Mettre à jour uniquement les données du graphique de revenu
+    revenueChartSeries.value = [{
+      name: 'Revenus',
+      data: revenueChart.data
+    }];
+    // Si yearly, on pourrait vouloir changer les labels des mois en années, 
+    // mais le backend renvoie toujours des mois pour le moment.
+  } catch (err) {
+    console.error('Erreur rechargement graphique revenu:', err);
+  }
+});
 
 // Charger les données au montage
 onMounted(() => {
@@ -1446,19 +1429,6 @@ onMounted(() => {
 @media print {
   .print\:hidden {
     display: none !important;
-  }
-  
-  body {
-    background: white;
-  }
-  
-  table {
-    page-break-inside: auto;
-  }
-  
-  tr {
-    page-break-inside: avoid;
-    page-break-after: auto;
   }
 }
 </style>

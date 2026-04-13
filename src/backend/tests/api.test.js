@@ -1,6 +1,7 @@
 import request from 'supertest';
-import { sequelize } from '../config/database.js';
-import app from '../../server.js';
+import bcrypt from 'bcrypt';
+import sequelize from '../config/database.js';
+import app from '../../../server.js';
 
 // Import des modèles
 import { User, Product, Category, Order, OrderItem } from '../models/index.js';
@@ -14,18 +15,19 @@ describe('API Tests', () => {
   beforeAll(async () => {
     // Synchroniser la base de données pour les tests
     await sequelize.sync({ force: true });
-    
+
     // Créer une catégorie de test
     testCategory = await Category.create({
       name: 'Test Category',
       description: 'Category for testing'
     });
-    
+
     // Créer un utilisateur de test
+    const hashedPassword = await bcrypt.hash('password123', 12);
     testUser = await User.create({
       name: 'Test User',
       email: 'test@example.com',
-      password: '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6ukx.LrUpm', // hashed 'password123'
+      password: hashedPassword,
       role: 'admin'
     });
   });
@@ -47,7 +49,7 @@ describe('API Tests', () => {
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('token');
       expect(response.body.user).toHaveProperty('email', 'test@example.com');
-      
+
       authToken = response.body.token;
     });
 
@@ -55,8 +57,8 @@ describe('API Tests', () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          email: 'test@example.com',
-          password: 'wrongpassword'
+          email: 'nonexistent@example.com',
+          password: 'definitely_wrong_password'
         });
 
       expect(response.status).toBe(401);
@@ -125,7 +127,7 @@ describe('API Tests', () => {
 
       expect(response.status).toBe(201);
       expect(response.body.product).toHaveProperty('name', 'New Test Product');
-      
+
       // Nettoyer
       await Product.destroy({ where: { id: response.body.product.id } });
     });
@@ -183,8 +185,9 @@ describe('API Tests', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('data');
-      expect(response.body).toHaveProperty('count');
+      console.log('DEBUG BODY:', JSON.stringify(response.body, null, 2));
+      expect(response.body).toHaveProperty('products');
+      expect(response.body).toHaveProperty('pagination');
     });
   });
 

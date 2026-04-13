@@ -52,7 +52,12 @@ const Expense = sequelize.define('Expense', {
     }
 }, {
     tableName: 'expenses',
-    timestamps: false
+    timestamps: false,
+    indexes: [
+        { fields: ['category'] },
+        { fields: ['date'] },
+        { fields: ['status'] }
+    ]
 });
 
 export default Expense;

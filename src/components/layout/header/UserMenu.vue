@@ -93,7 +93,9 @@
 import { ChevronDownIcon, InfoCircleIcon, LogoutIcon, SettingsIcon } from '@/icons'
 import { onMounted, onUnmounted, ref, watch, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 
 type Language = {
   code: 'fr' | 'en';
@@ -103,7 +105,8 @@ type Language = {
 
 const authStore = useAuthStore()
 const router = useRouter()
-const locale = ref('fr')
+const { locale: i18nLocale } = useI18n()
+const locale = ref(i18nLocale.value)
 
 const dropdownOpen = ref(false)
 const languageDropdownOpen = ref(false)
@@ -141,9 +144,17 @@ const closeDropdown = () => {
 }
 
 const changeLanguage = (lang: 'fr' | 'en') => {
+  const settingsStore = useSettingsStore()
   locale.value = lang
+  i18nLocale.value = lang
   localStorage.setItem('userLanguage', lang)
   document.documentElement.lang = lang
+  
+  // Update store to keep it in sync
+  if (settingsStore.general) {
+    settingsStore.general.language = lang
+  }
+  
   languageDropdownOpen.value = false
 }
 

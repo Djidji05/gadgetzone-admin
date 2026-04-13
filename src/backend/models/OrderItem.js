@@ -34,7 +34,13 @@ const OrderItem = sequelize.define('OrderItem', {
   }
 }, {
   tableName: 'order_items',
-  timestamps: false
+  timestamps: false,
+  indexes: [
+    { fields: ['order_id'] },
+    { fields: ['product_id'] },
+    { fields: ['status'] },
+    { fields: ['created_at'] }
+  ]
 });
 
 export default OrderItem;

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-console.log('🚀 Démarrage du backend GadgetZone...');
+console.log('🚀 Démarrage du backend HTFasil...');
 
 // Démarrer le serveur backend
 const backendProcess = spawn('node', ['server.js'], {

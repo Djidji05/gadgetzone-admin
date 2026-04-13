@@ -18,14 +18,6 @@
           </svg>
           <span class="hidden sm:inline">Actualiser</span>
         </button>
-        <button 
-          class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-          </svg>
-          <span class="hidden sm:inline">Ajouter un client</span>
-        </button>
       </div>
     </div>
 
@@ -76,18 +68,18 @@
         </div>
       </div>
 
-      <!-- Clients VIP -->
+      <!-- Vendeurs -->
       <div class="group sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 bg-transparent dark:bg-transparent sm:dark:bg-white/[0.03] hover:shadow-lg transition-all duration-300 hover:border-amber-300 dark:hover:border-amber-700">
         <div class="flex items-center justify-between">
           <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl dark:from-amber-900/30 dark:to-amber-800/30 group-hover:scale-110 transition-transform duration-300">
             <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
           </div>
         </div>
         <div class="mt-4">
-          <p class="text-sm text-gray-500 dark:text-gray-400">Clients VIP</p>
-          <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ vipUsers }}</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Vendeurs</p>
+          <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ sellerUsers }}</p>
         </div>
       </div>
     </div>
@@ -138,6 +130,7 @@
               <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
               <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rôle</th>
               <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Inscription</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Statut</th>
               <th scope="col" class="relative px-6 py-4"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
@@ -165,7 +158,7 @@
                   </div>
                   <div>
                     <div class="text-sm font-medium text-gray-900 dark:text-white">{{ user?.name || 'Nom inconnu' }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">ID: #{{ user?.id }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">ID: {{ formatClientId(user?.id) }}</div>
                   </div>
                 </div>
               </td>
@@ -183,6 +176,19 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900 dark:text-white">{{ formatDate(user?.created_at) }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span 
+                  :class="[
+                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold',
+                    (user?.status === 'Inactif') 
+                      ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 ring-1 ring-gray-600/20'
+                      : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 ring-1 ring-emerald-600/20'
+                  ]"
+                >
+                  <span :class="['w-1.5 h-1.5 rounded-full', (user?.status === 'Inactif') ? 'bg-gray-400' : 'bg-emerald-500']"></span>
+                  {{ user?.status || 'Actif' }}
+                </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex justify-end items-center gap-2">
@@ -203,15 +209,7 @@
                   >
                     <i class="far fa-comment text-lg"></i>
                   </button>
-                  <button 
-                    @click="editUser(user?.id)" 
-                    class="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all"
-                    title="Modifier"
-                  >
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
+
                   <button 
                     @click="deleteUser(user?.id)" 
                     class="p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
@@ -263,6 +261,10 @@
               </div>
               <div class="truncate">
                 <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ user?.name || 'Nom inconnu' }}</div>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                   <span :class="['w-1.5 h-1.5 rounded-full', (user?.status === 'Inactif') ? 'bg-gray-400' : 'bg-emerald-500']"></span>
+                   <span class="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ user?.status || 'Actif' }}</span>
+                </div>
               </div>
             </div>
             
@@ -270,9 +272,7 @@
               <button @click="viewUser(user?.id)" class="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
               </button>
-              <button @click="editUser(user?.id)" class="p-1.5 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-              </button>
+
               <button @click="deleteUser(user?.id)" class="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
               </button>
@@ -363,8 +363,11 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { userService } from '@/services/api';
+import { useUIStore } from '@/stores/ui';
+import { formatClientId } from '@/utils/formatters';
 
 const router = useRouter();
+const uiStore = useUIStore();
 const users = ref<any[]>([]);
 const loading = ref(false);
 const error = ref('');
@@ -378,15 +381,9 @@ const loadUsers = async () => {
   try {
     loading.value = true;
     error.value = '';
-    console.log('📡 Chargement des clients depuis l\'API...');
-    
     const data = await userService.getAll();
     users.value = data;
-    
-    console.log('✅ Clients chargés depuis la base de données:', data.length, 'clients');
-    console.log('Données:', data);
   } catch (err: any) {
-    console.error('❌ Erreur lors du chargement des clients:', err);
     error.value = err.message || 'Erreur lors du chargement des clients. Vérifiez que le serveur backend est démarré.';
     users.value = [];
   } finally {
@@ -426,7 +423,7 @@ const totalPages = computed(() => {
 });
 
 const activeUsers = computed(() => users.value.filter(u => u.status === 'Actif' || !u.status).length);
-const vipUsers = computed(() => users.value.filter(u => u.role === 'VIP' || u.role === 'vip').length);
+const sellerUsers = computed(() => users.value.filter(u => u.role === 'seller' || u.role === 'vendeur').length);
 const newUsersThisMonth = computed(() => {
   const now = new Date();
   const thisMonth = now.getMonth();
@@ -471,27 +468,30 @@ const viewUser = (id: number) => {
 };
 
 const editUser = (id: number) => {
-  // Navigation vers la page d'édition ou ouverture d'un modal
-  console.log('Modifier client:', id)
-}
+  router.push(`/clients/${id}`);
+};
 
 const contactUser = (userId: number) => {
   router.push({
     path: '/messages',
     query: { userId: userId.toString() }
-  })
-}
+  });
+};
 
 const deleteUser = async (id: number) => {
-  if (confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
-    try {
-      await userService.delete(id);
-      console.log('✅ Client supprimé');
-      await loadUsers(); // Recharger la liste
-    } catch (err) {
-      console.error('❌ Erreur lors de la suppression:', err);
-      alert('Erreur lors de la suppression du client');
-    }
+  const confirmed = await uiStore.confirm({
+    title: 'Supprimer le client',
+    message: 'Êtes-vous sûr de vouloir supprimer ce client ? Cette action est irréversible.',
+    confirmText: 'Supprimer',
+    type: 'danger'
+  });
+  if (!confirmed) return;
+  try {
+    await userService.delete(id);
+    uiStore.addToast('Client supprimé avec succès', 'success');
+    await loadUsers();
+  } catch (err: any) {
+    uiStore.addToast(err.message || 'Erreur lors de la suppression du client', 'error');
   }
 };
 

@@ -25,6 +25,21 @@ import Conversation from './Conversation.js';
 import Message from './Message.js';
 import Promotion from './Promotion.js';
 import Deposit from './Deposit.js';
+import Referral from './Referral.js';
+import Dispute from './Dispute.js';
+import DisputeMessage from './DisputeMessage.js';
+import Refund from './Refund.js';
+import Setting from './Setting.js';
+import Offer from './Offer.js';
+import AcademyCourse from './AcademyCourse.js';
+import Boost from './Boost.js';
+import ForumPost from './ForumPost.js';
+import ForumComment from './ForumComment.js';
+import ForumLike from './ForumLike.js';
+import Wallet from './Wallet.js';
+import StoreFollower from './StoreFollower.js';
+import OrderTracking from './OrderTracking.js';
+
 
 // Définir les associations
 Order.hasMany(OrderItem, { foreignKey: 'order_id', as: 'items' });
@@ -57,9 +72,17 @@ Product.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
 Category.hasMany(Product, { foreignKey: 'category_id', as: 'products' });
 Product.belongsTo(Category, { foreignKey: 'category_id', as: 'category' });
 
+Category.hasMany(Category, { foreignKey: 'parentId', as: 'subcategories' });
+Category.belongsTo(Category, { foreignKey: 'parentId', as: 'parent' });
+
 // Store associations
 User.hasOne(Store, { foreignKey: 'userId', as: 'store' });
 Store.belongsTo(User, { foreignKey: 'userId', as: 'owner' });
+
+// Followers associations
+User.belongsToMany(Store, { through: StoreFollower, foreignKey: 'userId', as: 'followedStores' });
+Store.belongsToMany(User, { through: StoreFollower, foreignKey: 'storeId', as: 'followers' });
+
 
 Store.hasMany(Product, { foreignKey: 'storeId', as: 'products' });
 Product.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
@@ -67,11 +90,28 @@ Product.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
 Store.hasMany(Payout, { foreignKey: 'storeId', as: 'payouts' });
 Payout.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
 
+Store.hasOne(Wallet, { foreignKey: 'storeId', as: 'wallet' });
+Wallet.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
+
 Store.hasMany(Promotion, { foreignKey: 'storeId', as: 'promotions' });
 Promotion.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
 
 Store.hasMany(Deposit, { foreignKey: 'storeId', as: 'deposits' });
 Deposit.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
+
+// Logistics associations (Phase 13)
+Store.hasMany(Order, { foreignKey: 'store_id', as: 'store_orders' });
+Order.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
+
+Order.hasMany(OrderTracking, { foreignKey: 'order_id', as: 'trackingHistory' });
+OrderTracking.belongsTo(Order, { foreignKey: 'order_id' });
+
+// Offer associations (The core of multi-vendor Buy Box)
+Product.hasMany(Offer, { foreignKey: 'productId', as: 'offers' });
+Offer.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
+
+Store.hasMany(Offer, { foreignKey: 'storeId', as: 'offers' });
+Offer.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
 
 // Cart associations
 Cart.hasMany(CartItem, { foreignKey: 'cartId' });
@@ -103,10 +143,110 @@ Message.belongsTo(Conversation, { foreignKey: 'conversation_id' });
 User.hasMany(Message, { foreignKey: 'sender_id', as: 'sent_messages' });
 Message.belongsTo(User, { foreignKey: 'sender_id', as: 'sender' });
 
+// Referral associations
+User.hasMany(Referral, { foreignKey: 'ambassador_id', as: 'referrals_made' });
+Referral.belongsTo(User, { foreignKey: 'ambassador_id', as: 'ambassador' });
+
+User.hasOne(Referral, { foreignKey: 'referred_user_id', as: 'referral_source' });
+Referral.belongsTo(User, { foreignKey: 'referred_user_id', as: 'referred_user' });
+
+Order.hasOne(Referral, { foreignKey: 'order_id' });
+Referral.belongsTo(Order, { foreignKey: 'order_id' });
+
+// Dispute associations
+Order.hasMany(Dispute, { foreignKey: 'order_id', as: 'disputes' });
+Dispute.belongsTo(Order, { foreignKey: 'order_id' });
+
+User.hasMany(Dispute, { foreignKey: 'user_id', as: 'disputes_opened' });
+Dispute.belongsTo(User, { foreignKey: 'user_id', as: 'customer' });
+
+Dispute.hasMany(DisputeMessage, { foreignKey: 'dispute_id', as: 'messages' });
+DisputeMessage.belongsTo(Dispute, { foreignKey: 'dispute_id' });
+
+User.hasMany(DisputeMessage, { foreignKey: 'sender_id', as: 'dispute_messages' });
+DisputeMessage.belongsTo(User, { foreignKey: 'sender_id', as: 'sender' });
+
+// Refund associations
+Order.hasOne(Refund, { foreignKey: 'order_id', as: 'refund' });
+Refund.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+
+User.hasMany(Refund, { foreignKey: 'user_id', as: 'refunds' });
+Refund.belongsTo(User, { foreignKey: 'user_id', as: 'customer' });
+
+Refund.belongsTo(User, { foreignKey: 'processed_by', as: 'processor' });
+
+// Boost associations
+Store.hasMany(Boost, { foreignKey: 'storeId', as: 'boosts' });
+Boost.belongsTo(Store, { foreignKey: 'storeId', as: 'store' });
+
+Product.hasMany(Boost, { foreignKey: 'productId', as: 'boosts' });
+Boost.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
+
+// Community Forum associations
+Store.hasMany(ForumPost, { foreignKey: 'storeId', as: 'forumPosts' });
+ForumPost.belongsTo(Store, { foreignKey: 'storeId', as: 'author' });
+
+ForumPost.hasMany(ForumComment, { foreignKey: 'postId', as: 'comments' });
+ForumComment.belongsTo(ForumPost, { foreignKey: 'postId', as: 'post' });
+
+Store.hasMany(ForumComment, { foreignKey: 'storeId', as: 'forumComments' });
+ForumComment.belongsTo(Store, { foreignKey: 'storeId', as: 'author' });
+
+ForumPost.hasMany(ForumLike, { foreignKey: 'postId', as: 'likes' });
+ForumLike.belongsTo(ForumPost, { foreignKey: 'postId', as: 'post' });
+
+Store.hasMany(ForumLike, { foreignKey: 'storeId', as: 'forumLikes' });
+ForumLike.belongsTo(Store, { foreignKey: 'storeId', as: 'voter' });
+
+
+// Hooks de Dénormalisation pour la performance "Rocket"
+const updateProductBuyBox = async (productId) => {
+  if (!productId) return;
+  try {
+    const bestOffer = await Offer.findOne({
+      where: { productId, is_active: true, stock: { [sequelize.Sequelize.Op.gt]: 0 } },
+      order: [['sales_count', 'DESC'], ['price', 'ASC']],
+      attributes: ['price']
+    });
+    await Product.update(
+      { buy_box_price: bestOffer ? bestOffer.price : null },
+      { where: { id: productId } }
+    );
+  } catch (error) {
+    console.error(`❌ Hook BuyBox Error [Product:${productId}]:`, error.message);
+  }
+};
+
+const updateProductSalesCount = async (productId) => {
+  if (!productId) return;
+  try {
+    const totalSales = await OrderItem.sum('quantity', {
+      where: { product_id: productId }
+    });
+    await Product.update(
+      { sales_count: totalSales || 0 },
+      { where: { id: productId } }
+    );
+  } catch (error) {
+    console.error(`❌ Hook SalesCount Error [Product:${productId}]:`, error.message);
+  }
+};
+
+// Hooks Offer -> Product.buy_box_price
+Offer.afterCreate(async (offer) => { await updateProductBuyBox(offer.productId); });
+Offer.afterUpdate(async (offer) => { await updateProductBuyBox(offer.productId); });
+Offer.afterDestroy(async (offer) => { await updateProductBuyBox(offer.productId); });
+
+// Hooks OrderItem -> Product.sales_count
+OrderItem.afterCreate(async (item) => { await updateProductSalesCount(item.product_id); });
+OrderItem.afterUpdate(async (item) => { await updateProductSalesCount(item.product_id); });
+OrderItem.afterDestroy(async (item) => { await updateProductSalesCount(item.product_id); });
+
 const db = {
   sequelize,
   Sequelize: sequelize.Sequelize,
   Product,
+
   User,
   Address,
   Order,
@@ -131,8 +271,23 @@ const db = {
   Conversation,
   Message,
   Promotion,
-  Deposit
+  Deposit,
+  Referral,
+  Dispute,
+  DisputeMessage,
+  Refund,
+  Setting,
+  Offer,
+  Boost,
+  ForumPost,
+  ForumComment,
+  ForumLike,
+  Wallet,
+  StoreFollower,
+  OrderTracking
 };
 
-export { Product, User, Address, Order, OrderItem, Category, Cart, CartItem, Brand, Expense, Newsletter, Campaign, Page, BlogPost, Role, Notification, Review, Store, Payout, OrderLog, Banner, HomepageConfig, Conversation, Message, Promotion, Deposit };
+
+export { sequelize, Product, User, Address, Order, OrderItem, Category, Cart, CartItem, Brand, Expense, Newsletter, Campaign, Page, BlogPost, Role, Notification, Review, Store, Payout, OrderLog, Banner, HomepageConfig, Conversation, Message, Promotion, Deposit, Referral, Dispute, DisputeMessage, Refund, Setting, Offer, Boost, ForumPost, ForumComment, ForumLike, Wallet, StoreFollower, OrderTracking };
+
 export default db;

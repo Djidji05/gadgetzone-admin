@@ -122,6 +122,17 @@
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex justify-end items-center gap-2">
                   <button 
+                    v-if="order.status === 'pending'"
+                    @click="updateOrderStatus(order.id, 'processing')" 
+                    class="p-2 text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-all"
+                    title="Prendre en charge (En cours)"
+                  >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </button>
+                  <button 
                     v-if="order.status === 'processing'"
                     @click="updateOrderStatus(order.id, 'shipped')" 
                     class="p-2 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
@@ -192,6 +203,13 @@
 
             <div class="flex items-center gap-1 flex-shrink-0">
               <!-- Mobile Actions Simplified -->
+              <button 
+                v-if="order.status === 'pending'"
+                @click="updateOrderStatus(order.id, 'processing')" 
+                class="p-1.5 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              </button>
               <button 
                 v-if="order.status === 'processing'"
                 @click="updateOrderStatus(order.id, 'shipped')" 
@@ -314,9 +332,9 @@ const loadOrders = async () => {
   try {
     loading.value = true;
     const response = await orderService.getOrders();
-    // Filtrer uniquement les commandes en cours (processing, shipped)
+    // Filtrer uniquement les commandes en attente et en cours (pending, processing, shipped)
     orders.value = (response.orders || []).filter(order => 
-      order.status === 'processing' || order.status === 'shipped'
+      order.status === 'pending' || order.status === 'processing' || order.status === 'shipped'
     );
   } catch (err) {
     error.value = 'Erreur lors du chargement des commandes';

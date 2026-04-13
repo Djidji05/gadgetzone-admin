@@ -4,7 +4,7 @@
       <!-- Header -->
       <div class="text-center">
         <h2 class="text-3xl font-bold text-gray-900 dark:text-white">
-          Connexion GadgetZone
+          Connexion HTFasil
         </h2>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Accédez à votre dashboard d'administration
@@ -26,7 +26,7 @@
               required
               :disabled="authStore.isLoading"
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="admin@gadgetzone.com"
+              placeholder="admin@htfasil.com"
             />
           </div>
         </div>
@@ -94,7 +94,7 @@
         </h3>
         <div class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
           <div>
-            <strong>Admin:</strong> admin@gadgetzone.com / password123
+            <strong>Admin:</strong> admin@htfasil.com / password123
           </div>
           <div>
             <strong>Gestionnaire:</strong> (Créer un compte avec ce rôle)

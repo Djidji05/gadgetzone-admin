@@ -1,4 +1,4 @@
-# 🎉 Améliorations Finales Complétées - GadgetZone Admin
+# 🎉 Améliorations Finales Complétées - HTFasil Admin
 
 ## ✅ Implémenté
 

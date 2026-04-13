@@ -5,7 +5,7 @@ import sequelize from '../config/database.js';
 
 const createAdmin = async () => {
     try {
-        const email = 'admin@gadgetzone.com';
+        const email = 'admin@htfasil.com';
         const password = 'Admin123!';
         const name = 'Admin System';
 

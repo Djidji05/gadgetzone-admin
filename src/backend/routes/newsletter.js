@@ -1,6 +1,7 @@
 import express from 'express';
 import Newsletter from '../models/Newsletter.js';
 import { Op } from 'sequelize';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -63,8 +64,8 @@ router.post('/unsubscribe', async (req, res) => {
     }
 });
 
-// Get all subscribers (admin only - add auth middleware later)
-router.get('/subscribers', async (req, res) => {
+// Get all subscribers (admin only)
+router.get('/subscribers', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const subscribers = await Newsletter.findAll({
             where: { isActive: true },
@@ -86,7 +87,7 @@ router.get('/subscribers', async (req, res) => {
 });
 
 // Get newsletter stats (admin only)
-router.get('/stats', async (req, res) => {
+router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const totalSubscribers = await Newsletter.count();
         const activeSubscribers = await Newsletter.count({ where: { isActive: true } });

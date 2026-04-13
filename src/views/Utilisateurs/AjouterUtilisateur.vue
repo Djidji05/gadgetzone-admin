@@ -190,9 +190,11 @@ import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
 import { authService } from '@/services/api';
+import { useUIStore } from '@/stores/ui';
 
 const router = useRouter();
 const route = useRoute();
+const uiStore = useUIStore();
 const currentPageTitle = ref('Ajouter Utilisateur');
 const isEditing = ref(false);
 const loading = ref(false);
@@ -237,7 +239,7 @@ const loadUser = async (id: number) => {
     };
   } catch (error) {
     console.error('Erreur chargement utilisateur:', error);
-    alert('Impossible de charger les informations de l\'utilisateur');
+    uiStore.addToast('Impossible de charger les informations de l\'utilisateur', 'error');
     router.push('/utilisateurs/liste');
   } finally {
     loading.value = false;
@@ -250,39 +252,40 @@ const submitForm = async () => {
     
     // Validation basique
     if (!formData.value.firstName || !formData.value.lastName || !formData.value.email) {
-      alert('Veuillez remplir les champs obligatoires (Prénom, Nom, Email)');
+      uiStore.addToast('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
     if (!isEditing.value && !formData.value.password) {
-      alert('Le mot de passe est obligatoire pour la création');
+      uiStore.addToast('Le mot de passe est obligatoire pour la création', 'warning');
       return;
     }
 
     const userData: any = {
-      name: `${formData.value.firstName} ${formData.value.lastName}`,
+      firstName: formData.value.firstName,
+      lastName: formData.value.lastName,
       email: formData.value.email,
       phone: formData.value.phone,
-      role: formData.value.role === 'gestionnaire' ? 'user' : 'admin',
+      role: formData.value.role,
       password: formData.value.password || undefined
     };
 
     if (isEditing.value && userId.value) {
       // Mode Mise à jour
       await authService.updateUser(userId.value, userData);
-      alert('Utilisateur modifié avec succès !');
+      uiStore.addToast('Utilisateur modifié avec succès', 'success');
       router.push('/utilisateurs/liste');
     } else {
       // Mode Création
       await authService.createUser(userData);
-      alert('Utilisateur créé avec succès !');
+      uiStore.addToast('Utilisateur créé avec succès', 'success');
       router.push('/utilisateurs/liste');
     }
     
   } catch (error: any) {
     console.error('Erreur sauvegarde utilisateur:', error);
     const message = error.response?.data?.error || error.response?.data?.message || 'Une erreur est survenue';
-    alert(message);
+    uiStore.addToast(message, 'error');
   } finally {
     loading.value = false;
   }

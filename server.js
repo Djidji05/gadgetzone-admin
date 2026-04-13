@@ -16,12 +16,29 @@ import { generalLimiter } from './src/backend/middleware/rateLimiter.js';
 import { swaggerSpec, swaggerUi } from './src/backend/config/swagger.js';
 import { initSentry, sentryRequestHandler, sentryTracingHandler, sentryErrorHandler } from './src/backend/config/sentry.js';
 
+// Background Workers
+import './src/backend/workers/emailWorker.js';
+import './src/backend/workers/notificationWorker.js';
+import './src/backend/workers/paymentReconciliationWorker.js';
+
 // Configuration
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// Basic environment configuration
 dotenv.config();
 dotenv.config({ path: '.env.backend' });
-dotenv.config({ path: '.env.backend' });
+
+// Global Error Handlers for process stability
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🔥 UNHANDLED REJECTION:', reason);
+  // Optional: Capture in Sentry or a log file
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('💥 UNCAUGHT EXCEPTION:', error);
+  // Give some time for logs to flush before exiting
+  setTimeout(() => process.exit(1), 1000);
+});
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
@@ -43,12 +60,19 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(cookieParser());
-app.use(morgan('combined', {
+app.use(morgan('dev', {
   skip: (req) => req.method === 'GET' && req.url.includes('/api/notifications')
 }));
 app.use(advancedLogger);
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://localhost:5174', 'http://localhost:5175'], // Frontend URLs
+  origin: [
+    'http://localhost:5173', 
+    'http://localhost:5174', 
+    'https://htfasil.com', 
+    'https://manage.htfasil.com',
+    'http://htfasil.com',
+    'http://manage.htfasil.com'
+  ], 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -65,7 +89,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 // Swagger API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'GadgetZone API Documentation'
+  customSiteTitle: 'HTFasil API Documentation'
 }));
 
 // Servir les fichiers statiques du frontend en production
@@ -75,25 +99,6 @@ if (process.env.NODE_ENV === 'production') {
 
 // Routes API
 app.use('/api', apiRoutes);
-
-// Route de santé
-app.get('/health', async (req, res) => {
-  try {
-    const health = await healthCheck();
-    res.json({
-      status: 'OK',
-      timestamp: new Date().toISOString(),
-      ...health
-    });
-  } catch (error) {
-    logError(error, req, { type: 'Health Check Error' });
-    res.status(500).json({
-      status: 'ERROR',
-      timestamp: new Date().toISOString(),
-      message: 'Health check failed'
-    });
-  }
-});
 
 // Middleware de gestion des erreurs
 app.use(asyncErrorLogger);
@@ -117,6 +122,25 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Route de santé
+app.get('/health', async (req, res) => {
+  try {
+    const { healthCheck } = await import('./src/backend/middleware/logging.js');
+    const health = await healthCheck();
+    res.json({
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      ...health
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      message: 'Health check failed'
+    });
+  }
+});
+
 // Catch-all handler pour SPA
 app.get('*', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
@@ -130,7 +154,10 @@ app.get('*', (req, res) => {
 const startServer = async () => {
   try {
     // Initialiser la base de données
-    await initDatabase();
+    const dbInitialized = await initDatabase();
+    if (!dbInitialized) {
+      throw new Error('Database initialization failed');
+    }
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Backend server running on port ${PORT}`);
@@ -143,6 +170,8 @@ const startServer = async () => {
   }
 };
 
-startServer();
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
 
 export default app;

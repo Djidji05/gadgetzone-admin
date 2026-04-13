@@ -45,7 +45,12 @@ const Payout = sequelize.define('Payout', {
     }
 }, {
     tableName: 'payouts',
-    timestamps: false
+    timestamps: false,
+    indexes: [
+        { fields: ['storeId'] },
+        { fields: ['status'] },
+        { fields: ['created_at'] }
+    ]
 });
 
 export default Payout;

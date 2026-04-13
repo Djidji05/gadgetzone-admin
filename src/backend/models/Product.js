@@ -16,15 +16,18 @@ const Product = sequelize.define('Product', {
   },
   price: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false
+    allowNull: false,
+    comment: '@deprecated: Use Offer model for multi-vendor pricing'
   },
   original_price: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: true
+    allowNull: true,
+    comment: '@deprecated: Use Offer model'
   },
   stock: {
     type: DataTypes.INTEGER,
-    defaultValue: 0
+    defaultValue: 0,
+    comment: '@deprecated: Use Offer model'
   },
   category_id: {
     type: DataTypes.INTEGER,
@@ -36,7 +39,8 @@ const Product = sequelize.define('Product', {
   },
   storeId: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    comment: '@deprecated: Products are now global, multi-vendeurs via Offer'
   },
   image_url: {
     type: DataTypes.TEXT
@@ -61,9 +65,43 @@ const Product = sequelize.define('Product', {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
+  has_variants: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  variants: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
+  buy_box_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: null
+  },
+  sales_count: {
+
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  average_rating: {
+    type: DataTypes.DECIMAL(3, 2),
+    defaultValue: 0.0
+  },
+  review_count: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  is_sponsored: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
   status: {
     type: DataTypes.STRING,
     defaultValue: 'active' // 'active', 'deleted'
+  },
+  moderation_status: {
+    type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+    defaultValue: 'pending' // New products require approval
   },
   admin_note: {
     type: DataTypes.TEXT,
@@ -79,7 +117,19 @@ const Product = sequelize.define('Product', {
   }
 }, {
   tableName: 'products',
-  timestamps: false
+  timestamps: false,
+  indexes: [
+    { fields: ['status', 'created_at'] }, // 🚀 Accélère les stats de nouveaux produits
+    { fields: ['price'] },
+    { fields: ['category_id'] },
+    { fields: ['is_featured'] },
+    { fields: ['is_new'] },
+    { fields: ['storeId'] },
+    { 
+      fields: ['is_sponsored', 'average_rating', 'sales_count', 'created_at'],
+      name: 'products_super_sort_idx'
+    }
+  ]
 });
 
 export default Product;

@@ -115,12 +115,15 @@ export const validateProduct = (req, res, next) => {
     }
   }
 
-  // Validation de l'URL de l'image si présente
+  // Validation de l'URL de l'image si présente (Accepte URL complète ou chemin relatif /uploads)
   if (req.body.image_url) {
-    try {
-      new URL(req.body.image_url);
-    } catch {
-      errors.push('L\'URL de l\'image n\'est pas valide');
+    const isRelativePath = req.body.image_url.startsWith('/');
+    if (!isRelativePath) {
+      try {
+        new URL(req.body.image_url);
+      } catch {
+        errors.push('L\'URL de l\'image n\'est pas valide');
+      }
     }
   }
 

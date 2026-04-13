@@ -1,20 +1,22 @@
-import sequelize from '../config/database.js';
+import { Category } from '../models/index.js';
 
 async function checkCategories() {
     try {
-        const [categories] = await sequelize.query('SELECT id, name FROM categories ORDER BY id');
-
-        console.log('\n📂 Categories in database:');
-        console.log('==========================');
-        categories.forEach(cat => {
-            console.log(`ID: ${cat.id} | Name: ${cat.name}`);
-        });
-        console.log('==========================\n');
-
-        process.exit(0);
+        console.log('--- Categories Diagnostic ---');
+        const categories = await Category.findAll();
+        console.log(`Found ${categories.length} categories.`);
+        if (categories.length > 0) {
+            console.log('Sample:', categories[0].toJSON());
+        } else {
+            console.log('Table is empty.');
+        }
     } catch (error) {
-        console.error('❌ Error:', error.message);
-        process.exit(1);
+        console.error('❌ Error querying categories:', error);
+        if (error.name === 'SequelizeDatabaseError') {
+            console.error('Database Error details:', error.parent);
+        }
+    } finally {
+        process.exit();
     }
 }
 

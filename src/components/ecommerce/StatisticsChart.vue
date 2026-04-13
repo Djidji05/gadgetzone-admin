@@ -12,23 +12,6 @@
         </p>
       </div>
 
-      <div class="relative">
-        <div class="inline-flex items-center gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-900">
-          <button
-            v-for="option in options"
-            :key="option.value"
-            @click="handlePeriodChange(option.value)"
-            :class="[
-              selected === option.value
-                ? 'shadow-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800'
-                : 'text-gray-500 dark:text-gray-400',
-              'px-3 py-2 font-medium rounded-md text-sm hover:text-gray-900 hover:shadow-sm dark:hover:bg-gray-800 dark:hover:text-white transition-all'
-            ]"
-          >
-            {{ option.label }}
-          </button>
-        </div>
-      </div>
     </div>
 
     <div v-if="isLoading" class="flex items-center justify-center py-12">
@@ -62,20 +45,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, inject, watch } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
-import api from '@/services/api'
+import { api } from '@/services/api'
+import { useTheme } from '../layout/ThemeProvider.vue'
+import { useAuthStore } from '@/stores/auth'
 
-const options = [
-  { value: 'monthly', label: 'Mensuel' },
-  { value: 'quarterly', label: 'Trimestriel' },
-  { value: 'annually', label: 'Annuel' }
-]
+const { isDarkMode } = useTheme() as any
+const authStore = useAuthStore()
 
-const selected = ref('monthly')
+const dashboardPeriod = inject<any>('dashboardPeriod', ref('30days'))
+
 const isLoading = ref(false)
 const salesData = ref<number[]>([])
 const revenueData = ref<number[]>([])
+const categories = ref<string[]>([])
 
 const series = computed(() => [
   {
@@ -88,16 +72,6 @@ const series = computed(() => [
   }
 ])
 
-const categories = computed(() => {
-  if (selected.value === 'monthly') {
-    return ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
-  } else if (selected.value === 'quarterly') {
-    return ['T1', 'T2', 'T3', 'T4']
-  } else {
-    return ['2024']
-  }
-})
-
 const chartOptions = computed<any>(() => ({
   legend: {
     show: false,
@@ -106,7 +80,7 @@ const chartOptions = computed<any>(() => ({
   },
   colors: ['#3B82F6', '#A78BFA'],
   chart: {
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'Outfit, sans-serif',
     type: 'area',
     toolbar: {
       show: false
@@ -145,7 +119,7 @@ const chartOptions = computed<any>(() => ({
         show: true
       }
     },
-    borderColor: '#E5E7EB',
+    borderColor: isDarkMode.value ? '#1F2A37' : '#E5E7EB',
     strokeDashArray: 5
   },
   dataLabels: {
@@ -160,7 +134,7 @@ const chartOptions = computed<any>(() => ({
         return val.toFixed(0)
       }
     },
-    theme: 'dark'
+    theme: isDarkMode.value ? 'dark' : 'light'
   },
   xaxis: {
     type: 'category',
@@ -173,7 +147,7 @@ const chartOptions = computed<any>(() => ({
     },
     labels: {
       style: {
-        colors: '#9CA3AF',
+        colors: isDarkMode.value ? '#98A2B3' : '#9CA3AF',
         fontSize: '12px'
       }
     }
@@ -186,7 +160,7 @@ const chartOptions = computed<any>(() => ({
     },
     labels: {
       style: {
-        colors: '#9CA3AF',
+        colors: isDarkMode.value ? '#98A2B3' : '#9CA3AF',
         fontSize: '12px'
       },
       formatter: function (val: number) {
@@ -197,42 +171,57 @@ const chartOptions = computed<any>(() => ({
 }))
 
 const fetchSalesData = async (period: string) => {
+  if (!authStore.isAuthenticated) {
+    console.log('🛑 Skip fetchSalesData: User not authenticated')
+    return
+  }
+
   try {
     isLoading.value = true
     console.log('📊 Fetching sales data for period:', period)
     
-    const response = await (api as any).get('/stats/sales-data', {
+    const response = await api.get('/stats/sales-data', {
       params: { period, year: new Date().getFullYear() }
     })
     
     console.log('✅ Sales data received:', response.data)
     salesData.value = response.data.sales || []
     revenueData.value = response.data.revenue || []
+    categories.value = response.data.labels || []
   } catch (error) {
     console.error('❌ Error fetching sales data:', error)
-    // Fallback to mock data
-    if (period === 'monthly') {
+    if (period === 'monthly' || period === '30days') {
       salesData.value = [180, 195, 175, 165, 185, 170, 190, 215, 240, 225, 255, 245]
       revenueData.value = [45, 35, 55, 45, 60, 50, 75, 105, 120, 130, 160, 150]
-    } else if (period === 'quarterly') {
-      salesData.value = [550, 520, 645, 725]
-      revenueData.value = [135, 160, 230, 410]
+      categories.value = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
     } else {
-      salesData.value = [2440]
-      revenueData.value = [935]
+      salesData.value = [550, 520, 645]
+      revenueData.value = [135, 160, 230]
+      categories.value = ['A', 'B', 'C']
     }
   } finally {
     isLoading.value = false
   }
 }
 
-const handlePeriodChange = (period: string) => {
-  selected.value = period
-  fetchSalesData(period)
-}
+watch(dashboardPeriod, (newVal) => {
+  if (authStore.isAuthenticated) {
+    fetchSalesData(newVal)
+  }
+})
 
 onMounted(() => {
-  fetchSalesData('monthly')
+  if (authStore.isAuthenticated) {
+    fetchSalesData(dashboardPeriod.value)
+  }
+})
+
+// Watch for authentication to trigger initial fetch
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    console.log('🔐 Auth detected, fetching sales chart data...')
+    fetchSalesData(dashboardPeriod.value)
+  }
 })
 </script>
 

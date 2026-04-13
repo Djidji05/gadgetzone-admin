@@ -16,8 +16,8 @@ async function createPagesTable() {
                 title: 'À propos',
                 slug: 'about',
                 content: 'Contenu de la page À propos...',
-                metaTitle: 'À propos de GadgetZone',
-                metaDescription: 'Découvrez GadgetZone, votre boutique high-tech en Haïti',
+                metaTitle: 'À propos de htfasil',
+                metaDescription: 'Découvrez htfasil, votre boutique high-tech en Haïti',
                 isPublished: true
             },
             {
@@ -25,7 +25,7 @@ async function createPagesTable() {
                 slug: 'terms',
                 content: 'Conditions d\'utilisation du site...',
                 metaTitle: 'Conditions d\'utilisation',
-                metaDescription: 'Conditions d\'utilisation de GadgetZone',
+                metaDescription: 'Conditions d\'utilisation de htfasil',
                 isPublished: true
             },
             {
@@ -33,7 +33,7 @@ async function createPagesTable() {
                 slug: 'privacy',
                 content: 'Notre politique de confidentialité...',
                 metaTitle: 'Politique de confidentialité',
-                metaDescription: 'Politique de confidentialité de GadgetZone',
+                metaDescription: 'Politique de confidentialité de htfasil',
                 isPublished: true
             }
         ]);

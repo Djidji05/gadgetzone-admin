@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
-import { Product } from '../models/index.js';
+import { Product, Promotion, Order, OrderItem, Address } from '../models/index.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -25,6 +25,8 @@ const getOrCreateCart = (identifier) => {
       customerId: identifier, // Utilisé comme ID unique
       items: [],
       totalAmount: 0,
+      discount: 0,
+      promoCode: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -82,6 +84,7 @@ router.post('/add', async (req, res) => {
         product: {
           id: product.id,
           name: product.name,
+          description: product.description,
           price: product.price,
           image: product.image_url || (product.images && product.images.length > 0 ? product.images[0] : null)
         }
@@ -90,7 +93,8 @@ router.post('/add', async (req, res) => {
     }
 
     // Recalculer le total
-    cart.totalAmount = cart.items.reduce((total, item) => total + Number(item.subtotal), 0);
+    const subtotal = cart.items.reduce((total, item) => total + Number(item.subtotal), 0);
+    cart.totalAmount = Math.max(0, subtotal - (cart.discount || 0));
     cart.updatedAt = new Date().toISOString();
 
     res.json(cart);
@@ -130,7 +134,8 @@ router.put('/items/:itemId', async (req, res) => {
     cartItem.subtotal = Number(quantity) * Number(product.price);
 
     // Recalculer le total
-    cart.totalAmount = cart.items.reduce((total, item) => total + Number(item.subtotal), 0);
+    const subtotalCalc = cart.items.reduce((total, item) => total + Number(item.subtotal), 0);
+    cart.totalAmount = Math.max(0, subtotalCalc - (cart.discount || 0));
     cart.updatedAt = new Date().toISOString();
 
     res.json(cart);
@@ -156,7 +161,8 @@ router.delete('/items/:itemId', async (req, res) => {
     cart.items.splice(itemIndex, 1);
 
     // Recalculer le total
-    cart.totalAmount = cart.items.reduce((total, item) => total + Number(item.subtotal), 0);
+    const subtotalCalc = cart.items.reduce((total, item) => total + Number(item.subtotal), 0);
+    cart.totalAmount = Math.max(0, subtotalCalc - (cart.discount || 0));
     cart.updatedAt = new Date().toISOString();
 
     res.json(cart);
@@ -187,9 +193,51 @@ router.post('/promo', async (req, res) => {
     const identifier = req.ip || req.sessionID || 'anonymous';
     const cart = getOrCreateCart(identifier);
 
-    // Pour l'instant, retourner le panier sans promo
-    // TODO: Implémenter la logique des codes promo
-    console.log(`Code promo reçu: ${code} (non implémenté)`);
+    if (!code) {
+      cart.discount = 0;
+      cart.promoCode = null;
+      const subtotalCalc = cart.items.reduce((total, item) => total + Number(item.subtotal), 0);
+      cart.totalAmount = subtotalCalc;
+      return res.json(cart);
+    }
+
+    // Chercher la promotion active
+    const promotion = await Promotion.findOne({
+      where: { code, isActive: true }
+    });
+
+    if (!promotion) {
+      return res.status(404).json({ message: 'Code promo invalide ou expiré' });
+    }
+
+    const currentDate = new Date();
+    if (promotion.startDate && new Date(promotion.startDate) > currentDate) {
+      return res.status(400).json({ message: 'Ce code promo n\'est pas encore actif' });
+    }
+    if (promotion.endDate && new Date(promotion.endDate) < currentDate) {
+      return res.status(400).json({ message: 'Ce code promo est expiré' });
+    }
+
+    if (promotion.usageLimit && promotion.usageCount >= promotion.usageLimit) {
+      return res.status(400).json({ message: 'Limite d\'utilisation atteinte pour ce code promo' });
+    }
+
+    const subtotal = cart.items.reduce((total, item) => total + Number(item.subtotal), 0);
+
+    if (promotion.minAmount && subtotal < Number(promotion.minAmount)) {
+      return res.status(400).json({ message: `Le montant minimum pour utiliser ce code est de ${promotion.minAmount} HTG` });
+    }
+
+    let discountAmount = 0;
+    if (promotion.discountType === 'percentage') {
+      discountAmount = subtotal * (Number(promotion.discount) / 100);
+    } else {
+      discountAmount = Number(promotion.discount);
+    }
+
+    cart.discount = discountAmount;
+    cart.promoCode = code;
+    cart.totalAmount = Math.max(0, subtotal - discountAmount);
 
     res.json(cart);
   } catch (error) {
@@ -204,34 +252,96 @@ router.post('/promo', async (req, res) => {
 router.post('/checkout', authenticateToken, async (req, res) => {
   try {
     const customerId = req.user.id;
-    const { shippingInfo, paymentInfo } = req.body;
+    const { items, shippingAddress, paymentMethod, promoCode } = req.body;
 
-    // Récupérer le panier anonyme et le convertir
+    // We accept `items` directly or fallback to temp cart if none is given.
+    let cartItems = items;
+    let discount = 0;
+    let total = 0;
+
     const identifier = req.ip || req.sessionID || 'anonymous';
     const cart = tempCarts.get(identifier);
 
-    if (!cart || cart.items.length === 0) {
-      return res.status(400).json({ message: 'Panier vide' });
+    if (!cartItems || cartItems.length === 0) {
+      if (!cart || cart.items.length === 0) {
+        return res.status(400).json({ message: 'Panier vide' });
+      }
+      cartItems = cart.items;
+      discount = cart.discount || 0;
     }
 
-    // TODO: Créer la commande dans la base de données avec les infos client
-    console.log(`Checkout pour client ${customerId}:`, {
-      items: cart.items.length,
-      total: cart.totalAmount,
-      shipping: shippingInfo,
-      payment: paymentInfo
+    const subtotal = cartItems.reduce((acc, item) => {
+      // It might be a complex object from simple cart or just simpler object
+      const qty = item.quantity || 1;
+      const price = item.unitPrice || (item.product ? item.product.price : 0);
+      return acc + (qty * price);
+    }, 0);
+
+    // Apply promo if given in the body
+    if (promoCode) {
+      const promotion = await Promotion.findOne({ where: { code: promoCode, isActive: true } });
+      if (promotion) {
+        if (promotion.discountType === 'percentage') {
+          discount = subtotal * (Number(promotion.discount) / 100);
+        } else {
+          discount = Number(promotion.discount);
+        }
+        // Increment usage
+        promotion.usageCount += 1;
+        await promotion.save();
+      }
+    }
+
+    const tax = subtotal * 0.10; // 10% tax approximation
+    const shipping = subtotal > 5000 ? 0 : 250;
+    total = Math.max(0, subtotal - discount) + tax + shipping;
+
+    // Create the order
+    const order = await Order.create({
+      user_id: customerId,
+      status: 'pending',
+      total_amount: total,
+      subtotal: subtotal,
+      tax_amount: tax,
+      shipping_fee: shipping,
+      discount_amount: discount,
+      promo_code: promoCode || (cart ? cart.promoCode : null),
+      payment_method: paymentMethod?.type || 'moncashwise',
+      payment_status: paymentMethod?.type === 'cash' ? 'pending' : 'paid',
+      shipping_address: shippingAddress || {},
+      billing_address: shippingAddress || {}
     });
 
-    // TODO: Vider le panier après conversion
+    // Create order items
+    for (const item of cartItems) {
+      const productId = item.productId || (item.product ? item.product.id : item.id);
+
+      const product = await Product.findByPk(productId);
+      if (!product) continue;
+
+      const qty = item.quantity || 1;
+      const unitPrice = item.unitPrice || product.price;
+
+      await OrderItem.create({
+        order_id: order.id,
+        product_id: productId,
+        store_id: product.storeId, // Important for store linking
+        quantity: qty,
+        unit_price: unitPrice,
+        subtotal: qty * unitPrice,
+        metadata: item.metadata || {}
+      });
+    }
+
+    // Vider le panier après conversion
+    tempCarts.delete(identifier);
 
     res.json({
       message: 'Commande créée avec succès',
-      orderId: Date.now(),
+      orderId: order.id,
       customerId,
-      items: cart.items,
-      totalAmount: cart.totalAmount,
-      shippingInfo,
-      paymentInfo
+      status: 'pending',
+      totalAmount: total
     });
   } catch (error) {
     console.error('Checkout error:', error);

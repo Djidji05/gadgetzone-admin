@@ -134,7 +134,7 @@
                   </button>
                   
                   <button
-                    @click="contactVendeur(app.owner.id)"
+                    @click="app.owner && contactVendeur(app.owner.id)"
                     class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all"
                     title="Contacter le vendeur"
                   >
@@ -185,196 +185,19 @@
       </div>
     </div>
 
-    <!-- Details Modal - Redesigned -->
-    <div v-if="selectedApplication" class="fixed inset-0 z-[9999] p-4 flex items-center justify-center overflow-hidden">
-      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="selectedApplication = null"></div>
-      
-      <div class="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] overflow-hidden">
-        <!-- Modal Header -->
-        <div class="px-8 py-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-blue-50/50 dark:bg-blue-900/10">
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-              <i class="fas fa-store-alt text-xl"></i>
-            </div>
-            <div>
-              <h2 class="text-xl font-bold text-gray-900 dark:text-white">Dossier Candidature</h2>
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ID: #{{ selectedApplication.id }}</span>
-                <span :class="getStatusClass(selectedApplication.status, true)">{{ getStatusText(selectedApplication.status) }}</span>
-              </div>
-            </div>
-          </div>
-          <button @click="selectedApplication = null" class="w-10 h-10 rounded-xl hover:bg-white dark:hover:bg-gray-700 flex items-center justify-center text-gray-400 transition-all">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        
-        <div class="p-8 space-y-8 overflow-y-auto custom-scrollbar flex-1">
-          <!-- Information Grid -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Boutique -->
-            <div class="space-y-4">
-              <h3 class="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
-                La Boutique
-              </h3>
-              <div class="grid gap-4">
-                <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl">
-                  <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Nom commercial</div>
-                  <div class="text-sm font-bold text-gray-900 dark:text-white">{{ selectedApplication.name }}</div>
-                </div>
-                <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl">
-                  <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Description</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{{ selectedApplication.description || 'N/A' }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Propriétaire -->
-            <div class="space-y-4">
-              <h3 class="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2">
-                  <span class="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
-                  Le Gérant
-                </div>
-                <!-- Nouveau bouton Message -->
-                <button 
-                  @click="contactVendeur(selectedApplication.owner.id)"
-                  class="flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 text-[10px] font-bold uppercase rounded-lg hover:bg-blue-100 transition-all border border-blue-100 dark:border-blue-800/20"
-                >
-                  <i class="fas fa-comment"></i>
-                  Message
-                </button>
-              </h3>
-              <div class="grid gap-4">
-                <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl">
-                  <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Nom complet</div>
-                  <div class="text-sm font-bold text-gray-900 dark:text-white">{{ selectedApplication.owner?.name }}</div>
-                </div>
-                <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl flex items-center justify-between">
-                  <div>
-                    <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Contact Email</div>
-                    <div class="text-sm font-bold text-gray-900 dark:text-white">{{ selectedApplication.owner?.email }}</div>
-                  </div>
-                  <i class="far fa-envelope-open text-blue-200 text-xl"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Raison du Statut (Rejet/Suspension) -->
-          <div v-if="selectedApplication.settings?.statusReason" class="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30 p-6 rounded-3xl space-y-2">
-            <h3 class="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-widest flex items-center gap-2">
-              <i class="fas fa-exclamation-circle text-sm"></i>
-              Motif du statut actuel ({{ getStatusText(selectedApplication.status) }})
-            </h3>
-            <p class="text-sm text-red-700 dark:text-red-300 font-medium leading-relaxed">
-              {{ selectedApplication.settings.statusReason }}
-            </p>
-          </div>
-
-          <!-- Business Deep Details -->
-          <div v-if="selectedApplication.settings" class="space-y-4">
-            <h3 class="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
-              <span class="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
-              Profil Professionnel
-            </h3>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl">
-                <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Type Business</div>
-                <div class="text-sm font-bold dark:text-white">{{ selectedApplication.settings.businessType || 'N/A' }}</div>
-              </div>
-              <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl">
-                <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Numéro WhatsApp</div>
-                <div class="text-sm font-bold text-green-600">{{ selectedApplication.settings.whatsapp || 'N/A' }}</div>
-              </div>
-              <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl lg:col-span-1">
-                <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Genre Produits</div>
-                <div class="text-sm font-bold dark:text-white">{{ selectedApplication.settings.productStyle || 'N/A' }}</div>
-              </div>
-            </div>
-
-            <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl flex items-start gap-4">
-              <div class="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                <i class="fas fa-map-marker-alt text-red-500"></i>
-              </div>
-              <div>
-                <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Adresse d'exploitation</div>
-                <div class="text-sm font-medium dark:text-white">{{ selectedApplication.settings.address || 'N/A' }}</div>
-              </div>
-            </div>
-
-            <!-- ID Verification -->
-            <div v-if="selectedApplication.settings.identityData" class="space-y-4">
-              <div class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Justificatif d'identité</div>
-              <div class="group relative bg-gray-50 dark:bg-gray-900 rounded-3xl p-4 overflow-hidden">
-                <img 
-                  v-if="selectedApplication.settings.identityData.startsWith('data:image')" 
-                  :src="selectedApplication.settings.identityData" 
-                  alt="Identity" 
-                  class="w-full max-h-80 object-contain rounded-2xl transition-all group-hover:scale-[1.02]"
-                />
-                <div v-else class="flex flex-col items-center py-8">
-                  <i class="fas fa-file-pdf text-5xl text-red-500 mb-4"></i>
-                  <p class="font-bold text-gray-900 dark:text-white mb-2">Document PDF</p>
-                  <a :href="selectedApplication.settings.identityData" download="justificatif.pdf" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all">
-                    Télécharger
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sticky Footer Actions -->
-        <div class="p-8 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md border-t border-gray-100 dark:border-gray-700 flex gap-4">
-          <template v-if="selectedApplication.status === 'pending'">
-            <button
-              @click="approveApplication(selectedApplication.id)"
-              class="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-green-500/20 flex items-center justify-center gap-2"
-            >
-              <i class="fas fa-check"></i>
-              Approuver le vendeur
-            </button>
-            <button
-              @click="rejectApplication(selectedApplication.id)"
-              class="flex-1 bg-white dark:bg-gray-800 text-red-600 border border-red-100 dark:border-red-900/30 hover:bg-red-50 dark:hover:bg-red-900/10 px-6 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2"
-            >
-              <i class="fas fa-times"></i>
-              Rejeter la demande
-            </button>
-          </template>
-          
-          <template v-else-if="selectedApplication.status === 'active'">
-            <button
-              @click="suspendVendor(selectedApplication.id)"
-              class="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-6 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-orange-500/20"
-            >
-              Suspendre l'accès vendeur
-            </button>
-          </template>
-          
-          <template v-else-if="selectedApplication.status === 'suspended'">
-            <button
-              @click="reactivateVendor(selectedApplication.id)"
-              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-blue-500/20"
-            >
-              Réactiver le compte
-            </button>
-          </template>
-        </div>
-      </div>
-    </div>
+    <!-- Modal Removed - Replaced by ApplicationDetail.vue page -->
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import api from '@/services/api'
+import { useRouter } from 'vue-router'
+import { api } from '@/services/api'
 import { useUIStore } from '@/stores/ui'
+import { formatVendorId } from '@/utils/formatters'
 
 const uiStore = useUIStore()
+const router = useRouter()
 
 interface VendorApplication {
   id: number
@@ -396,14 +219,16 @@ interface VendorApplication {
     whatsapp?: string
     productStyle?: string
     identityData?: string
+    statusReason?: string
   }
+  commission_rate?: number
 }
 
 const applications = ref<VendorApplication[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
 const currentFilter = ref('all')
-const selectedApplication = ref<VendorApplication | null>(null)
+
 const counts = ref({
   all: 0,
   pending: 0,
@@ -496,13 +321,13 @@ const fetchApplications = async () => {
 }
 
 const viewDetails = (application: VendorApplication) => {
-  selectedApplication.value = application
+  router.push(`/vendors/applications/${application.id}`)
 }
 
 const approveApplication = async (id: number) => {
   const confirmed = await uiStore.confirm({
     title: 'Approbation Vendeur',
-    message: 'Êtes-vous sûr de vouloir autoriser ce vendeur à vendre sur GadgetZone ? Un compte vendeur sera automatiquement créé.',
+    message: 'Êtes-vous sûr de vouloir autoriser ce vendeur à vendre sur HTFasil ? Un compte vendeur sera automatiquement créé.',
     confirmText: 'Oui, Approuver',
     type: 'info'
   })

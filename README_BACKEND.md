@@ -1,4 +1,4 @@
-# Backend GadgetZone Admin
+# Backend HTFasil Admin
 
 ## Architecture Intégrée
 
@@ -70,10 +70,10 @@ npm run dev:backend
 
 ## Configuration Base de Données
 
-Le backend utilise PostgreSQL avec Sequelize. Assurez-vous que PostgreSQL est en cours d'exécution et que la base de données `gadgetzone` existe.
+Le backend utilise PostgreSQL avec Sequelize. Assurez-vous que PostgreSQL est en cours d'exécution et que la base de données `htfasil` existe.
 
 ```sql
-CREATE DATABASE gadgetzone;
+CREATE DATABASE htfasil;
 ```
 
 ## Développement

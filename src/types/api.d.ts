@@ -1,6 +1,18 @@
 // Type declarations for API services
 
 declare module '@/services/api' {
+  export const api: any
+  export interface Store {
+    id: number
+    name: string
+    logoUrl?: string
+    bannerUrl?: string
+    description?: string
+    status: string
+    created_at: string
+    settings?: any
+  }
+  export const vendorService: any
   export interface Product {
     id: number
     name: string
@@ -41,11 +53,14 @@ declare module '@/services/api' {
     name: string
     email: string
     phone?: string
-    role: 'admin' | 'user' | 'client'
+    role: 'admin' | 'user' | 'seller' | 'gestionnaire' | 'client'
     created_at: string
     updated_at: string
     total_orders?: number
     total_spent?: number
+    address?: string
+    last_login?: string
+    status?: 'active' | 'suspended' | 'closed'
   }
 
   export interface Order {
@@ -55,8 +70,13 @@ declare module '@/services/api' {
     status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'confirmed'
     created_at: string
     updated_at: string
-    user?: User
     items?: OrderItem[]
+    logs?: any[]
+    confirmed_at?: string
+    shipped_at?: string
+    delivered_at?: string
+    shipping_address?: string
+    user?: User
   }
 
   export interface OrderItem {
@@ -178,8 +198,8 @@ declare module '@/services/api' {
   }
 
   export const authService: {
-    register: (userData: RegisterData) => Promise<AuthResponse>
-    login: (credentials: LoginCredentials) => Promise<AuthResponse>
+    register: (userData: RegisterData) => Promise<{ data: AuthResponse }>
+    login: (credentials: LoginCredentials) => Promise<{ data: AuthResponse }>
     getProfile: () => Promise<ApiResponse<{ user: User }>>
     updateProfile: (userData: ProfileUpdateData) => Promise<ApiResponse<{ user: User }>>
     changePassword: (passwordData: PasswordChangeData) => Promise<ApiResponse<{ message: string }>>
@@ -193,7 +213,7 @@ declare module '@/services/api' {
     createUser: (userData: ClientCreateData) => Promise<User>
     updateUser: (id: number, userData: ClientUpdateData) => Promise<User>
     deleteUser: (id: number) => Promise<void>
-    refreshToken: () => Promise<AuthResponse>
+    refreshToken: () => Promise<string>
   }
 
   export const statsService: {
@@ -293,6 +313,31 @@ declare module '@/services/api' {
   export const healthService: {
     checkHealth: () => Promise<ApiResponse<{ status: string }>>
   }
+
+  export const settingsService: {
+    get: (group: string) => Promise<any>
+    update: (group: string, settings: any) => Promise<any>
+  }
+
+  export const uploadService: {
+    upload: (files: File[]) => Promise<{ urls: string[] }>
+  }
+
+  export const blogService: {
+    getAll: () => Promise<any[]>
+    getOne: (id: number | string) => Promise<any>
+    create: (data: any) => Promise<any>
+    update: (id: number | string, data: any) => Promise<any>
+    delete: (id: number | string) => Promise<any>
+  }
+
+  export const pagesService: {
+    getAll: () => Promise<any[]>
+    getOne: (slug: string) => Promise<any>
+    create: (data: any) => Promise<any>
+    update: (slug: string, data: any) => Promise<any>
+    delete: (slug: string) => Promise<any>
+  }
 }
 
 declare module '@/stores/auth' {
@@ -315,6 +360,7 @@ declare module '@/stores/auth' {
     refreshProfile: () => Promise<{ success: boolean; data?: { user: User }; error?: string }>
     refreshToken: () => Promise<{ success: boolean; error?: string }>
     clearError: () => void
-    init: () => void
+    init: () => Promise<void>
+    isReady: boolean
   }
 }

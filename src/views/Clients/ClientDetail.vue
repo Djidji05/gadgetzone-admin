@@ -16,15 +16,6 @@
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Détails et historique du client</p>
         </div>
       </div>
-      <button
-        @click="editClient"
-        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-        </svg>
-        Modifier
-      </button>
     </div>
 
     <div v-if="isLoading" class="flex justify-center items-center py-12">
@@ -180,12 +171,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { userService, orderService } from '@/services/api'
+import type { User, Order } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
 
-const client = ref<any>(null)
-const recentOrders = ref<any[]>([])
+const client = ref<User | null>(null)
+const recentOrders = ref<Order[]>([])
 const isLoading = ref(true)
 
 const stats = computed(() => {
@@ -271,7 +263,7 @@ const fetchClient = async () => {
       // Filtrer les commandes pour ce client
       recentOrders.value = (ordersResponse.orders || []).filter(
         (order: any) => order.user_id === clientId
-      )
+      ) as Order[]
       console.log('✅ Commandes du client chargées:', recentOrders.value.length)
     } catch (err) {
       console.warn('⚠️ Impossible de charger les commandes:', err)

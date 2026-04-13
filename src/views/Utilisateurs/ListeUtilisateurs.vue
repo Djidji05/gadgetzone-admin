@@ -103,9 +103,9 @@
                 <td class="px-4 py-5">
                   <span :class="[
                     'inline-flex rounded-full px-3 py-1 text-sm font-medium',
-                    user.role === 'admin' ? 'bg-danger bg-opacity-10 text-danger' : 
-                    user.role === 'gestionnaire' ? 'bg-warning bg-opacity-10 text-warning' :
-                    'bg-success bg-opacity-10 text-success'
+                    user.role === 'admin' ? 'bg-danger/10 text-danger dark:bg-red-500/20 dark:text-red-400' : 
+                    user.role === 'gestionnaire' ? 'bg-warning/10 text-warning dark:bg-yellow-500/20 dark:text-yellow-400' :
+                    'bg-success/10 text-success dark:bg-green-500/20 dark:text-green-400'
                   ]">
                     {{ capitalize(user.role) }}
                   </span>
@@ -266,8 +266,10 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { authService } from '@/services/api';
+import { useUIStore } from '@/stores/ui';
 
 const router = useRouter();
+const uiStore = useUIStore();
 
 interface User {
   id: number;
@@ -303,18 +305,21 @@ const loadUsers = async () => {
 };
 
 const deleteUser = async (user: User) => {
-  if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${user.name}" ?`)) {
-    return;
-  }
+  const confirmed = await uiStore.confirm({
+    title: 'Supprimer l\'utilisateur',
+    message: `Êtes-vous sûr de vouloir supprimer l'utilisateur "${user.name}" ? Cette action est irréversible.`,
+    confirmText: 'Supprimer',
+    type: 'danger'
+  });
+  if (!confirmed) return;
 
   try {
     await authService.deleteUser(user.id);
-    // Rafraîchir la liste
+    uiStore.addToast('Utilisateur supprimé avec succès', 'success');
     await loadUsers();
   } catch (error: any) {
-    console.error('Erreur suppression:', error);
     const message = error.response?.data?.error || error.response?.data?.message || 'Erreur lors de la suppression';
-    alert(message);
+    uiStore.addToast(message, 'error');
   }
 };
 

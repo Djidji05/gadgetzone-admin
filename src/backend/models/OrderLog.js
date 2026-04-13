@@ -37,7 +37,12 @@ const OrderLog = sequelize.define('OrderLog', {
     }
 }, {
     tableName: 'order_logs',
-    timestamps: false
+    timestamps: false,
+    indexes: [
+        { fields: ['order_id'] },
+        { fields: ['user_id'] },
+        { fields: ['created_at'] }
+    ]
 });
 
 export default OrderLog;

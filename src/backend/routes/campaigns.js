@@ -1,8 +1,12 @@
 import express from 'express';
 import Campaign from '../models/Campaign.js';
 import { Op } from 'sequelize';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// 🔒 SÉCURITÉ: Toutes les routes de campagnes nécessitent une authentification admin
+router.use(authenticateToken, requireAdmin);
 
 // Get all campaigns with stats
 router.get('/', async (req, res) => {

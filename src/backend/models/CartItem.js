@@ -25,6 +25,14 @@ const CartItem = sequelize.define('CartItem', {
       key: 'id'
     }
   },
+  offerId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'offers',
+      key: 'id'
+    }
+  },
   quantity: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -37,6 +45,10 @@ const CartItem = sequelize.define('CartItem', {
   subtotal: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
+  },
+  metadata: {
+    type: DataTypes.JSON,
+    allowNull: true
   }
 }, {
   tableName: 'cart_items',

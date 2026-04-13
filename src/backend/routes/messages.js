@@ -75,10 +75,17 @@ router.get('/conversations/:id/messages', authenticateToken, async (req, res) =>
             return res.status(403).json({ error: 'Unauthorized' });
         }
 
+        const { limit = 50, offset = 0 } = req.query;
+        
         const messages = await Message.findAll({
             where: { conversationId: id },
-            order: [['createdAt', 'ASC']]
+            order: [['createdAt', 'DESC']], // Charger les plus récents en premier
+            limit: parseInt(limit),
+            offset: parseInt(offset)
         });
+
+        // Remettre dans l'ordre chronologique pour le frontend
+        messages.reverse();
 
         // Mark as read
         await Message.update(

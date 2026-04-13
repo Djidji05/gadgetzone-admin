@@ -4,13 +4,11 @@
       <div class="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-800">
         <div class="p-8 sm:p-10">
           <div class="flex flex-col items-center mb-8">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand-50 text-brand-500 mb-4 dark:bg-white/5 dark:text-brand-400">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
+            <div class="mb-6">
+              <img src="/images/logo/logo htfasil.png" alt="htfasil logo" class="h-16 w-auto object-contain mx-auto" />
             </div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              GadgetZone Admin
+              htfasil admin
             </h1>
             <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
               Connectez-vous pour gérer votre boutique
@@ -42,7 +40,7 @@
                   v-model="email"
                   type="email"
                   id="email"
-                  placeholder="admin@gadgetzone.com"
+                  placeholder="admin@htfasil.com"
                   class="block w-full px-4 py-3 rounded-lg border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-colors duration-200 outline-none text-sm"
                 />
               </div>
@@ -74,22 +72,17 @@
               </div>
             </div>
 
-            <div class="flex items-center justify-between">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input 
-                  v-model="keepLoggedIn" 
-                  type="checkbox" 
-                  class="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/20"
-                >
-                <span class="text-sm text-gray-600 dark:text-gray-400">Rester connecté</span>
-              </label>
-            </div>
 
             <button
               type="submit"
-              class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg focus:ring-4 focus:ring-brand-500/20 outline-none"
+              :disabled="authStore.isLoading"
+              class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg focus:ring-4 focus:ring-brand-500/20 outline-none disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Se connecter
+              <svg v-if="authStore.isLoading" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ authStore.isLoading ? 'Connexion en cours...' : 'Se connecter' }}
             </button>
           </form>
         </div>
@@ -104,13 +97,14 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
 
+const apiUrl = import.meta.env.VITE_API_URL
+
 const router = useRouter()
 const authStore = useAuthStore()
 
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
-const keepLoggedIn = ref(false)
 
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
@@ -129,4 +123,5 @@ const handleSubmit = async () => {
     router.push(redirect)
   }
 }
+
 </script>

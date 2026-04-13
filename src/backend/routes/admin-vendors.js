@@ -1,7 +1,8 @@
 import express from 'express';
-import { Store, User } from '../models/index.js';
+import { Store, User, OrderLog, Product, DisputeMessage, Order } from '../models/index.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { createNotification } from '../utils/notificationHelper.js';
+import { Op } from 'sequelize';
 
 const router = express.Router();
 
@@ -19,9 +20,16 @@ router.get('/applications', authenticateToken, requireAdmin, async (req, res) =>
             whereClause.status = status;
         }
 
-        // Get stores
+        // Get stores with their owners in one query
         const stores = await Store.findAll({
             where: whereClause,
+            include: [
+                {
+                    model: User,
+                    as: 'owner',
+                    attributes: ['id', 'name', 'email', 'phone', 'role', 'created_at']
+                }
+            ],
             order: [['created_at', 'DESC']],
             limit: parseInt(limit),
             offset: parseInt(offset)
@@ -29,25 +37,11 @@ router.get('/applications', authenticateToken, requireAdmin, async (req, res) =>
 
         const count = await Store.count({ where: whereClause });
 
-        // Manually fetch users for each store
-        const applications = await Promise.all(stores.map(async (store) => {
+        // Map results for consumer consistency
+        const applications = stores.map(store => {
             const storeData = store.get({ plain: true });
-
-            // Try both property names (camelCase from model definition, or snake_case from DB)
-            const ownerId = storeData.userId || storeData.user_id;
-
-            let owner = null;
-            if (ownerId) {
-                owner = await User.findByPk(ownerId, {
-                    attributes: ['id', 'name', 'email', 'phone', 'role', 'created_at']
-                });
-            }
-
-            return {
-                ...storeData,
-                owner: owner ? owner.get({ plain: true }) : null
-            };
-        }));
+            return storeData;
+        });
 
         // Count by status
         const pendingCount = await Store.count({ where: { status: 'pending' } });
@@ -77,6 +71,45 @@ router.get('/applications', authenticateToken, requireAdmin, async (req, res) =>
         res.status(500).json({
             error: 'Server error',
             message: error.message || 'Erreur lors de la récupération des candidatures'
+        });
+    }
+});
+
+/**
+ * GET /api/admin/vendors/applications/:id
+ * Get a single vendor application detail
+ * Access: Admin only
+ */
+router.get('/applications/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const store = await Store.findByPk(id);
+        if (!store) {
+            return res.status(404).json({ error: 'Candidature non trouvée' });
+        }
+
+        const storeData = store.get({ plain: true });
+        const userId = storeData.userId || storeData.user_id;
+
+        let owner = null;
+        if (userId) {
+            owner = await User.findByPk(userId, {
+                attributes: ['id', 'name', 'email', 'phone', 'role', 'created_at']
+            });
+        }
+
+        res.json({
+            application: {
+                ...storeData,
+                owner: owner ? owner.get({ plain: true }) : null
+            }
+        });
+    } catch (error) {
+        console.error('Get vendor application detail error:', error);
+        res.status(500).json({
+            error: 'Server error',
+            message: error.message || 'Erreur lors de la récupération des détails de la candidature'
         });
     }
 });
@@ -308,6 +341,89 @@ router.put('/applications/:id/reactivate', authenticateToken, requireAdmin, asyn
             error: 'Server error',
             message: error.message || 'Erreur lors de la réactivation'
         });
+    }
+});
+
+/**
+ * GET /api/admin/vendors/recent-actions
+ * Get a unified timeline of recent vendor activities
+ * Access: Admin only
+ */
+router.get('/recent-actions', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 15;
+        let actions = [];
+
+        // Get all sellers IDs to filter easily without doing complex alias joins
+        const sellers = await User.findAll({
+            where: { role: 'seller' },
+            attributes: ['id', 'name']
+        });
+
+        const sellerIds = sellers.map(s => s.id);
+        const sellerMap = {};
+        sellers.forEach(s => sellerMap[s.id] = s);
+
+        // 🚀 Optimisation : Récupérer toutes les activités en parallèle
+        const [orderLogs, disputeMsgs, newProducts] = await Promise.all([
+            // 1. Get recent order status changes by sellers
+            OrderLog.findAll({
+                where: { user_id: { [Op.in]: sellerIds } },
+                order: [['created_at', 'DESC']],
+                limit: limit,
+                raw: true
+            }),
+            // 2. Get recent dispute messages from sellers
+            DisputeMessage.findAll({
+                where: { sender_id: { [Op.in]: sellerIds } },
+                order: [['created_at', 'DESC']],
+                limit: limit,
+                raw: true
+            }),
+            // 3. Get recent products added by sellers
+            Product.findAll({
+                where: { storeId: { [Op.ne]: null } },
+                include: [
+                    {
+                        model: Store,
+                        as: 'store',
+                        required: true,
+                        include: [{ model: User, as: 'owner', attributes: ['name'] }]
+                    }
+                ],
+                order: [['created_at', 'DESC']],
+                limit: limit,
+                raw: true,
+                nest: true
+            })
+        ]);
+
+        newProducts.forEach(prod => {
+            const vendorName = prod.store && prod.store.owner ? prod.store.owner.name : (prod.store ? prod.store.name : 'Vendeur');
+            actions.push({
+                id: `prod-${prod.id}`,
+                vendorName: vendorName,
+                actionType: 'product',
+                color: 'purple',
+                description: `a ajouté un nouveau produit : ${prod.name}`,
+                timestamp: prod.created_at,
+                link: `/vendeurs/produits`
+            });
+        });
+
+        // Sort combined actions by timestamp descending
+        actions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        // Take only the requested limit overall
+        const finalActions = actions.slice(0, limit);
+
+        res.json({
+            actions: finalActions
+        });
+
+    } catch (error) {
+        console.error('Error fetching vendor recent actions:', error);
+        res.status(500).json({ error: 'Failed to fetch vendor actions', details: error.message });
     }
 });
 

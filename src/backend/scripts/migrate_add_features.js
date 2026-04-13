@@ -17,7 +17,7 @@ console.log('Environment:', {
 });
 
 const sequelize = new Sequelize(
-    process.env.DB_NAME || 'gadgetzone',
+    process.env.DB_NAME || 'htfasil',
     process.env.DB_USER || 'postgres',
     process.env.DB_PASSWORD || '',
     {

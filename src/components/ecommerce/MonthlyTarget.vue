@@ -60,8 +60,21 @@
         <p class="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
           Target
         </p>
-        <p
-          class="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg"
+        <div v-if="isEditing" class="flex items-center justify-center gap-1 mt-1">
+          <input 
+            type="number" 
+            v-model="newTargetValue" 
+            class="w-20 px-1 py-1 text-xs text-center border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+            @keyup.enter="saveTarget"
+            title="Appuyez sur Entrée pour valider"
+          />
+          <button @click="saveTarget" class="text-success-600 hover:text-success-700 font-bold" title="Enregistrer">✓</button>
+          <button @click="isEditing = false" class="text-red-500 hover:text-red-600 font-bold" title="Annuler">✗</button>
+        </div>
+        <p v-else
+          class="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg cursor-pointer hover:text-blue-500 transition-colors"
+          @click="startEditing"
+          title="Cliquez pour modifier"
         >
           {{ formatCurrency(targetData.target) }}
           <svg
@@ -139,14 +152,40 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import DropdownMenu from '../common/DropdownMenu.vue'
 import VueApexCharts from 'vue3-apexcharts'
 import { statsService } from '@/services/api'
+import { useTheme } from '../layout/ThemeProvider.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const { isDarkMode } = useTheme() as any
+const authStore = useAuthStore()
+
+const isEditing = ref(false)
+const newTargetValue = ref('')
+
+const startEditing = () => {
+  newTargetValue.value = targetData.value.target.toString()
+  isEditing.value = true
+}
+
+const saveTarget = async () => {
+  const parsed = parseFloat(newTargetValue.value)
+  if (!isNaN(parsed) && parsed > 0) {
+    try {
+      await statsService.setMonthlyTarget(parsed)
+      await fetchMonthlyTarget()
+      isEditing.value = false
+    } catch (error) {
+      console.error(error)
+      alert("Erreur lors de la sauvegarde de l'objectif.")
+    }
+  }
+}
 
 const menuItems = [
-  { label: 'Voir plus', onClick: () => console.log('View More clicked') },
-  { label: 'Supprimer', onClick: () => console.log('Delete clicked') },
+  { label: 'Modifier l\'objectif', onClick: () => startEditing() },
 ]
 
 const targetData = ref({
@@ -182,6 +221,11 @@ const formatCurrency = (value: number) => {
 }
 
 const fetchMonthlyTarget = async () => {
+  if (!authStore.isAuthenticated) {
+    console.log('🛑 Skip fetchMonthlyTarget: User not authenticated')
+    return
+  }
+
   try {
     isLoading.value = true
     const data = await statsService.getMonthlyTarget()
@@ -195,10 +239,20 @@ const fetchMonthlyTarget = async () => {
 }
 
 onMounted(() => {
-  fetchMonthlyTarget()
+  if (authStore.isAuthenticated) {
+    fetchMonthlyTarget()
+  }
 })
 
-const chartOptions = {
+// Watch for authentication to trigger initial fetch
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    console.log('🔐 Auth detected, fetching monthly target data...')
+    fetchMonthlyTarget()
+  }
+})
+
+const chartOptions = computed(() => ({
   colors: ['#465FFF'],
   chart: {
     fontFamily: 'Outfit, sans-serif',
@@ -214,7 +268,7 @@ const chartOptions = {
         size: '80%',
       },
       track: {
-        background: '#E4E7EC',
+        background: isDarkMode.value ? '#333A48' : '#E4E7EC',
         strokeWidth: '100%',
         margin: 5,
       },
@@ -226,7 +280,7 @@ const chartOptions = {
           fontSize: '36px',
           fontWeight: '600',
           offsetY: 60,
-          color: '#1D2939',
+          color: isDarkMode.value ? '#FFFFFF' : '#1D2939',
           formatter: function (val: number) {
             return val.toFixed(2) + '%'
           },
@@ -242,7 +296,7 @@ const chartOptions = {
     lineCap: 'round',
   },
   labels: ['Progress'],
-}
+}))
 </script>
 
 <style scoped>

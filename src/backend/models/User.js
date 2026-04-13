@@ -53,10 +53,29 @@ const User = sequelize.define('User', {
   updated_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
+  },
+  referral_code: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true
+  },
+  is_ambassador: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  status: {
+    type: DataTypes.STRING,
+    defaultValue: 'Actif'
   }
 }, {
   tableName: 'users',
-  timestamps: false
+  timestamps: false,
+  indexes: [
+    { fields: ['role', 'created_at'] }, // 🚀 Accélère les stats de nouveaux clients
+    { fields: ['role'] },
+    { fields: ['status'] },
+    { fields: ['created_at'] }
+  ]
 });
 
 export default User;

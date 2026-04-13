@@ -4,11 +4,12 @@ import { inactivityTracker, INACTIVITY_TIMEOUT } from './inactivity'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api'
 
-console.log('🔗 API_BASE_URL:', API_BASE_URL)
-console.log('🔗 VITE_API_URL:', import.meta.env.VITE_API_URL)
 
-const api = axios.create({
+
+export const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 45000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -17,13 +18,27 @@ const api = axios.create({
   },
 })
 
-let isRefreshing = false
-let refreshPromise: Promise<string> | null = null
+const isRefreshing = false
+const refreshPromise: Promise<string> | null = null
 
 // Intercepteur pour ajouter le token JWT et vérifier l'inactivité
 api.interceptors.request.use(
   async (config) => {
-    const token = localStorage.getItem('auth_token')
+    let token = localStorage.getItem('auth_token')
+
+    // Fallback to Pinia store if token is not found in the direct key
+    // This happens because Pinia persists in 'auth-store' key
+    if (!token) {
+      try {
+        const authStoreData = localStorage.getItem('auth-store')
+        if (authStoreData) {
+          const parsed = JSON.parse(authStoreData)
+          token = parsed.token
+        }
+      } catch (e) {
+        console.error('Failed to parse auth-store for token fallback', e)
+      }
+    }
 
     if (token) {
       // Vérifier l'inactivité avant chaque requête
@@ -31,6 +46,7 @@ api.interceptors.request.use(
         // Session expirée par inactivité
         localStorage.removeItem('auth_token')
         localStorage.removeItem('user_data')
+        localStorage.removeItem('auth-store')
         window.location.href = '/signin?reason=inactivity'
         return Promise.reject(new Error('Session expirée'))
       }
@@ -52,30 +68,27 @@ api.interceptors.response.use(
     const originalRequest = error.config
 
     // Gérer les erreurs de session expirée
+    // Gérer les erreurs de session expirée (401)
     if (error.response?.status === 401) {
       const errorCode = error.response?.data?.code
       const isNotificationRequest = originalRequest?.url?.includes('/notifications')
 
-      // Si c'est un timeout de session, ou si on n'est pas déjà sur la page de connexion
-      if (errorCode === 'SESSION_TIMEOUT' || !window.location.pathname.includes('/signin')) {
+      // Ne pas tout supprimer immédiatement si c'est une requête de notification en arrière-plan
+      // Sauf si c'est explicitement un SESSION_TIMEOUT
+      if (errorCode === 'SESSION_TIMEOUT' || (!isNotificationRequest && !window.location.pathname.includes('/signin'))) {
         // Nettoyage complet
         localStorage.removeItem('auth_token')
         localStorage.removeItem('user_data')
-        localStorage.removeItem('auth-store') // Crucial pour éviter la boucle avec Pinia Persist
+        localStorage.removeItem('auth-store')
 
-        // Rediriger seulement si ce n'est pas une requête de notification en arrière-plan
-        // ou si on force la déconnexion
-        if (!isNotificationRequest || errorCode === 'SESSION_TIMEOUT') {
-          if (!window.location.pathname.includes('/signin')) {
-            window.location.href = errorCode === 'SESSION_TIMEOUT' ? '/signin?reason=timeout' : '/signin'
-          }
+        // Rediriger vers la page de connexion
+        if (!window.location.pathname.includes('/signin')) {
+          window.location.href = errorCode === 'SESSION_TIMEOUT' ? '/signin?reason=timeout' : '/signin'
         }
       }
 
-      // Silence pour les erreurs 401 sur les notifications en arrière-plan
-      if (isNotificationRequest) {
-        return Promise.reject(error)
-      }
+      // Propager l'erreur pour que les composants puissent la gérer
+      return Promise.reject(error)
     }
 
     // Ne pas logger les erreurs 401 qui ont déjà été traitées
@@ -86,7 +99,21 @@ api.interceptors.response.use(
   }
 )
 
-// Interfaces de base
+export interface Category {
+  id: number
+  name: string
+  slug: string
+  description?: string
+  icon?: string
+}
+
+export interface Brand {
+  id: number
+  name: string
+  logo_url: string
+  description?: string
+}
+
 export interface Store {
   id: number
   name: string
@@ -135,6 +162,7 @@ export interface OrderItem {
   quantity: number
   price: number
   product_name?: string
+  product?: any
 }
 
 export interface Order {
@@ -148,6 +176,12 @@ export interface Order {
   updated_at: string
   items?: OrderItem[]
   user?: User
+  shipping_address?: string
+  delivery_token?: string
+  delivered_at?: string
+  logs?: any[]
+  confirmed_at?: string
+  shipped_at?: string
 }
 
 // Interfaces pour la personnalisation
@@ -212,51 +246,46 @@ export interface UpdatePromotionRequest {
 
 // Service d'authentification
 export const authService = {
-  register: async (userData: any) => {
-    const response = await api.post('/auth/register', userData)
-    return response.data
+  register(userData: any) {
+    return api.post('/auth/register', userData)
   },
-  login: async (credentials: any) => {
-    const response = await api.post('/auth/login', credentials)
-    return response.data
+  login(credentials: any) {
+    return api.post('/auth/login', credentials)
   },
-  getProfile: async () => {
-    const response = await api.get('/auth/profile')
-    return response.data
+  getProfile() {
+    return api.get('/auth/profile')
   },
-  updateProfile: async (userData: any) => {
-    const response = await api.put('/auth/profile', userData)
-    return response.data
+  updateProfile(userData: any) {
+    return api.put('/auth/profile', userData)
   },
-  changePassword: async (passwordData: any) => {
-    const response = await api.post('/auth/change-password', passwordData)
-    return response.data
+  changePassword(passwordData: any) {
+    return api.post('/auth/change-password', passwordData)
   },
-  getUsers: async (params?: any) => {
-    const response = await api.get('/auth/users', { params })
-    return response.data
+  getUsers(params?: any) {
+    return api.get('/users', { params })
   },
-  createUser: async (userData: any) => {
-    const response = await api.post('/auth/create-user', userData)
-    return response.data
+  createUser(userData: any) {
+    return api.post('/users', userData)
   },
-  refreshToken: async () => {
+  async refreshToken() {
     const response = await api.post('/auth/refresh')
-    if (response.data.token) {
-      localStorage.setItem('auth_token', response.data.token)
+    const { token } = response.data
+    if (token) {
+      localStorage.setItem('auth_token', token)
     }
-    return response.data
+    return token
   },
-  logout: () => {
+  logout() {
     localStorage.removeItem('auth_token')
     localStorage.removeItem('user_data')
+    window.location.href = '/signin'
   },
-  isAuthenticated: () => {
+  isAuthenticated() {
     return !!localStorage.getItem('auth_token')
   },
-  getUser: () => {
-    const userData = localStorage.getItem('user_data')
-    return userData ? JSON.parse(userData) : null
+  getUser() {
+    const userStr = localStorage.getItem('user_data')
+    return userStr ? JSON.parse(userStr) : null
   },
   setUser: (userData: any, token: string) => {
     localStorage.setItem('auth_token', token)
@@ -267,11 +296,11 @@ export const authService = {
     return response.data
   },
   updateUser: async (id: number, userData: any) => {
-    const response = await api.put(`/auth/users/${id}`, userData)
+    const response = await api.put(`/users/${id}`, userData)
     return response.data
   },
   deleteUser: async (id: number) => {
-    const response = await api.delete(`/auth/users/${id}`)
+    const response = await api.delete(`/users/${id}`)
     return response.data
   }
 }
@@ -307,16 +336,16 @@ export const productService = {
 export const userService = {
   getAll: async (): Promise<User[]> => {
     try {
-      const response = await api.get('/clients')
+      const response = await api.get('/clients', { params: { limit: 1000 } })
       // L'API retourne { clients: [...] } au lieu de directement le tableau
       return response.data.clients || response.data || []
     } catch {
       console.warn('API not available, returning mock data')
       // Données de démonstration temporaires
       return [
-        { id: 1, name: 'Jean Dupont', email: 'jean.dupont@example.com', role: 'client', created_at: '2023-01-01', updated_at: '2023-01-01' },
-        { id: 2, name: 'Marie Martin', email: 'marie.martin@example.com', role: 'client', created_at: '2023-01-01', updated_at: '2023-01-01' },
-        { id: 3, name: 'Pierre Durand', email: 'pierre.durand@example.com', role: 'client', created_at: '2023-01-01', updated_at: '2023-01-01' },
+        { id: 1, name: 'Jean Dupont', email: 'jean.dupont@example.com', role: 'customer', created_at: '2023-01-01', updated_at: '2023-01-01' },
+        { id: 2, name: 'Marie Martin', email: 'marie.martin@example.com', role: 'customer', created_at: '2023-01-01', updated_at: '2023-01-01' },
+        { id: 3, name: 'Pierre Durand', email: 'pierre.durand@example.com', role: 'customer', created_at: '2023-01-01', updated_at: '2023-01-01' },
       ]
     }
   },
@@ -473,142 +502,59 @@ export const orderService = {
   }
 }
 
+// Service de livraison (Phase 13)
+export const deliveryService = {
+  verifyScan: async (orderId: number, token: string) => {
+    const response = await api.post('/delivery/verify-scan', { 
+      orderId, 
+      token 
+    })
+    return response.data
+  }
+}
+
 // Services pour la personnalisation (bannières et promotions)
 export const personalisationService = {
   // Bannières
   getBanners: async () => {
-    try {
-      const response = await api.get('/banners');
-      return response.data;
-    } catch {
-      console.warn('API not available, returning mock banners data');
-      return [
-        {
-          id: 1,
-          image: '',
-          title: 'Bienvenue sur notre site',
-          subtitle: 'Découvrez nos dernières collections et offres exclusives',
-          isActive: true,
-          order: 1
-        }
-      ];
-    }
+    const response = await api.get('/personalization/banners');
+    return response.data;
   },
 
   createBanner: async (banner: CreateBannerRequest): Promise<Banner> => {
-    try {
-      const response = await api.post('/banners', banner);
-      return response.data;
-    } catch {
-      console.warn('API not available, simulating banner creation');
-      return { id: Math.floor(Math.random() * 1000) + 1, ...banner };
-    }
+    const response = await api.post('/personalization/banners', banner);
+    return response.data;
   },
 
   updateBanner: async (id: number, banner: UpdateBannerRequest): Promise<void> => {
-    try {
-      await api.put(`/banners/${id}`, banner);
-    } catch {
-      console.warn('API not available, simulating banner update');
-    }
+    await api.put(`/personalization/banners/${id}`, banner);
   },
 
   deleteBanner: async (id: number) => {
-    try {
-      await api.delete(`/banners/${id}`);
-    } catch {
-      console.warn('API not available, simulating banner delete');
-    }
+    await api.delete(`/personalization/banners/${id}`);
   },
 
   // Promotions
-  getPromotions: async () => {
-    try {
-      const response = await api.get('/promotions');
-      return response.data;
-    } catch {
-      console.warn('API not available, returning mock promotions data');
-      return [
-        {
-          id: 1,
-          title: 'Été 2023',
-          description: 'Profitez de nos offres spéciales pour l\'été',
-          code: 'ETE2023',
-          discount: 15,
-          startDate: '2023-06-01',
-          endDate: '2023-08-31',
-          isActive: true,
-          image: 'https://via.placeholder.com/800x400?text=Promo+Eté'
-        },
-        {
-          id: 2,
-          title: 'Nouveautés',
-          description: 'Découvrez nos nouveaux produits avec une réduction exclusive',
-          code: 'NEW2023',
-          discount: 20,
-          startDate: '2023-09-01',
-          endDate: '2023-09-30',
-          isActive: true,
-          image: 'https://via.placeholder.com/800x400?text=Nouveautés'
-        },
-        {
-          id: 3,
-          title: 'Black Friday',
-          description: 'Jusqu\'à -50% sur une sélection de produits',
-          code: 'BLACKFRI',
-          discount: 50,
-          startDate: '2023-11-24',
-          endDate: '2023-11-27',
-          isActive: true,
-          image: 'https://via.placeholder.com/800x400?text=Black+Friday'
-        },
-        {
-          id: 4,
-          title: 'Promotion terminée',
-          description: 'Ancienne promotion',
-          code: 'OLD123',
-          discount: 10,
-          startDate: '2023-01-01',
-          endDate: '2023-01-31',
-          isActive: false,
-          image: 'https://via.placeholder.com/800x400?text=Ancienne+Promo'
-        }
-      ];
-    }
+  getPromotions: async (admin = false) => {
+    const response = await api.get('/promotions', { params: { admin } });
+    return response.data;
   },
 
   createPromotion: async (promotion: CreatePromotionRequest): Promise<Promotion> => {
-    try {
-      const response = await api.post('/promotions', promotion);
-      return response.data;
-    } catch {
-      console.warn('API not available, simulating promotion creation');
-      return { id: Math.floor(Math.random() * 1000) + 1, ...promotion };
-    }
+    const response = await api.post('/promotions', promotion);
+    return response.data;
   },
 
   updatePromotion: async (id: number, promotion: UpdatePromotionRequest): Promise<void> => {
-    try {
-      await api.put(`/promotions/${id}`, promotion);
-    } catch {
-      console.warn('API not available, simulating promotion update');
-    }
+    await api.put(`/promotions/${id}`, promotion);
   },
 
   deletePromotion: async (id: number) => {
-    try {
-      await api.delete(`/promotions/${id}`);
-    } catch {
-      console.warn('API not available, simulating promotion delete');
-    }
+    await api.delete(`/promotions/${id}`);
   },
 
   togglePromotionStatus: async (id: number, isActive: boolean) => {
-    try {
-      await api.patch(`/promotions/${id}/status`, { isActive });
-    } catch {
-      console.warn('API not available, simulating promotion status toggle');
-    }
+    await api.put(`/promotions/${id}`, { isActive });
   }
 };
 
@@ -671,6 +617,16 @@ export const statsService = {
     };
   },
 
+  getVendorActions: async (limit = 15) => {
+    try {
+      const response = await api.get('/admin/vendors/recent-actions', { params: { limit } });
+      return response.data;
+    } catch (error) {
+      console.error('getVendorActions error:', error);
+      return { actions: [] };
+    }
+  },
+
   getAlerts: async () => {
     try {
       const response = await api.get('/stats/alerts');
@@ -709,6 +665,31 @@ export const statsService = {
         monthOverMonthGrowth: 0
       };
     }
+  },
+
+  getNotificationsCount: async () => {
+    try {
+      const response = await api.get('/stats/notifications-count');
+      return response.data;
+    } catch (error) {
+      console.error('⚠️ Notifications count API failed:', error);
+      return {
+        pendingOrdersCount: 0,
+        newClientsCount: 0,
+        newProductsCount: 0,
+        pendingStoresCount: 0,
+        pendingReviewsCount: 0,
+        pendingDisputesCount: 0,
+        recentDeliveredOrdersCount: 0,
+        recentCancelledOrdersCount: 0,
+        unreadMessagesCount: 0,
+      };
+    }
+  },
+
+  setMonthlyTarget: async (target: number) => {
+    const response = await api.post('/stats/monthly-target', { target });
+    return response.data;
   },
 
   getSalesByCategory: async () => {
@@ -768,6 +749,26 @@ export const healthService = {
   checkHealth: async () => {
     const response = await api.get('/health')
     return response.data
+  },
+  getStats: async () => {
+    const response = await api.get('/admin/seo/health-stats')
+    return response.data
+  },
+  runMaintenance: async () => {
+    const response = await api.post('/admin/seo/maintenance')
+    return response.data
+  }
+}
+
+// Service SEO
+export const seoService = {
+  getSettings: async () => {
+    const response = await api.get('/admin/seo/settings')
+    return response.data
+  },
+  updateSettings: async (settings: any) => {
+    const response = await api.post('/admin/seo/settings', settings)
+    return response.data
   }
 }
 
@@ -776,6 +777,18 @@ export const categoryService = {
   getAll: async () => {
     const response = await api.get('/categories')
     return response.data
+  },
+  create: async (data: any) => {
+    const response = await api.post('/categories', data)
+    return response.data
+  },
+  update: async (id: number, data: any) => {
+    const response = await api.put(`/categories/${id}`, data)
+    return response.data
+  },
+  delete: async (id: number) => {
+    const response = await api.delete(`/categories/${id}`)
+    return response.data
   }
 }
 
@@ -783,13 +796,49 @@ export const brandService = {
   getAll: async () => {
     const response = await api.get('/brands')
     return response.data
+  },
+  create: async (formData: FormData) => {
+    const response = await api.post('/brands', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  },
+  update: async (id: number, formData: FormData) => {
+    const response = await api.put(`/brands/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  },
+  delete: async (id: number) => {
+    const response = await api.delete(`/brands/${id}`)
+    return response.data
+  }
+}
+
+// Service des avis
+export const reviewService = {
+  getPending: async () => {
+    const response = await api.get('/reviews/pending')
+    return response.data
+  },
+  moderate: async (id: number, status: 'approved' | 'rejected', comment?: string) => {
+    const response = await api.post(`/reviews/${id}/moderate`, { status, comment })
+    return response.data
+  },
+  updateStatus: async (id: number, status: 'approved' | 'rejected') => {
+    const response = await api.patch(`/reviews/${id}/status`, { status })
+    return response.data
+  },
+  delete: async (id: number) => {
+    const response = await api.delete(`/reviews/${id}`)
+    return response.data
   }
 }
 
 // Service Finance
 export const financeService = {
-  getOverview: async () => {
-    const response = await api.get('/finance/overview')
+  getOverview: async (period?: string) => {
+    const response = await api.get('/finance/overview', { params: { period } })
     return response.data
   },
 
@@ -812,22 +861,22 @@ export const financeService = {
     await api.delete(`/finance/expenses/${id}`)
   },
 
-  getExpensesBreakdown: async () => {
-    const response = await api.get('/finance/expenses-breakdown')
+  getExpensesBreakdown: async (period?: string) => {
+    const response = await api.get('/finance/expenses-breakdown', { params: { period } })
     return response.data
   },
-  getProfitTrend: async () => {
-    const response = await api.get('/finance/profit-trend')
-    return response.data
-  },
-
-  getPaymentMethods: async () => {
-    const response = await api.get('/finance/payment-methods')
+  getProfitTrend: async (period?: string) => {
+    const response = await api.get('/finance/profit-trend', { params: { period } })
     return response.data
   },
 
-  getTransactions: async (limit = 10, type = 'all') => {
-    const response = await api.get('/finance/transactions', { params: { limit, type } })
+  getPaymentMethods: async (period?: string) => {
+    const response = await api.get('/finance/payment-methods', { params: { period } })
+    return response.data
+  },
+
+  getTransactions: async (limit = 10, type = 'all', period?: string) => {
+    const response = await api.get('/finance/transactions', { params: { limit, type, period } })
     return response.data
   }
 }
@@ -851,6 +900,30 @@ export const notificationService = {
 
   delete: async (id: number) => {
     const response = await api.delete(`/notifications/${id}`)
+    return response.data
+  },
+
+  deleteAll: async () => {
+    const response = await api.delete('/notifications')
+    return response.data
+  }
+}
+
+export const ambassadorService = {
+  getAll: async () => {
+    const response = await api.get('/ambassadors')
+    return response.data
+  },
+  getOne: async (id: number) => {
+    const response = await api.get(`/ambassadors/${id}`)
+    return response.data
+  },
+  updateStatus: async (id: number, status: string) => {
+    const response = await api.patch(`/ambassadors/${id}/status`, { status })
+    return response.data
+  },
+  getStats: async (id: number) => {
+    const response = await api.get(`/ambassadors/${id}/stats`)
     return response.data
   }
 }
@@ -881,12 +954,22 @@ export const vendorService = {
     const response = await api.put('/vendors/me', storeData)
     return response.data.store
   },
+  uploadImages: async (formData: FormData) => {
+    const response = await api.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  },
   getProducts: async (): Promise<Product[]> => {
     const response = await api.get('/vendors/me/products')
     return response.data.products || response.data || []
   },
   getOrders: async (page = 1, limit = 10): Promise<{ orders: Order[], pagination: any }> => {
     const response = await api.get('/vendors/me/orders', { params: { page, limit } })
+    return response.data
+  },
+  getSummary: async (): Promise<any> => {
+    const response = await api.get('/vendors/me/summary')
     return response.data
   },
   getStats: async (): Promise<any> => {
@@ -903,5 +986,218 @@ export const vendorService = {
   }
 }
 
-export { api }
+// Service Admin (Marketplace Management)
+export const adminService = {
+  // Payouts / Retraits
+  getPayouts: async (params?: any) => {
+    const response = await api.get('/admin/payouts', { params })
+    return response.data
+  },
+  approvePayout: async (id: number, data: { reference?: string; adminNote?: string }) => {
+    const response = await api.put(`/admin/payouts/${id}/approve`, data)
+    return response.data
+  },
+  rejectPayout: async (id: number, data: { reason: string }) => {
+    const response = await api.put(`/admin/payouts/${id}/reject`, data)
+    return response.data
+  },
+
+  // Modération Produits
+  getProductsToModerate: async (params?: any) => {
+    const response = await api.get('/admin/products/moderation', { params })
+    return response.data
+  },
+  approveProduct: async (id: number) => {
+    const response = await api.put(`/admin/products/${id}/approve`)
+    return response.data
+  },
+  rejectProduct: async (id: number, data: { reason: string }) => {
+    const response = await api.put(`/admin/products/${id}/reject`, data)
+    return response.data
+  },
+
+  // Candidatures Vendeurs
+  getVendorApplications: async (params?: any) => {
+    const response = await api.get('/admin/vendors/applications', { params })
+    return response.data
+  },
+  getVendorApplication: async (id: number | string) => {
+    const response = await api.get(`/admin/vendors/applications/${id}`)
+    return response.data
+  }
+}
+
+
+// =====================
+// Refund Service
+// =====================
+export const refundService = {
+  getPendingOrders: async () => {
+    const response = await api.get('/refunds/pending-orders')
+    return response.data
+  },
+  getRefunds: async (params?: { status?: string; page?: number; limit?: number }) => {
+    const response = await api.get('/refunds', { params })
+    return response.data
+  },
+  getStats: async () => {
+    const response = await api.get('/refunds/stats')
+    return response.data
+  },
+  createRefund: async (data: {
+    order_id: number
+    payment_method: string
+    fee_rate_override?: number
+    notes?: string
+    admin_id?: number
+  }) => {
+    const response = await api.post('/refunds', data)
+    return response.data
+  },
+  processRefund: async (id: number, data: { reference?: string; notes?: string; admin_id?: number }) => {
+    const response = await api.patch(`/refunds/${id}/process`, data)
+    return response.data
+  },
+  completeRefund: async (id: number, data: { reference?: string; notes?: string }) => {
+    const response = await api.patch(`/refunds/${id}/complete`, data)
+    return response.data
+  },
+  failRefund: async (id: number, data: { failure_reason: string }) => {
+    const response = await api.patch(`/refunds/${id}/fail`, data)
+    return response.data
+  }
+}
+
+export const ticketService = {
+  getStats: async () => {
+    const response = await api.get('/tickets/stats')
+    return response.data
+  },
+  getAll: async (params?: { status?: string; page?: number; limit?: number } | any) => {
+    const response = await api.get('/tickets', { params })
+    return response.data
+  },
+  updateStatus: async (id: number, status: 'open' | 'in_progress' | 'closed') => {
+    const response = await api.patch(`/tickets/${id}/status`, { status })
+    return response.data
+  },
+  getDetails: async (id: number | string) => {
+    const response = await api.get(`/tickets/${id}`)
+    return response.data
+  },
+  reply: async (id: number | string, data: any) => {
+    const response = await api.post(`/tickets/${id}/reply`, data)
+    return response.data
+  },
+  changeStatus: async (id: number | string, status: string) => {
+    const response = await api.patch(`/tickets/${id}/status`, { status })
+    return response.data
+  }
+}
+
+export const settingsService = {
+  get: async (category: string) => {
+    const response = await api.get(`/settings/${category}`)
+    return response.data
+  },
+  update: async (category: string, data: any) => {
+    const response = await api.put(`/settings/${category}`, data)
+    return response.data
+  }
+}
+
+export const uploadService = {
+  upload: async (files: File[]) => {
+    const formData = new FormData()
+    files.forEach((file) => formData.append('images', file))
+    const response = await api.post('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response.data
+  }
+}
+
+
+export const blogService = {
+  getAll: async () => {
+    const response = await api.get('/blog')
+    return response.data
+  },
+  getOne: async (id: number | string) => {
+    const response = await api.get(`/blog/${id}`)
+    return response.data
+  },
+  create: async (data: any) => {
+    const response = await api.post('/blog', data)
+    return response.data
+  },
+  update: async (id: number | string, data: any) => {
+    const response = await api.put(`/blog/${id}`, data)
+    return response.data
+  },
+  delete: async (id: number | string) => {
+    const response = await api.delete(`/blog/${id}`)
+    return response.data
+  },
+  incrementViews: async (id: number | string) => {
+    const response = await api.post(`/blog/${id}/view`)
+    return response.data
+  }
+}
+
+export const pagesService = {
+  getAll: async () => {
+    const response = await api.get('/pages')
+    return response.data
+  },
+  getOne: async (slug: string) => {
+    const response = await api.get(`/pages/${slug}`)
+    return response.data
+  },
+  create: async (data: any) => {
+    const response = await api.post('/pages', data)
+    return response.data
+  },
+  update: async (slug: string, data: any) => {
+    const response = await api.put(`/pages/${slug}`, data)
+    return response.data
+  },
+  delete: async (slug: string) => {
+    await api.delete(`/pages/${slug}`)
+  }
+}
+
+export const disputeService = {
+  getAll: async (params?: { status?: string; page?: number; limit?: number }) => {
+    const response = await api.get('/disputes', { params })
+    return response.data
+  },
+  getSellerDisputes: async (params?: { status?: string; page?: number; limit?: number }) => {
+    const response = await api.get('/disputes/seller', { params })
+    return response.data
+  },
+  getById: async (id: number | string) => {
+    const response = await api.get(`/disputes/${id}`)
+    return response.data
+  },
+  sendMessage: async (id: number | string, message: string) => {
+    const response = await api.post(`/disputes/${id}/messages`, { message })
+    return response.data
+  },
+  updateStatus: async (id: number | string, status: string) => {
+    const response = await api.patch(`/disputes/${id}/status`, { status })
+    return response.data
+  }
+}
+
+export const searchService = {
+  global: async (query: string) => {
+    const response = await api.get('/search/global', { params: { q: query } })
+    return response.data
+  }
+}
+
+
 export default api

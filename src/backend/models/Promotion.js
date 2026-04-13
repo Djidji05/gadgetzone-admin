@@ -68,7 +68,15 @@ const Promotion = sequelize.define('Promotion', {
     }
 }, {
     tableName: 'promotions',
-    timestamps: true
+    timestamps: true,
+    indexes: [
+        {
+            fields: ['isActive', 'startDate', 'endDate']
+        },
+        {
+            fields: ['code']
+        }
+    ]
 });
 
 export default Promotion;

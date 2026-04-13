@@ -1,14 +1,23 @@
 <template>
-  <component :is="layout">
-    <router-view />
-  </component>
-  <NotificationProvider />
+  <template v-if="authStore.isReady">
+    <component :is="layout">
+      <router-view />
+    </component>
+    <NotificationProvider />
+  </template>
+  
+  <!-- Overlay de chargement initial pour éviter le flash de contenu -->
+  <div v-else class="fixed inset-0 bg-white dark:bg-gray-900 z-[9999] flex flex-col items-center justify-center">
+    <div class="w-16 h-16 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+    <p class="text-gray-500 dark:text-gray-400 font-medium animate-pulse">Chargement de l'administration...</p>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 import { inactivityTracker } from '@/services/inactivity'
 import AdminLayout from './components/layout/AdminLayout.vue'
 import AuthLayout from './components/layout/AuthLayout.vue'
@@ -18,7 +27,7 @@ import NotificationProvider from './components/ui/NotificationProvider.vue'
 import { h } from 'vue'
 
 const AdminLayoutWithProviders = {
-  setup(props, { slots }) {
+  setup(props: any, { slots }: any) {
     return () => h(ThemeProvider, () => [
       h(SidebarProvider, () => [
         h(AdminLayout, null, slots)
@@ -29,9 +38,24 @@ const AdminLayoutWithProviders = {
 
 const route = useRoute()
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
+
+// Initialiser l'authentification immédiatement
+authStore.init()
+
+onMounted(() => {
+  settingsStore.fetchGeneralSettings()
+})
 
 const layout = computed(() => {
-  return route.meta.layout === 'auth' ? AuthLayout : AdminLayoutWithProviders
+  if (route.meta.layout === 'auth') return AuthLayout
+  
+  // Sécurité supplémentaire : si l'utilisateur n'est pas authentifié,
+  // on ne lui montre jamais le layout admin (avec sidebar/header)
+  // même si le router n'a pas encore fini sa redirection vers /signin
+  if (!authStore.isAuthenticated) return AuthLayout
+  
+  return AdminLayoutWithProviders
 })
 
 // --- Gestion du rafraîchissement de token ---
@@ -71,6 +95,14 @@ watch(() => authStore.isAuthenticated, (isAuthenticated) => {
 onMounted(() => {
   // Si l'utilisateur est déjà connecté (persistance)
   if (authStore.isAuthenticated) {
+    // Synchroniser localStorage si les clés directes manquent
+    if (!localStorage.getItem('auth_token') && authStore.token) {
+      localStorage.setItem('auth_token', authStore.token)
+    }
+    if (!localStorage.getItem('user_data') && authStore.user) {
+      localStorage.setItem('user_data', JSON.stringify(authStore.user))
+    }
+    
     inactivityTracker.start()
     startTokenRefresh()
   }

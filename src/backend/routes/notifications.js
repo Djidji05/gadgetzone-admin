@@ -9,6 +9,7 @@ const router = express.Router();
  * Récupérer les notifications de l'utilisateur connecté
  */
 router.get('/', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
     try {
         const userId = req.user.id;
         const { limit = 50, status, type } = req.query;
@@ -23,23 +24,25 @@ router.get('/', authenticateToken, async (req, res) => {
             whereClause.type = type;
         }
 
-        const notifications = await Notification.findAll({
-            where: whereClause,
-            order: [['created_at', 'DESC']],
-            limit: parseInt(limit),
-            logging: false,
-            include: [{
-                model: User,
-                as: 'user',
-                attributes: ['id', 'name', 'email']
-            }]
-        });
+        // Parallelize queries to improve performance
+        const [notifications, unreadCount] = await Promise.all([
+            Notification.findAll({
+                where: whereClause,
+                attributes: ['id', 'type', 'title', 'message', 'status', 'created_at', 'related_id', 'related_type'],
+                order: [['created_at', 'DESC']],
+                limit: Math.min(parseInt(limit || '50'), 100),
+                logging: false
+            }),
+            Notification.count({
+                where: { userId, status: 'unread' },
+                logging: false
+            })
+        ]);
 
-        // Compter les non lues
-        const unreadCount = await Notification.count({
-            where: { userId, status: 'unread' },
-            logging: false
-        });
+        const duration = Date.now() - startTime;
+        if (duration > 1000) {
+            console.warn(`[Performance] GET /api/notifications took ${duration}ms for user ${userId}`);
+        }
 
         res.json({
             notifications,
@@ -143,6 +146,30 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         res.status(500).json({
             error: 'Erreur serveur',
             message: 'Erreur lors de la suppression de la notification'
+        });
+    }
+});
+
+/**
+ * DELETE /api/notifications
+ * Supprimer toutes les notifications de l'utilisateur
+ */
+router.delete('/', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        await Notification.destroy({
+            where: { userId }
+        });
+
+        res.json({
+            message: 'Toutes les notifications ont été supprimées avec succès'
+        });
+    } catch (error) {
+        console.error('Erreur suppression de toutes les notifications:', error);
+        res.status(500).json({
+            error: 'Erreur serveur',
+            message: 'Erreur lors de la suppression des notifications'
         });
     }
 });

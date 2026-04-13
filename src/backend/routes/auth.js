@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Sequelize, Op } from 'sequelize';
-import { User } from '../models/index.js';
+import { User, Order } from '../models/index.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { notifyNewSystemUser } from '../utils/notificationHelper.js';
 import {
@@ -34,6 +34,44 @@ router.post('/register', authLimiter, validateRegister, async (req, res) => {
         message: 'Prénom, nom, email et mot de passe sont requis'
       });
     }
+
+    // === Lire la politique de mot de passe depuis les paramètres de sécurité ===
+    try {
+      const Setting = (await import('../models/Setting.js')).default;
+      const securitySettings = await Setting.findAll({ where: { category: 'security' } });
+      const sec = {};
+      securitySettings.forEach(s => { sec[s.key] = s.value; });
+
+      const minLength = parseInt(sec.min_password_length || '8');
+      const requireUppercase = (sec.require_uppercase || 'true') === 'true';
+      const requireNumbers = (sec.require_numbers || 'true') === 'true';
+      const requireSpecialChars = (sec.require_special_chars || 'false') === 'true';
+
+      const policyErrors = [];
+      if (password.length < minLength) {
+        policyErrors.push(`Le mot de passe doit contenir au moins ${minLength} caractères`);
+      }
+      if (requireUppercase && !/[A-Z]/.test(password)) {
+        policyErrors.push('Le mot de passe doit contenir au moins une lettre majuscule');
+      }
+      if (requireNumbers && !/[0-9]/.test(password)) {
+        policyErrors.push('Le mot de passe doit contenir au moins un chiffre');
+      }
+      if (requireSpecialChars && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+        policyErrors.push('Le mot de passe doit contenir au moins un caractère spécial');
+      }
+
+      if (policyErrors.length > 0) {
+        return res.status(400).json({
+          error: 'Mot de passe invalide',
+          message: policyErrors[0],
+          errors: policyErrors
+        });
+      }
+    } catch (policyErr) {
+      console.warn('[Auth] Could not load password policy, using defaults:', policyErr.message);
+    }
+    // === Fin validation politique ===
 
     // Combiner firstName et lastName pour le nom complet
     const name = `${firstName} ${lastName}`;
@@ -81,6 +119,8 @@ router.post('/register', authLimiter, validateRegister, async (req, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
+      is_ambassador: user.is_ambassador,
+      referral_code: user.referral_code,
       created_at: user.created_at
     };
 
@@ -95,8 +135,8 @@ router.post('/register', authLimiter, validateRegister, async (req, res) => {
 
     res.status(201).json({
       message: 'Utilisateur créé avec succès',
-      user: userResponse,
-      token // Keep sending token in JSON for backward compatibility
+      token,
+      user: userResponse
     });
 
   } catch (error) {
@@ -134,13 +174,13 @@ router.post('/login', authLimiter, validateLogin, async (req, res) => {
       });
     }
 
-    // Role check removed to allow customers to log in to the website
-    // if (!['admin', 'gestionnaire'].includes(user.role)) {
-    //   return res.status(403).json({
-    //     error: 'Accès refusé',
-    //     message: 'Accès réservé aux administrateurs et gestionnaires.'
-    //   });
-    // }
+    // Les customers, sellers, admins et gestionnaires peuvent se connecter
+    if (!['admin', 'gestionnaire', 'seller', 'customer'].includes(user.role)) {
+      return res.status(403).json({
+        error: 'Accès refusé',
+        message: 'Ce compte n\'est pas autorisé à se connecter.'
+      });
+    }
 
     // Créer le token
     const token = jwt.sign(
@@ -168,6 +208,8 @@ router.post('/login', authLimiter, validateLogin, async (req, res) => {
       lastName,
       email: user.email,
       role: user.role,
+      is_ambassador: user.is_ambassador,
+      referral_code: user.referral_code,
       created_at: user.created_at,
       storeStatus: store ? store.status : null,
       storeId: store ? store.id : null
@@ -184,8 +226,8 @@ router.post('/login', authLimiter, validateLogin, async (req, res) => {
 
     res.json({
       message: 'Connexion réussie',
-      user: userResponse,
-      token
+      token,
+      user: userResponse
     });
 
   } catch (error) {
@@ -217,9 +259,13 @@ router.post('/logout', async (req, res) => {
  */
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
+    const user = req.user.toJSON ? req.user.toJSON() : req.user;
+    const [firstName, ...lastNameParts] = user.name ? user.name.split(' ') : ['', ''];
+    const lastName = lastNameParts.join(' ');
+
     res.json({
       message: 'Profil récupéré avec succès',
-      user: req.user
+      user: { ...user, firstName, lastName }
     });
   } catch (error) {
     console.error('Erreur profil:', error);
@@ -236,7 +282,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
  */
 router.put('/profile', validateProfileUpdate, authenticateToken, async (req, res) => {
   try {
-    const { name, email, phone } = req.body;
+    const { name, email, phone, currentPassword, password } = req.body;
     const userId = req.user.id;
 
     // Vérifier si l'email est déjà utilisé par un autre utilisateur
@@ -253,9 +299,28 @@ router.put('/profile', validateProfileUpdate, authenticateToken, async (req, res
       }
     }
 
+    const updates = { name, email, phone };
+
+    // Check if user wants to update password
+    if (password) {
+      const user = await User.findByPk(userId);
+      // Verify current password
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({
+          error: 'Invalid password',
+          message: 'Le mot de passe actuel est incorrect'
+        });
+      }
+
+      // Hash new password
+      const saltRounds = 12;
+      updates.password = await bcrypt.hash(password, saltRounds);
+    }
+
     // Mettre à jour l'utilisateur
     await User.update(
-      { name, email, phone },
+      updates,
       { where: { id: userId } }
     );
 
@@ -264,9 +329,13 @@ router.put('/profile', validateProfileUpdate, authenticateToken, async (req, res
       attributes: { exclude: ['password'] }
     });
 
+    const userObj = updatedUser.toJSON ? updatedUser.toJSON() : updatedUser;
+    const [firstName, ...lastNameParts] = userObj.name ? userObj.name.split(' ') : ['', ''];
+    const lastName = lastNameParts.join(' ');
+
     res.json({
       message: 'Profil mis à jour avec succès',
-      user: updatedUser
+      user: { ...userObj, firstName, lastName }
     });
 
   } catch (error) {
@@ -323,6 +392,51 @@ router.post('/change-password', validatePasswordChange, authenticateToken, async
 });
 
 /**
+ * POST /api/auth/close-account
+ * Fermer le compte utilisateur (inactivation)
+ */
+router.post('/close-account', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Vérifier les commandes en cours
+    // Ongoing statuses according to typical flowchart: pending, processing, shipped, on-hold
+    const ongoingOrders = await Order.findOne({
+      where: {
+        user_id: userId,
+        status: {
+          [Op.in]: ['pending', 'processing', 'shipped', 'on-hold']
+        }
+      }
+    });
+
+    if (ongoingOrders) {
+      return res.status(400).json({
+        error: 'Commandes en cours',
+        message: 'Vous ne pouvez pas fermer votre compte tant que vous avez des commandes en cours (en attente, en préparation ou en cours de livraison).'
+      });
+    }
+
+    // Marquer l'utilisateur comme inactif
+    await User.update(
+      { status: 'Inactif' },
+      { where: { id: userId } }
+    );
+
+    res.json({
+      message: 'Votre compte a été fermé avec succès. Vous allez être déconnecté.'
+    });
+
+  } catch (error) {
+    console.error('Erreur fermeture compte:', error);
+    res.status(500).json({
+      error: 'Erreur serveur',
+      message: 'Erreur lors de la fermeture du compte'
+    });
+  }
+});
+
+/**
  * POST /api/auth/refresh
  * Rafraîchir le token avec une nouvelle activité
  */
@@ -373,11 +487,7 @@ router.post('/refresh', authenticateToken, async (req, res) => {
  */
 router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    console.log('🔍 GET /users request received');
     const { search } = req.query;
-
-    // Test Op availability
-    console.log('Using Op.in:', Op.in);
 
     const whereClause = {
       role: { [Op.in]: ['admin', 'gestionnaire'] }
@@ -390,17 +500,15 @@ router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
       ];
     }
 
-    console.log('📝 Executing User.findAll...');
     const users = await User.findAll({
       where: whereClause,
       attributes: { exclude: ['password'] },
       order: [['created_at', 'DESC']]
     });
-    console.log(`✅ Users found: ${users.length}`);
 
     res.json(users);
   } catch (error) {
-    console.error('❌ Erreur liste utilisateurs:', error);
+    console.error('Erreur liste utilisateurs:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des utilisateurs' });
   }
 });
@@ -689,7 +797,7 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
 
     const message = `
       <h1>Réinitialisation de mot de passe</h1>
-      <p>Vous avez demandé une réinitialisation de mot de passe pour votre compte GadgetZone.</p>
+      <p>Vous avez demandé une réinitialisation de mot de passe pour votre compte htfasil.</p>
       <p>Veuillez cliquer sur le lien ci-dessous pour créer un nouveau mot de passe :</p>
       <a href="${resetUrl}" style="padding: 10px 20px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 5px;">Réinitialiser mon mot de passe</a>
       <p>Ce lien expirera dans 1 heure.</p>
@@ -698,7 +806,7 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
 
     await sendEmail(
       user.email,
-      'Réinitialisation de mot de passe - GadgetZone',
+      'Réinitialisation de mot de passe - htfasil',
       message
     );
 

@@ -13,7 +13,7 @@ async function addPhoneColumn() {
             host: process.env.DB_HOST || 'localhost',
             user: process.env.DB_USER || 'root',
             password: process.env.DB_PASSWORD || '',
-            database: process.env.DB_NAME || 'gadgetzone'
+            database: process.env.DB_NAME || 'htfasil'
         });
 
         console.log('✅ Connecté à la base de données');

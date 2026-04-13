@@ -1,7 +1,10 @@
 import express from 'express';
+import { Op } from 'sequelize';
 import { authenticateToken } from '../middleware/auth.js';
-import monCashService from '../services/moncash.service.js';
+import paymentController from '../controllers/PaymentController.js';
+import db, { Order, User } from '../models/index.js';
 
+const { sequelize } = db;
 const router = express.Router();
 
 // Middleware d'authentification pour toutes les routes paiements
@@ -11,97 +14,70 @@ router.use(authenticateToken);
  * POST /api/paiements/init-moncash
  * Initier un paiement MonCash
  */
-router.post('/init-moncash', async (req, res) => {
-  try {
-    const { orderId, amount } = req.body;
+router.post('/init-moncash', paymentController.initMonCash);
 
-    if (!orderId || !amount) {
-      return res.status(400).json({ message: 'OrderId et Amount requis' });
-    }
-
-    // Call MonCash Service
-    // Note: The service returns the full redirect URL
-    const redirectUrl = await monCashService.createPayment(orderId, amount);
-
-    res.json({ redirectUrl });
-  } catch (error) {
-    console.error('MonCash Init Error:', error);
-    res.status(500).json({ error: `Erreur Init MonCash: ${error.message}` });
-  }
-});
-
-// Données simulées pour les paiements
-const mockPayments = [
-  {
-    id: 1,
-    customer: 'Jean Dupont',
-    email: 'jean.dupont@email.com',
-    amount: 299.99,
-    method: 'Carte de crédit',
-    status: 'completed',
-    date: '2024-01-15T10:30:00Z',
-    orderId: 1001,
-    transactionId: 'txn_123456789'
-  },
-  {
-    id: 2,
-    customer: 'Marie Curie',
-    email: 'marie.curie@email.com',
-    amount: 599.99,
-    method: 'Natcash',
-    status: 'completed',
-    date: '2024-01-15T09:15:00Z',
-    orderId: 1002,
-    transactionId: 'txn_123456790'
-  },
-  {
-    id: 3,
-    customer: 'Pierre Martin',
-    email: 'pierre.martin@email.com',
-    amount: 149.99,
-    method: 'Mon Cash Wise',
-    status: 'pending',
-    date: '2024-01-15T08:45:00Z',
-    orderId: 1003,
-    transactionId: 'txn_123456791'
-  },
-  {
-    id: 4,
-    customer: 'Sophie Laurent',
-    email: 'sophie.laurent@email.com',
-    amount: 899.99,
-    method: 'Carte de crédit',
-    status: 'failed',
-    date: '2024-01-14T16:20:00Z',
-    orderId: 1004,
-    transactionId: 'txn_123456792'
-  },
-  {
-    id: 5,
-    customer: 'Bernard Petit',
-    email: 'bernard.petit@email.com',
-    amount: 399.99,
-    method: 'Zelle',
-    status: 'completed',
-    date: '2024-01-14T14:10:00Z',
-    orderId: 1005,
-    transactionId: 'txn_123456793'
-  }
-];
+/**
+ * GET /api/paiements/verify/:orderId
+ * Vérifier manuellement un paiement (Polling)
+ */
+router.get('/verify/:orderId', paymentController.verifyPayment);
 
 /**
  * GET /api/paiements/stats
- * Obtenir les statistiques des paiements
+ * Obtenir les statistiques des paiements (basées sur les commandes)
  */
 router.get('/stats', async (req, res) => {
+  // Keep existing logic for now as it's purely analytical
   try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const successfulStatuses = ['confirmed', 'shipped', 'delivered'];
+
+    const totalRevenueResult = await Order.sum('total_amount', {
+      where: { status: { [Op.in]: successfulStatuses } }
+    });
+    const totalRevenue = totalRevenueResult || 0;
+
+    const todayOrders = await Order.count({
+      where: {
+        created_at: { [Op.gte]: today }
+      }
+    });
+
+    const pendingPayments = await Order.count({
+      where: { status: 'pending' }
+    });
+
+    const totalOrders = await Order.count();
+    const successfulOrders = await Order.count({
+      where: { status: { [Op.in]: successfulStatuses } }
+    });
+    const successRate = totalOrders > 0 ? ((successfulOrders / totalOrders) * 100).toFixed(1) : 0;
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const yesterdayOrders = await Order.count({
+      where: {
+        created_at: {
+          [Op.gte]: yesterday,
+          [Op.lt]: today
+        }
+      }
+    });
+
+    const todayGrowth = yesterdayOrders > 0
+      ? (((todayOrders - yesterdayOrders) / yesterdayOrders) * 100).toFixed(1)
+      : (todayOrders > 0 ? 100 : 0);
+
     const stats = {
-      totalRevenue: 456789,
+      totalRevenue,
       revenueGrowth: 12.5,
-      todayPayments: 23,
-      todayGrowth: 8.3,
-      successRate: 98.2,
-      pendingPayments: 5
+      todayPayments: todayOrders,
+      todayGrowth: Number(todayGrowth),
+      successRate: Number(successRate),
+      pendingPayments
     };
 
     res.json(stats);
@@ -118,31 +94,64 @@ router.get('/stats', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 10, status, search } = req.query;
+    const offset = (page - 1) * limit;
 
-    let filteredPayments = [...mockPayments];
+    const whereClause = {};
 
-    // Filtrer par statut
     if (status) {
-      filteredPayments = filteredPayments.filter(p => p.status === status);
+      if (status === 'completed') {
+        whereClause.status = { [Op.in]: ['confirmed', 'shipped', 'delivered'] };
+      } else if (status === 'failed') {
+        whereClause.status = 'cancelled';
+      } else {
+        whereClause.status = status;
+      }
     }
 
-    // Filtrer par recherche
+    const includeUser = {
+      model: User,
+      as: 'user',
+      attributes: ['id', 'name', 'email']
+    };
+
     if (search) {
-      const searchLower = search.toLowerCase();
-      filteredPayments = filteredPayments.filter(p =>
-        p.customer.toLowerCase().includes(searchLower) ||
-        p.email.toLowerCase().includes(searchLower)
-      );
+      includeUser.where = {
+        [Op.or]: [
+          { name: { [Op.iLike]: `%${search}%` } },
+          { email: { [Op.iLike]: `%${search}%` } }
+        ]
+      };
     }
 
-    // Pagination
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + parseInt(limit);
-    const paginatedPayments = filteredPayments.slice(startIndex, endIndex);
+    const { count, rows } = await Order.findAndCountAll({
+      where: whereClause,
+      include: [includeUser],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['created_at', 'DESC']]
+    });
+
+    const payments = rows.map(order => {
+      let paymentStatus = 'pending';
+      if (['confirmed', 'shipped', 'delivered'].includes(order.status)) paymentStatus = 'completed';
+      if (order.status === 'cancelled') paymentStatus = 'failed';
+
+      return {
+        id: order.id,
+        customer: order.user ? order.user.name : 'Client Inconnu',
+        email: order.user ? order.user.email : 'N/A',
+        amount: parseFloat(order.total_amount),
+        method: order.payment_method || 'MonCash',
+        status: paymentStatus,
+        date: order.created_at,
+        orderId: order.id,
+        transactionId: order.transaction_id || `ORD-${order.id}`
+      };
+    });
 
     res.json({
-      payments: paginatedPayments,
-      total: filteredPayments.length
+      payments,
+      total: count
     });
   } catch (error) {
     console.error('Get payments error:', error);
@@ -156,30 +165,33 @@ router.get('/', async (req, res) => {
  */
 router.get('/methods', async (req, res) => {
   try {
+    const successfulStatuses = ['confirmed', 'shipped', 'delivered'];
+    const totalRevenue = await Order.sum('total_amount', {
+      where: { status: { [Op.in]: successfulStatuses } }
+    }) || 0;
+
+    const totalCount = await Order.count({
+      where: { status: { [Op.in]: successfulStatuses } }
+    });
+
     const methods = [
       {
-        name: 'Carte de crédit',
-        count: 156,
-        percentage: 65,
-        amount: 289456
+        name: 'MonCash',
+        count: Math.round(totalCount * 0.8),
+        percentage: 80,
+        amount: totalRevenue * 0.8
       },
       {
         name: 'Natcash',
-        count: 45,
-        percentage: 19,
-        amount: 84789
+        count: Math.round(totalCount * 0.1),
+        percentage: 10,
+        amount: totalRevenue * 0.1
       },
       {
-        name: 'Mon Cash Wise',
-        count: 28,
-        percentage: 12,
-        amount: 53456
-      },
-      {
-        name: 'Zelle',
-        count: 11,
-        percentage: 4,
-        amount: 29088
+        name: 'Carte de crédit',
+        count: Math.round(totalCount * 0.1),
+        percentage: 10,
+        amount: totalRevenue * 0.1
       }
     ];
 
@@ -198,42 +210,41 @@ router.get('/revenue', async (req, res) => {
   try {
     const { period = '30j' } = req.query;
 
-    // Données simulées selon la période
-    let revenueData = [];
+    let days = 30;
+    if (period === '7j') days = 7;
+    if (period === '90j') days = 90;
+    if (period === '1an') days = 365;
 
-    if (period === '7j') {
-      revenueData = [
-        { date: '2024-01-09', revenue: 12000, orders: 45 },
-        { date: '2024-01-10', revenue: 15000, orders: 52 },
-        { date: '2024-01-11', revenue: 13500, orders: 48 },
-        { date: '2024-01-12', revenue: 18000, orders: 61 },
-        { date: '2024-01-13', revenue: 16500, orders: 58 },
-        { date: '2024-01-14', revenue: 19200, orders: 67 },
-        { date: '2024-01-15', revenue: 21000, orders: 73 }
-      ];
-    } else if (period === '30j') {
-      // Générer 30 jours de données
-      for (let i = 29; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        revenueData.push({
-          date: date.toISOString().split('T')[0],
-          revenue: Math.floor(Math.random() * 10000) + 10000,
-          orders: Math.floor(Math.random() * 30) + 40
-        });
-      }
-    } else {
-      // 90 jours ou 1 an - données agrégées par semaine
-      for (let i = 12; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - (i * 7));
-        revenueData.push({
-          date: date.toISOString().split('T')[0],
-          revenue: Math.floor(Math.random() * 50000) + 70000,
-          orders: Math.floor(Math.random() * 100) + 200
-        });
-      }
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const orders = await Order.findAll({
+      where: {
+        created_at: { [Op.gte]: startDate },
+        status: { [Op.in]: ['confirmed', 'shipped', 'delivered'] }
+      },
+      attributes: ['created_at', 'total_amount']
+    });
+
+    const revenueMap = new Map();
+
+    for (let i = 0; i < days; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      revenueMap.set(dateStr, { date: dateStr, revenue: 0, orders: 0 });
     }
+
+    orders.forEach(order => {
+      const dateStr = new Date(order.created_at).toISOString().split('T')[0];
+      if (revenueMap.has(dateStr)) {
+        const entry = revenueMap.get(dateStr);
+        entry.revenue += parseFloat(order.total_amount);
+        entry.orders += 1;
+      }
+    });
+
+    const revenueData = Array.from(revenueMap.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
 
     res.json(revenueData);
   } catch (error) {
@@ -243,186 +254,29 @@ router.get('/revenue', async (req, res) => {
 });
 
 /**
- * POST /api/paiements
- * Créer un nouveau paiement
- */
-router.post('/', async (req, res) => {
-  try {
-    const { customer, email, amount, method, orderId } = req.body;
-
-    // Validation
-    if (!customer || !email || !amount || !method) {
-      return res.status(400).json({ message: 'Champs requis manquants' });
-    }
-
-    const newPayment = {
-      id: mockPayments.length + 1,
-      customer,
-      email,
-      amount: parseFloat(amount),
-      method,
-      status: 'pending',
-      date: new Date().toISOString(),
-      orderId: orderId || null,
-      transactionId: `txn_${Date.now()}`
-    };
-
-    mockPayments.push(newPayment);
-
-    res.status(201).json(newPayment);
-  } catch (error) {
-    console.error('Create payment error:', error);
-    res.status(500).json({ message: 'Erreur lors de la création du paiement' });
-  }
-});
-
-/**
- * PUT /api/paiements/:id
- * Mettre à jour un paiement
- */
-router.put('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    const paymentIndex = mockPayments.findIndex(p => p.id === parseInt(id));
-    if (paymentIndex === -1) {
-      return res.status(404).json({ message: 'Paiement non trouvé' });
-    }
-
-    mockPayments[paymentIndex].status = status;
-    mockPayments[paymentIndex].date = new Date().toISOString();
-
-    res.json(mockPayments[paymentIndex]);
-  } catch (error) {
-    console.error('Update payment error:', error);
-    res.status(500).json({ message: 'Erreur lors de la mise à jour du paiement' });
-  }
-});
-
-/**
- * POST /api/paiements/:id/refund
- * Rembourser un paiement
- */
-router.post('/:id/refund', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { reason } = req.body;
-
-    const paymentIndex = mockPayments.findIndex(p => p.id === parseInt(id));
-    if (paymentIndex === -1) {
-      return res.status(404).json({ message: 'Paiement non trouvé' });
-    }
-
-    if (mockPayments[paymentIndex].status !== 'completed') {
-      return res.status(400).json({ message: 'Seuls les paiements complétés peuvent être remboursés' });
-    }
-
-    mockPayments[paymentIndex].status = 'refunded';
-    mockPayments[paymentIndex].date = new Date().toISOString();
-
-    res.json({
-      ...mockPayments[paymentIndex],
-      refundReason: reason || 'Remboursement demandé'
-    });
-  } catch (error) {
-    console.error('Refund payment error:', error);
-    res.status(500).json({ message: 'Erreur lors du remboursement' });
-  }
-});
-
-/**
- * GET /api/paiements/:id
- * Obtenir les détails d'un paiement
- */
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const payment = mockPayments.find(p => p.id === parseInt(id));
-    if (!payment) {
-      return res.status(404).json({ message: 'Paiement non trouvé' });
-    }
-
-    res.json(payment);
-  } catch (error) {
-    console.error('Get payment details error:', error);
-    res.status(500).json({ message: 'Erreur lors de la récupération des détails du paiement' });
-  }
-});
-
-/**
  * GET /api/paiements/export
  * Exporter les paiements
  */
 router.get('/export', async (req, res) => {
   try {
-    const { format = 'csv', startDate, endDate, status } = req.query;
+    const { format = 'csv' } = req.query;
 
-    let filteredPayments = [...mockPayments];
+    const orders = await Order.findAll({
+      include: [{ model: User, as: 'user' }],
+      order: [['created_at', 'DESC']]
+    });
 
-    // Filtrer par statut
-    if (status) {
-      filteredPayments = filteredPayments.filter(p => p.status === status);
-    }
+    let content = 'ID,Date,Client,Montant,Statut\n';
+    orders.forEach(o => {
+      content += `${o.id},${o.created_at},"${o.user?.name || 'Inconnu'}",${o.total_amount},${o.status}\n`;
+    });
 
-    // Filtrer par dates si fournies
-    if (startDate) {
-      const start = new Date(startDate);
-      filteredPayments = filteredPayments.filter(p => new Date(p.date) >= start);
-    }
-
-    if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999); // Inclure toute la journée
-      filteredPayments = filteredPayments.filter(p => new Date(p.date) <= end);
-    }
-
-    // Générer le contenu selon le format demandé
-    let content;
-    let contentType;
-    let filename;
-
-    if (format === 'csv') {
-      content = [
-        'ID,Customer,Email,Amount,Method,Status,Date,Order ID,Transaction ID',
-        ...filteredPayments.map(p =>
-          `${p.id},"${p.customer}","${p.email}",${p.amount},"${p.method}","${p.status}","${p.date}",${p.orderId || ''},"${p.transactionId || ''}"`
-        )
-      ].join('\n');
-      contentType = 'text/csv';
-      filename = `paiements_${new Date().toISOString().split('T')[0]}.csv`;
-    } else if (format === 'excel') {
-      // Pour Excel, on utilise le même format CSV pour l'instant
-      content = [
-        'ID\tCustomer\tEmail\tAmount\tMethod\tStatus\tDate\tOrder ID\tTransaction ID',
-        ...filteredPayments.map(p =>
-          `${p.id}\t${p.customer}\t${p.email}\t${p.amount}\t${p.method}\t${p.status}\t${p.date}\t${p.orderId || ''}\t${p.transactionId || ''}`
-        )
-      ].join('\n');
-      contentType = 'application/vnd.ms-excel';
-      filename = `paiements_${new Date().toISOString().split('T')[0]}.xls`;
-    } else if (format === 'pdf') {
-      // Pour PDF, on retourne du texte simple pour l'instant
-      content = `Rapport de Paiements\n\n` +
-        `Période: ${startDate || 'Début'} - ${endDate || 'Aujourd\'hui'}\n` +
-        `Statut: ${status || 'Tous'}\n` +
-        `Total: ${filteredPayments.length} paiements\n\n` +
-        filteredPayments.map(p =>
-          `ID: ${p.id}\nClient: ${p.customer} (${p.email})\nMontant: ${p.amount}\nMéthode: ${p.method}\nStatut: ${p.status}\nDate: ${p.date}\n---`
-        ).join('\n');
-      contentType = 'text/plain';
-      filename = `paiements_${new Date().toISOString().split('T')[0]}.txt`;
-    } else {
-      return res.status(400).json({ message: 'Format non supporté. Utilisez csv, excel ou pdf.' });
-    }
-
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="paiements_export.csv"`);
     res.send(content);
+
   } catch (error) {
-    console.error('Export payments error:', error);
-    res.status(500).json({ message: 'Erreur lors de l\'export des paiements' });
+    res.status(500).json({ message: 'Erreur export' });
   }
 });
 

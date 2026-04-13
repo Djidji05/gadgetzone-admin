@@ -42,6 +42,60 @@ const Store = sequelize.define('Store', {
         type: DataTypes.JSON, // Store specific settings (colors, shipping policy, etc)
         defaultValue: {}
     },
+    phone: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    address: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    facebook: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    instagram: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    moncashNumber: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'moncash_number'
+    },
+    natcashNumber: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'natcash_number'
+    },
+    commission_rate: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 10.00,
+        allowNull: false
+    },
+    trust_score: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 100.00, // Démarre à 100%
+        allowNull: false
+    },
+    total_sales_count: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false
+    },
+    follower_count: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false
+    },
+    latitude: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    longitude: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
     created_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
@@ -52,7 +106,12 @@ const Store = sequelize.define('Store', {
     }
 }, {
     tableName: 'stores',
-    timestamps: false
+    timestamps: false,
+    indexes: [
+        { fields: ['status'] },
+        { fields: ['user_id'] },
+        { fields: ['latitude', 'longitude'] }
+    ]
 });
 
 export default Store;

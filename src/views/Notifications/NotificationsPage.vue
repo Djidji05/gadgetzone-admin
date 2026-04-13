@@ -16,6 +16,16 @@
           </svg>
           Tout marquer comme lu
         </button>
+        <button
+          v-if="notifications.length > 0"
+          @click="deleteAllNotifications"
+          class="inline-flex items-center justify-center gap-2 rounded-md bg-transparent px-4 py-2 text-center font-medium text-danger hover:bg-danger/10 transition"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          Tout supprimer
+        </button>
       </div>
     </div>
 
@@ -114,7 +124,7 @@
               v-for="notification in filteredNotifications"
               :key="notification.id"
               class="border-b border-stroke dark:border-strokedark"
-              :class="{ 'bg-blue-50 dark:bg-blue-900/10': notification.status === 'unread' }"
+              :class="{ 'bg-blue-50 dark:bg-blue-900/20': notification.status === 'unread' }"
             >
               <td class="px-4 py-5">
                 <span
@@ -133,14 +143,12 @@
                 </p>
               </td>
               <td class="px-4 py-5">
-                <p class="text-sm text-black dark:text-white">
-                  {{ formatDate(notification.created_at) }}
-                </p>
+                  {{ formatDate(notification.createdAt || notification.created_at) }}
               </td>
               <td class="px-4 py-5">
                 <span
                   class="inline-flex rounded-full px-3 py-1 text-sm font-medium"
-                  :class="notification.status === 'unread' ? 'bg-warning bg-opacity-10 text-warning' : 'bg-success bg-opacity-10 text-success'"
+                  :class="notification.status === 'unread' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'"
                 >
                   {{ notification.status === 'unread' ? 'Non lue' : 'Lue' }}
                 </span>
@@ -179,6 +187,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { notificationService } from '@/services/api'
+import { useUIStore } from '@/stores/ui'
 
 interface Notification {
   id: number
@@ -191,6 +200,7 @@ interface Notification {
 
 const notifications = ref<Notification[]>([])
 const loading = ref(false)
+const uiStore = useUIStore()
 const filters = ref({
   status: '',
   type: ''
@@ -236,9 +246,12 @@ const markAsRead = async (notification: Notification) => {
 }
 
 const markAllAsRead = async () => {
-  if (!confirm('Marquer toutes les notifications comme lues ?')) {
-    return
-  }
+  const confirmed = await uiStore.confirm({
+    title: 'Marquer tout comme lu',
+    message: 'Marquer toutes les notifications comme lues ?',
+    confirmText: 'Confirmer'
+  })
+  if (!confirmed) return
 
   try {
     await notificationService.markAllAsRead()
@@ -249,15 +262,39 @@ const markAllAsRead = async () => {
 }
 
 const deleteNotification = async (notification: Notification) => {
-  if (!confirm('Supprimer cette notification ?')) {
-    return
-  }
+  const confirmed = await uiStore.confirm({
+    title: 'Supprimer la notification',
+    message: 'Supprimer cette notification définitivement ?',
+    confirmText: 'Supprimer',
+    type: 'danger'
+  })
+  if (!confirmed) return
 
   try {
     await notificationService.delete(notification.id)
     notifications.value = notifications.value.filter(n => n.id !== notification.id)
   } catch (error) {
     console.error('Erreur suppression notification:', error)
+  }
+}
+
+const deleteAllNotifications = async () => {
+  const confirmed = await uiStore.confirm({
+    title: 'Supprimer toutes les notifications',
+    message: 'Êtes-vous sûr de vouloir supprimer toutes vos notifications ? Cette action est irréversible.',
+    confirmText: 'Tout supprimer',
+    type: 'danger'
+  })
+  if (!confirmed) return
+
+  try {
+    await notificationService.deleteAll()
+    notifications.value = []
+  } catch (error) {
+    console.error('Erreur suppression toutes les notifications:', error)
+    if (uiStore.showToast) {
+       uiStore.showToast('Erreur lors de la suppression des notifications', 'error')
+    }
   }
 }
 
@@ -268,19 +305,21 @@ const resetFilters = () => {
 
 const getTypeClass = (type: string) => {
   const classes: Record<string, string> = {
-    info: 'bg-primary bg-opacity-10 text-primary',
-    success: 'bg-success bg-opacity-10 text-success',
-    warning: 'bg-warning bg-opacity-10 text-warning',
-    error: 'bg-danger bg-opacity-10 text-danger',
-    order: 'bg-blue-500 bg-opacity-10 text-blue-500',
-    project: 'bg-purple-500 bg-opacity-10 text-purple-500'
+    info: 'bg-primary/10 text-primary',
+    success: 'bg-success/10 text-success',
+    warning: 'bg-warning/10 text-warning',
+    error: 'bg-danger/10 text-danger',
+    order: 'bg-blue-500/10 text-blue-500',
+    project: 'bg-purple-500/10 text-purple-500'
   }
   return classes[type] || classes.info
 }
 
 const formatDate = (dateString: string) => {
   if (!dateString) return '-'
-  return new Date(dateString).toLocaleString('fr-FR', {
+  const date = new Date(dateString)
+  if (isNaN(date.getTime())) return '-'
+  return date.toLocaleString('fr-FR', {
     dateStyle: 'medium',
     timeStyle: 'short'
   })

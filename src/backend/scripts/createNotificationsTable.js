@@ -20,7 +20,7 @@ async function createNotificationsTable() {
             {
                 userId: 1, // Admin user
                 type: 'info',
-                title: 'Bienvenue sur GadgetZone',
+                title: 'Bienvenue sur htfasil',
                 message: 'Votre système de notifications est maintenant opérationnel',
                 status: 'unread'
             },

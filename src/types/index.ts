@@ -5,11 +5,28 @@ export interface User {
   name: string
   email: string
   phone?: string
-  role: 'admin' | 'user' | 'seller' | 'gestionnaire'
+  role: 'admin' | 'user' | 'seller' | 'gestionnaire' | 'client'
   created_at: string
   updated_at: string
   storeStatus?: 'pending' | 'active' | 'suspended' | 'closed'
   storeId?: number
+  address?: string
+  last_login?: string
+  status?: 'active' | 'suspended' | 'closed'
+}
+
+export interface OrderLog {
+  id: number
+  action: string
+  old_status: string
+  new_status: string
+  details: string
+  created_at: string
+  actor?: {
+    id: number
+    name: string
+    email: string
+  }
 }
 
 export interface Category {
@@ -29,6 +46,10 @@ export interface Product {
   category_id: number
   image_url?: string
   category?: Category
+  store?: {
+    id: number
+    name: string
+  }
   created_at: string
   updated_at: string
 }
@@ -46,11 +67,16 @@ export interface Order {
   id: number
   user_id: number
   total_amount: number
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered'
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'confirmed'
   created_at: string
   updated_at: string
   user?: User
   items?: OrderItem[]
+  logs?: OrderLog[]
+  confirmed_at?: string
+  shipped_at?: string
+  delivered_at?: string
+  shipping_address?: string
 }
 
 export interface ApiResponse<T> {

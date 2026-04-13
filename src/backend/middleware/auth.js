@@ -1,5 +1,11 @@
 import jwt from 'jsonwebtoken';
-import { User } from '../models/index.js';
+import { Sequelize, Op } from 'sequelize';
+import { User, Role } from '../models/index.js';
+import sequelize from '../config/database.js';
+
+// Cache pour les utilisateurs (évite de taper la DB à chaque requête)
+const userCache = new Map();
+const USER_CACHE_TTL = 60 * 1000; // 1 minute
 
 /**
  * Middleware d'authentification JWT
@@ -7,49 +13,64 @@ import { User } from '../models/index.js';
 export const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
-    // Check Authorization Header OR Cookie
     const token = (authHeader && authHeader.split(' ')[1]) || req.cookies.token;
 
     if (!token) {
       console.log('❌ Auth Middleware: No token provided');
-      return res.status(401).json({
-        error: 'Accès refusé',
-        message: 'Token requis'
-      });
+      return res.status(401).json({ error: 'Accès refusé', message: 'Token requis' });
     }
-
-    // console.log('🔍 Verifying token...', token.substring(0, 20) + '...');
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // console.log('✅ Token decoded:', { userId: decoded.userId, lastActivity: decoded.lastActivity });
+    const userId = decoded.userId;
 
-    // Vérifier l'inactivité (10 minutes = 600000 ms)
-    const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 60 minutes
-    if (decoded.lastActivity) {
-      const timeSinceLastActivity = Date.now() - decoded.lastActivity;
-      // console.log(`⏱️ Time since last activity: ${timeSinceLastActivity / 1000}s`);
-
-      if (timeSinceLastActivity > INACTIVITY_TIMEOUT) {
-        console.log('❌ Auth Middleware: Session timeout');
-        return res.status(401).json({
-          error: 'Session expirée',
-          message: 'Votre session a expiré en raison d\'inactivité',
-          code: 'SESSION_TIMEOUT'
-        });
-      }
+    // Vérifier l'inactivité (60 minutes)
+    const INACTIVITY_TIMEOUT = 60 * 60 * 1000;
+    if (decoded.lastActivity && (Date.now() - decoded.lastActivity > INACTIVITY_TIMEOUT)) {
+      console.log('❌ Auth Middleware: Session timeout');
+      return res.status(401).json({ error: 'Session expirée', message: 'Inactivité prolongée', code: 'SESSION_TIMEOUT' });
     }
 
-    const user = await User.findByPk(decoded.userId, {
+    // Vérifier le cache
+    const cached = userCache.get(userId);
+    if (cached && (Date.now() - cached.timestamp < USER_CACHE_TTL)) {
+      req.user = cached.user;
+      return next();
+    }
+
+    // Sinon, charger depuis la DB
+    const user = await User.findByPk(userId, {
       attributes: { exclude: ['password'] }
     });
 
     if (!user) {
-      console.log('❌ Auth Middleware: User not found in DB', decoded.userId);
-      return res.status(401).json({
-        error: 'Accès refusé',
-        message: 'Utilisateur non trouvé'
-      });
+      console.log('❌ Auth Middleware: User not found', userId);
+      return res.status(401).json({ error: 'Accès refusé', message: 'Utilisateur non trouvé' });
     }
+
+    let permissions = cached?.permissions || [];
+
+    if (!cached || !cached.permissions) {
+      try {
+        const roleName = user.role || 'customer'; // Re-get for clarity
+        const roleData = await Role.findOne({
+          where: { name: roleName }
+        });
+        if (roleData) {
+          permissions = roleData.permissions || [];
+        }
+      } catch (roleError) {
+        console.error('Error fetching role permissions:', roleError);
+      }
+    }
+
+    // Mettre en cache avec permissions
+    userCache.set(userId, {
+      user,
+      permissions,
+      timestamp: Date.now()
+    });
+
+    user.permissions = permissions;
 
     req.user = user;
     next();
@@ -76,6 +97,31 @@ export const authenticateToken = async (req, res, next) => {
       message: 'Erreur lors de l\'authentification'
     });
   }
+};
+
+/**
+ * Middleware pour vérifier si l'utilisateur a une permission spécifique
+ */
+export const hasPermission = (permission) => {
+  return async (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Non authentifié' });
+    }
+
+    // Admins have all permissions
+    if (req.user.role === 'admin') {
+      return next();
+    }
+
+    if (!req.user.permissions || !req.user.permissions.includes(permission)) {
+      return res.status(403).json({
+        error: 'Accès refusé',
+        message: `Permission manquante : ${permission}`
+      });
+    }
+
+    next();
+  };
 };
 
 /**

@@ -1,23 +1,23 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
 
-// Charger les variables d'environnement
+// Charger les variables d'environnement (.env et .env.backend)
 dotenv.config();
-dotenv.config({ path: '.env.backend' });
 dotenv.config({ path: '.env.backend' });
 
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432', 10),
-  database: process.env.DB_NAME || 'gadgetzone',
+  database: process.env.DB_NAME || 'htfasil',
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '',
   dialect: 'postgres',
-  logging: process.env.NODE_ENV === 'development' ? console.log : false,
+  logging: false, // Désactivé pour performance Rocket
+
   pool: {
-    max: 10,
-    min: 0,
-    acquire: 30000,
+    max: 20, // Augmenté pour éviter l'épuisement sous charge
+    min: 5,  // Garder quelques connexions ouvertes
+    acquire: 45000, // Augmenté à 45s (axios timeout est 10s, mais permet au pool de respirer)
     idle: 10000
   }
 };
@@ -32,7 +32,11 @@ const sequelize = new Sequelize(
     port: dbConfig.port,
     dialect: dbConfig.dialect,
     logging: dbConfig.logging,
-    pool: dbConfig.pool
+    pool: dbConfig.pool,
+    dialectOptions: {
+      statement_timeout: 45000,
+      idle_in_transaction_session_timeout: 45000
+    }
   }
 );
 
@@ -55,8 +59,11 @@ export const initDatabase = async () => {
     const [results] = await sequelize.query('SELECT version();');
     console.log('📊 Version PostgreSQL:', results[0].version);
 
-    // Synchroniser les modèles
-    await syncDatabase({ alter: true });
+    // Synchroniser les modèles si demandé
+    if (process.env.DB_SYNC === 'true') {
+      console.log('🔄 Synchronisation des modèles...');
+      await syncDatabase({ alter: true });
+    }
 
     return true;
   } catch (error) {
@@ -76,7 +83,7 @@ export const initDatabase = async () => {
           console.log('💡 Solution: Vérifiez les identifiants de connexion à la base de données');
           break;
         case '3D000':
-          console.log('💡 Solution: Créez la base de données avec: CREATE DATABASE gadgetzone;');
+          console.log('💡 Solution: Créez la base de données avec: CREATE DATABASE htfasil;');
           break;
         default:
           console.log('💡 Solution: Vérifiez votre configuration PostgreSQL');

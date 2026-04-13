@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen xl:flex">
+  <div class="min-h-screen xl:flex bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
     <app-sidebar />
     <Backdrop />
     <div
@@ -13,7 +13,7 @@
       <!-- Footer -->
       <footer class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 pt-0">
         <p class="text-sm text-center text-gray-500 dark:text-gray-400">
-          &copy; {{ currentYear }} GadgetZone. Tous droits réservés.
+          &copy; {{ currentYear }} htfasil. Tous droits réservés.
         </p>
       </footer>
     </div>

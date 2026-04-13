@@ -71,8 +71,11 @@
             :class="{ 'bg-blue-50 dark:bg-blue-900/10': notification.status === 'unread' }"
           >
             <span class="relative block w-full h-10 rounded-full z-1 max-w-10">
-              <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700">
-                <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div 
+                class="flex items-center justify-center w-10 h-10 rounded-full"
+                :class="notification.type === 'order' ? 'bg-primary/20 text-primary' : (notification.type === 'warning' ? 'bg-warning/20 text-warning' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300')"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
               </div>
@@ -89,7 +92,7 @@
               <span class="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
                 <span class="capitalize">{{ notification.type }}</span>
                 <span class="w-1 h-1 bg-gray-400 rounded-full"></span>
-                <span>{{ formatTime(notification.created_at) }}</span>
+                <span>{{ formatTime(notification.createdAt || notification.created_at) }}</span>
                 <span v-if="notification.status === 'unread'" class="ml-2 w-2 h-2 bg-blue-500 rounded-full"></span>
               </span>
             </span>
@@ -188,18 +191,21 @@ const handleViewAllClick = (event) => {
 }
 
 const formatTime = (dateString) => {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now - date
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
+  if (!dateString) return 'Date inconnue';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'Date inconnue';
 
-  if (diffMins < 1) return 'À l\'instant'
-  if (diffMins < 60) return `Il y a ${diffMins} min`
-  if (diffHours < 24) return `Il y a ${diffHours}h`
-  if (diffDays < 7) return `Il y a ${diffDays}j`
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'À l\'instant';
+  if (diffMins < 60) return `Il y a ${diffMins} min`;
+  if (diffHours < 24) return `Il y a ${diffHours}h`;
+  if (diffDays < 7) return `Il y a ${diffDays}j`;
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
 // Watcher pour charger les notifications quand l'utilisateur se connecte

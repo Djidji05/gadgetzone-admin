@@ -2,6 +2,8 @@ import express from 'express';
 import { Banner, HomepageConfig, Product, Store, Promotion } from '../models/index.js';
 import sequelize from '../config/database.js';
 import { Op } from 'sequelize';
+import { applyPromotionsToProducts } from '../utils/promotionHelper.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -24,8 +26,8 @@ router.get('/banners', async (req, res) => {
     }
 });
 
-// Create banner
-router.post('/banners', async (req, res) => {
+// Create banner (admin only)
+router.post('/banners', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const banner = await Banner.create(req.body);
         res.status(201).json(banner);
@@ -35,8 +37,8 @@ router.post('/banners', async (req, res) => {
     }
 });
 
-// Update banner
-router.put('/banners/:id', async (req, res) => {
+// Update banner (admin only)
+router.put('/banners/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const banner = await Banner.findByPk(req.params.id);
         if (!banner) {
@@ -50,8 +52,8 @@ router.put('/banners/:id', async (req, res) => {
     }
 });
 
-// Delete banner
-router.delete('/banners/:id', async (req, res) => {
+// Delete banner (admin only)
+router.delete('/banners/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const banner = await Banner.findByPk(req.params.id);
         if (!banner) {
@@ -176,31 +178,17 @@ router.get('/sections/:section', async (req, res) => {
                         promoStyle: 'image'
                     });
                 } else if (products.length > 1) {
-                    // Rule: 2+ products use grid of 4
-                    let currentItems = [];
+                    // Use the helper to apply discounts
+                    const productsWithPromos = await applyPromotionsToProducts(products);
 
-                    products.forEach(p => {
-                        const promo = activePromos.find(pr => Array.isArray(pr.applicableProducts) && pr.applicableProducts.includes(p.id));
-
-                        let displayPrice = p.price;
-                        let displayOriginalPrice = p.original_price;
-
-                        if (promo) {
-                            displayOriginalPrice = p.price;
-                            if (promo.discountType === 'percentage') {
-                                displayPrice = p.price * (1 - promo.discount / 100);
-                            } else {
-                                displayPrice = Math.max(0, p.price - promo.discount);
-                            }
-                        }
-
+                    productsWithPromos.forEach(p => {
                         currentItems.push({
                             id: p.id,
                             name: p.name,
                             image: p.image_url,
                             link: `/products/${p.id}`,
-                            price: displayPrice,
-                            originalPrice: displayOriginalPrice
+                            price: p.price,
+                            originalPrice: p.original_price
                         });
 
                         if (currentItems.length === 4) {
@@ -299,6 +287,7 @@ router.get('/sections/:section', async (req, res) => {
             }
         }
 
+
         res.json(config);
 
     } catch (error) {
@@ -307,8 +296,8 @@ router.get('/sections/:section', async (req, res) => {
     }
 });
 
-// Update section config
-router.post('/sections/:section', async (req, res) => {
+// Update section config (admin only)
+router.post('/sections/:section', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { section } = req.params;
         const { content, isActive } = req.body;

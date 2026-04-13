@@ -4,37 +4,69 @@
 
     <div class="max-w-7xl mx-auto">
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden sm:bg-white sm:dark:bg-gray-800 bg-transparent dark:bg-transparent border-none dark:border-none shadow-none sm:border sm:dark:border-gray-700 sm:shadow-sm">
-        <!-- Header -->
-        <div class="px-4 py-6 sm:px-6 sm:py-6 flex flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-none">
-          <div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              Liste des produits
-            </h2>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 hidden sm:block">
-              Gérez votre catalogue de produits, stocks et prix
-            </p>
-          </div>
-          <div class="flex items-center gap-2">
+        <!-- Tabs (Admin Only) -->
+        <div v-if="authStore.isAdmin" class="border-b border-gray-200 dark:border-gray-700">
+          <nav class="flex space-x-8 px-6" aria-label="Tabs">
             <button
-               @click="loadProduits"
-               class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              @click="activeTab = 'all'"
+              :class="[
+                activeTab === 'all'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400',
+                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-all'
+              ]"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span class="hidden sm:inline">Actualiser</span>
+              Catalogue Complet
             </button>
-            <router-link
-              to="/ajouter-produit"
-              class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-all"
+            <button
+              @click="activeTab = 'moderation'"
+              :class="[
+                activeTab === 'moderation'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400',
+                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-all flex items-center gap-2'
+              ]"
             >
-              <svg class="h-5 w-5 sm:mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-              </svg>
-              <span class="hidden sm:inline">Ajouter</span>
-            </router-link>
-          </div>
+              Modération
+              <span v-if="pendingCount > 0" class="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                {{ pendingCount }}
+              </span>
+            </button>
+          </nav>
         </div>
+
+        <template v-if="activeTab === 'all'">
+          <!-- Header -->
+          <div class="px-4 py-6 sm:px-6 sm:py-6 flex flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-none">
+            <div>
+              <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                Liste des produits
+              </h2>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 hidden sm:block">
+                Gérez votre catalogue de produits, stocks et prix
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                 @click="loadProduits"
+                 class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span class="hidden sm:inline">Actualiser</span>
+              </button>
+              <router-link
+                to="/ajouter-produit"
+                class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-all"
+              >
+                <svg class="h-5 w-5 sm:mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                <span class="hidden sm:inline">Ajouter</span>
+              </router-link>
+            </div>
+          </div>
 
         <!-- Filtres et recherche -->
         <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
@@ -157,6 +189,7 @@
                           New
                         </span>
                       </div>
+                      <div class="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-wide">{{ formatProductId(produit.id) }}</div>
                       <div class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">{{ produit.description || 'Aucune description' }}</div>
                     </div>
                   </div>
@@ -340,6 +373,66 @@
             </nav>
           </div>
         </div>
+      </template>
+
+      <!-- Moderation Tab Content -->
+      <div v-else-if="activeTab === 'moderation'" class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-xl font-bold dark:text-white">Produits en attente de modération</h2>
+          <button @click="loadProduits" class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg">
+            <i class="fas fa-sync-alt" :class="{ 'animate-spin': loading }"></i>
+          </button>
+        </div>
+
+        <div v-if="loading" class="text-center py-20 text-gray-500">
+          <i class="fas fa-spinner fa-spin text-3xl mb-4"></i>
+          <p>Chargement des produits...</p>
+        </div>
+
+        <div v-else-if="pendingProducts.length === 0" class="text-center py-20 bg-gray-50 dark:bg-gray-900 rounded-xl">
+          <i class="fas fa-check-circle text-green-500 text-5xl mb-4"></i>
+          <h3 class="text-lg font-bold dark:text-white">Tout est à jour !</h3>
+          <p class="text-gray-500">Il n'y a aucun produit en attente de modération.</p>
+        </div>
+
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div v-for="product in pendingProducts" :key="product.id" class="bg-gray-50 dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all border-t-4 border-t-orange-500">
+            <img :src="product.image_url" class="w-full h-48 object-cover" />
+            <div class="p-6 space-y-4">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[10px] font-bold text-orange-600 uppercase tracking-widest bg-orange-50 px-2 py-0.5 rounded">En attente</span>
+                  <span class="text-xs text-gray-500">{{ formatDateShort(product.created_at) }}</span>
+                </div>
+                <h4 class="font-bold text-gray-900 dark:text-white">{{ product.name }}</h4>
+                <p class="text-xs text-gray-500 line-clamp-2 mt-1">{{ product.description }}</p>
+              </div>
+
+              <div class="flex items-center gap-2 py-2 border-y border-gray-100 dark:border-gray-700">
+                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                  {{ product.store?.name?.charAt(0) }}
+                </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase font-bold">Boutique</p>
+                  <p class="text-xs font-bold dark:text-white">{{ product.store?.name }}</p>
+                </div>
+              </div>
+
+              <div class="flex justify-between items-center">
+                <span class="text-lg font-black text-gray-900 dark:text-white">{{ formatPrix(product.price) }}</span>
+                <div class="flex gap-2">
+                  <button @click="approveProduct(product.id)" class="w-10 h-10 rounded-xl bg-green-100 text-green-600 hover:bg-green-600 hover:text-white transition-all">
+                    <i class="fas fa-check"></i>
+                  </button>
+                  <button @click="rejectProduct(product.id)" class="w-10 h-10 rounded-xl bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition-all">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   </div>
@@ -396,12 +489,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
-import { productService, vendorService } from '@/services/api';
+import { productService, vendorService, adminService } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
+import { useUIStore } from '@/stores/ui';
+import { formatProductId } from '@/utils/formatters';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const currentPageTitle = ref('Liste des produits');
 
@@ -425,16 +521,15 @@ const produits = ref<ProductDisplay[]>([]);
 const loading = ref(false);
 const error = ref('');
 
-// Filtres et recherche
+const activeTab = ref('all');
 const searchQuery = ref('');
 const selectedCategory = ref('');
 const filtreVedette = ref(false);
 const filtreNouveau = ref(false);
-const showDeleteReasonModal = ref(false);
-const productToDelete = ref<ProductDisplay | null>(null);
-const deleteReason = ref('');
-const isDeleting = ref(false);
 const currentPage = ref(1);
+
+const pendingProducts = ref<any[]>([]);
+const pendingCount = computed(() => pendingProducts.value.length);
 const itemsPerPage = 10;
 
 // Charger les produits depuis l'API
@@ -443,19 +538,17 @@ const loadProduits = async () => {
   error.value = '';
   try {
     const role = authStore.user?.role?.toLowerCase();
-    let data;
     
+    // Charger le catalogue normal
+    let data;
     if (role === 'seller') {
-      console.log('🔄 Loading vendor products...');
       data = await vendorService.getProducts();
     } else {
-      console.log('🔄 Loading all products...');
       data = await productService.getAll();
     }
     
     // Mapper les données de l'API vers le format d'affichage
     const productsArray = Array.isArray(data) ? data : (data?.products || []);
-    
     produits.value = productsArray.map((p: any) => ({
       id: p.id,
       name: p.name,
@@ -463,13 +556,19 @@ const loadProduits = async () => {
       category: p.category?.name || 'Non catégorisé',
       category_id: p.category_id,
       stock: p.stock,
-      status: p.status === 'deleted' ? 'Supprimé' : (p.stock > 0 ? 'Disponible' : 'Rupture'),
+      status: p.status === 'deleted' ? 'Supprimé' : (p.status === 'pending' ? 'En modération' : (p.stock > 0 ? 'Disponible' : 'Rupture')),
       image_url: p.image_url || '',
       description: p.description,
       is_featured: p.is_featured,
       is_new: p.is_new,
-      store_name: p.store?.name || 'GadgetZone'
+      store_name: p.store?.name || 'HTFasil'
     }));
+
+    // Si admin, charger aussi les produits en attente
+    if (authStore.isAdmin) {
+      const moderationData = await adminService.getProductsToModerate();
+      pendingProducts.value = moderationData.products || [];
+    }
   } catch (e) {
     console.error('Erreur chargement produits', e);
     error.value = 'Impossible de charger les produits. Veuillez réessayer.';
@@ -479,6 +578,9 @@ const loadProduits = async () => {
 };
 
 onMounted(() => {
+  if (route.query.tab === 'moderation' && authStore.isAdmin) {
+    activeTab.value = 'moderation';
+  }
   loadProduits();
 });
 
@@ -510,6 +612,57 @@ const paginatedProduits = computed(() => {
 });
 
 const totalPages = computed(() => Math.ceil(filteredProduits.value.length / itemsPerPage));
+
+const uiStore = useUIStore();
+const showDeleteReasonModal = ref(false);
+const productToDelete = ref<ProductDisplay | null>(null);
+const deleteReason = ref('');
+const isDeleting = ref(false);
+
+const formatDateShort = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: 'short'
+  });
+};
+
+const approveProduct = async (id: number) => {
+  const confirmed = await uiStore.confirm({
+    title: 'Approuver le produit',
+    message: 'Souhaitez-vous autoriser la vente de ce produit sur la plateforme ?',
+    confirmText: 'Oui, Approuver'
+  });
+
+  if (!confirmed) return;
+
+  try {
+    await adminService.approveProduct(id);
+    uiStore.addToast('Produit approuvé avec succès', 'success');
+    await loadProduits();
+  } catch (error) {
+    console.error('Erreur approbation produit:', error);
+    uiStore.addToast('Erreur lors de l\'approbation', 'error');
+  }
+};
+
+const rejectProduct = async (id: number) => {
+  const reason = await uiStore.prompt({
+    title: 'Motif du rejet',
+    message: 'Pourquoi refusez-vous ce produit ?',
+    placeholder: 'Ex: Qualité image insuffisante, description non conforme...'
+  });
+
+  if (!reason) return;
+
+  try {
+    await adminService.rejectProduct(id, { reason });
+    uiStore.addToast('Produit rejeté', 'info');
+    await loadProduits();
+  } catch (error) {
+    console.error('Erreur rejet produit:', error);
+    uiStore.addToast('Erreur lors du rejet', 'error');
+  }
+};
 
 // Formater le prix
 const formatPrix = (prix: number) => {

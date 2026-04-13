@@ -5,11 +5,11 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Correct path: up 3 levels to gadgetzone_admin root
+// Correct path: up 3 levels to htfasil_admin root
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const sequelize = new Sequelize(
-    process.env.DB_NAME || 'gadgetzone',
+    process.env.DB_NAME || 'htfasil',
     process.env.DB_USER || 'postgres',
     process.env.DB_PASSWORD || '',
     {

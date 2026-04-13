@@ -7,13 +7,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
-.DS_Store
+
+# Build outputs
 dist
 dist-ssr
 coverage
 *.local
 
+# Cypress
 /cypress/videos/
 /cypress/screenshots/
 
@@ -26,48 +29,113 @@ coverage
 *.njsproj
 *.sln
 *.sw?
-
 *.tsbuildinfo
 .vercel
 
-# Variable d'environnement
+# Variables d'environnement (SÉCURITÉ)
 .env
 .env.test
 .env.test.local
 .env.local
-.env.example
-.env.example.localPS C:\wamp64\www\gadgetzone_admin> npm run dev
+.env.backend
+.env.development
+.env.production
 
-> tailadmin-vue-pro-2.0.1@2.0.1 dev
-> vite
+# Dumps & Exports de base de données (SÉCURITÉ - Ne jamais committer)
+*.sql
+*_dump.json
+*_dump.sql
+*data_dump*
+htfasil_data_dump.sql
+users_dump.json
+admin_parsed.json
+full_diagnostic.json
+check_results.json
+bands_diagnostic.json
+products_debug.json
+products_url_debug.json
+debug-error.json
+temp_output*.json
+output_cats.txt
 
+# Logs d'images (très grand volume)
+image_check_log.txt
+image_check_log*.txt
+debug_images.txt
+debug_images*.txt
+*_dump.json
+users_dump.json
 
-  VITE v6.4.1  ready in 38350 ms
+# Fichiers de debug et diagnostics temporaires
+debug*.log
+debug*.txt
+debug*.json
+debug_images.txt
+image_check_log.txt
+backend_*.log
+backend_*.log.*
+sync_log*.txt
+build_admin*.txt
+jest_*.txt
+jest_*.log
 
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: http://169.254.71.122:5173/
-  ➜  press h + enter to show help
-12:40:57 [vite] Internal server error: [postcss] Cannot apply unknown utility class: py-2.5
-  Plugin: vite:css
-  File: C:/wamp64/www/gadgetzone_admin/src/assets/main.css:undefined:NaN
-      at onInvalidCandidate (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:17:297)
-      at ne (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:12:115877)
-      at C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:17:260
-      at _ (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:5:1652)
-      at _ (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:5:1930)
-      at $e (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:17:150)
-      at Lr (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:33:724)
-      at async Mr (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:33:977)
-      at async ot (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\node\dist\index.js:10:3272)
-      at async p (C:\wamp64\www\gadgetzone_admin\node_modules\@tailwindcss\postcss\dist\index.js:8:3200)
-12:40:57 [vite] (client) Pre-transform error: [postcss] Cannot apply unknown utility class: py-2.5
-  Plugin: vite:css
-  File: C:/wamp64/www/gadgetzone_admin/src/assets/main.css:undefined:NaN    
+# Fichiers de sortie temporaires
+output*.txt
+output*.json
+temp_output*.json
+cart_*.txt
+cart_*.log
+tc.log
+debug.log
+error.txt
+debug_cart*.txt
+debug_cart*.log
+debug_items.txt
+debug_orders*.txt
+debug_output.txt
+debug_net_sales.js
+cart_analysis_result.txt
+posts_details.txt
+schema_check.txt
+type_errors*.txt
+admin_type_check.txt
+init_log.txt
+admin_parsed.json
+full_diagnostic.json
+check_results.json
+repo_test.json
+brands_diagnostic.json
+products_debug.json
+products_url_debug.json
+users_dump.json
+debug-error.json
+build.log
+server_test.log
+test-log.txt
+jest_debug_log*.txt
 
-.env.example.test
-.env.example.test.local
-.env.example.prod
-.env.example.prod.local
-.env.example.dev
-.env.example.dev.local
+# Dumps d'utilisateurs
+users_dump.json
 
+# Scripts de check/debug (ne pas versionner)
+check_*.js
+check-*.js
+debug-*.js
+find_*.js
+list_*.js
+fix-*.js
+fix_*.js
+test-*.js
+test_*.js
+verify_*.js
+run-*.js
+update-*.js
+update_*.js
+apply_*.js
+seed_*.js
+sync-*.js
+sync_*.js
+migrate_*.js
+migrate_*.mjs
+add-*.js
+add_*.js

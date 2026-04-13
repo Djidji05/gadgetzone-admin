@@ -1,4 +1,4 @@
-# 🔐 Améliorations de Sécurité - GadgetZone Admin
+# 🔐 Améliorations de Sécurité - HTFasil Admin
 
 ## ✅ Implémenté
 

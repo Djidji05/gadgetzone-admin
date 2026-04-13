@@ -97,8 +97,7 @@ const loadData = async () => {
     subscribers.value = subscribersData.subscribers;
     stats.value = statsData;
   } catch (error) {
-    console.error('Error loading newsletter data:', error);
-    alert('Erreur lors du chargement des données');
+    console.error('Erreur lors du chargement des données newsletter:', error);
   } finally {
     isLoading.value = false;
   }

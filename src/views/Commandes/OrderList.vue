@@ -15,6 +15,35 @@
             </p>
           </div>
           <div class="flex items-center gap-2">
+            <div class="relative">
+              <button
+                @click="showExportMenu = !showExportMenu"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                title="Exporter en PDF"
+              >
+                <i class="fas fa-file-pdf"></i>
+                <span class="hidden sm:inline">Exporter PDF</span>
+                <i class="fas fa-chevron-down text-[10px] ml-1"></i>
+              </button>
+
+              <!-- Menu Déroulant Période -->
+              <div v-if="showExportMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 z-[70] overflow-hidden py-1 transform origin-top-right transition-all">
+                <div class="px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-50 dark:border-gray-700 mb-1">
+                  Choisir la période
+                </div>
+                <button 
+                  v-for="(label, period) in exportPeriods" :key="period"
+                  @click="exportPDF(period)"
+                  class="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors flex items-center justify-between group"
+                >
+                  {{ label }}
+                  <i class="fas fa-check text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                </button>
+              </div>
+
+              <!-- Overlay invisible pour fermer au clic extérieur -->
+              <div v-if="showExportMenu" @click="showExportMenu = false" class="fixed inset-0 z-[60] bg-transparent"></div>
+            </div>
             <button
                @click="fetchOrders"
                class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -117,7 +146,7 @@
               <!-- Orders list -->
               <tr v-else v-for="order in paginatedOrders" :key="order.id" class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <td class="whitespace-nowrap px-6 py-4">
-                  <span class="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">#{{ order.id }}</span>
+                  <span class="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">{{ formatOrderId(order.id) }}</span>
                 </td>
                 <td class="whitespace-nowrap px-6 py-4">
                   <div class="flex items-center">
@@ -164,9 +193,9 @@
              Aucune commande trouvée
           </div>
           <div v-else v-for="order in paginatedOrders" :key="order.id" class="p-4 bg-white dark:bg-gray-800 mb-2 rounded-xl shadow-sm sm:shadow-none sm:rounded-none sm:mb-0">
-            <div class="flex items-center justify-between mb-2">
-              <span class="font-mono text-sm font-bold text-blue-600 dark:text-blue-400">#{{ order.id }}</span>
-              <span :class="getStatusClass(order.status)">{{ getStatusText(order.status) }}</span>
+            <div class="flex items-center justify-between">
+              <span class="font-mono text-sm font-bold text-blue-600 dark:text-blue-400">{{ formatOrderId(order.id) }}</span>
+              <span :class="getStatusClass(order.status)" class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border">{{ getStatusText(order.status) }}</span>
             </div>
             
             <div class="flex items-center justify-between mb-3">
@@ -268,6 +297,9 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { orderService } from '@/services/api'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
+import { formatOrderId } from '@/utils/formatters';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -277,6 +309,15 @@ const orders = ref<any[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
 const statusFilter = ref('')
+const showExportMenu = ref(false)
+
+const exportPeriods = {
+  today: "Aujourd'hui",
+  week: "Cette semaine",
+  month: "Ce mois-ci",
+  year: "Cette année",
+  all: "Toutes les commandes"
+}
 
 const currentPage = ref(1)
 const itemsPerPage = 10
@@ -386,6 +427,107 @@ const fetchOrders = async () => {
 
 const viewOrder = (id: any) => {
   router.push(`/commandes/${id}`)
+}
+
+const exportPDF = (period: string = 'all') => {
+  showExportMenu.value = false;
+  
+  const doc = new jsPDF();
+  const themeColor = [37, 99, 235]; // Blue-600
+  
+  // Filtrage par période
+  const now = new Date();
+  let filteredForExport = filteredOrders.value;
+
+  if (period !== 'all') {
+    const startDate = new Date();
+    if (period === 'today') startDate.setHours(0, 0, 0, 0);
+    else if (period === 'week') startDate.setDate(now.getDate() - 7);
+    else if (period === 'month') startDate.setMonth(now.getMonth() - 1);
+    else if (period === 'year') startDate.setFullYear(now.getFullYear() - 1);
+    
+    filteredForExport = filteredForExport.filter(o => new Date(o.created_at) >= startDate);
+  }
+
+  // Header
+  doc.setFontSize(20);
+  doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
+  doc.text('HTFASIL', 14, 20);
+  
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text('LISTE DES COMMANDES', 14, 26);
+  doc.text(`Exporté le : ${now.toLocaleString('fr-FR')}`, 14, 31);
+  if (period !== 'all') {
+    doc.text(`Période : ${exportPeriods[period as keyof typeof exportPeriods]}`, 14, 36);
+  }
+
+  // Table
+  const tableData = filteredForExport.map(o => [
+    formatOrderId(o.id),
+    o.user?.name || 'Inconnu',
+    formatDate(o.created_at),
+    getStatusText(o.status),
+    formatCurrency(o.total_amount)
+  ]);
+
+  autoTable(doc, {
+    startY: period === 'all' ? 40 : 45,
+    head: [['ID', 'Client', 'Date', 'Statut', 'Total']],
+    body: tableData,
+    headStyles: { fillColor: themeColor, textColor: 255 },
+    alternateRowStyles: { fillColor: [245, 247, 251] },
+    margin: { left: 14, right: 14 },
+    theme: 'striped',
+    styles: { fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 30 },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 40 },
+      3: { cellWidth: 30 },
+      4: { cellWidth: 35, halign: 'right' }
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 3) {
+        const status = data.cell.raw;
+        const colors: Record<string, [number, number, number]> = {
+          'En attente': [254, 249, 195], // Yellow-100
+          'Confirmée': [219, 234, 254], // Blue-100
+          'En traitement': [224, 231, 255], // Indigo-100
+          'Expédiée': [243, 232, 255], // Purple-100
+          'Livrée': [220, 252, 231], // Green-100
+          'Annulée': [254, 226, 226], // Red-100
+          'Remboursée': [243, 244, 246] // Gray-100
+        };
+        const textColor: Record<string, [number, number, number]> = {
+          'En attente': [133, 77, 14], // Yellow-800
+          'Confirmée': [30, 64, 175], // Blue-800
+          'En traitement': [55, 48, 163], // Indigo-800
+          'Expédiée': [107, 33, 168], // Purple-800
+          'Livrée': [22, 101, 52], // Green-800
+          'Annulée': [153, 27, 27], // Red-800
+          'Remboursée': [31, 41, 55] // Gray-800
+        };
+        if (colors[status]) {
+          data.cell.styles.fillColor = colors[status];
+          data.cell.styles.textColor = textColor[status];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    }
+  });
+
+  // Footer
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(`Page ${i} sur ${pageCount}`, 105, 285, { align: 'center' });
+    doc.text('HTFasil Market - Système d\'Administration', 196, 285, { align: 'right' });
+  }
+
+  doc.save(`commandes_htfasil_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
 onMounted(() => {

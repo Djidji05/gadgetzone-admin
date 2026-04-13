@@ -21,7 +21,7 @@ const Review = sequelize.define('Review', {
     },
     status: {
         type: DataTypes.ENUM('pending', 'approved', 'rejected'),
-        defaultValue: 'approved'
+        defaultValue: 'pending'
     }
 }, {
     tableName: 'reviews',

@@ -1,8 +1,8 @@
-# 🚀 GadgetZone - 100% Fonctionnel
+# 🚀 HTFasil - 100% Fonctionnel
 
 ## 📋 Vue d'Ensemble
 
-GadgetZone est maintenant **100% fonctionnel** avec une architecture complète, une intégration parfaite entre admin et website, et des fallbacks robustes pour garantir la disponibilité même en cas d'indisponibilité de l'API.
+HTFasil est maintenant **100% fonctionnel** avec une architecture complète, une intégration parfaite entre admin et website, et des fallbacks robustes pour garantir la disponibilité même en cas d'indisponibilité de l'API.
 
 ---
 
@@ -71,7 +71,7 @@ GadgetZone est maintenant **100% fonctionnel** avec une architecture complète, 
 ## 📁 **Structure Complète**
 
 ```
-gadgetzone_admin/                    # Port 5173
+htfasil_admin/                    # Port 5173
 ├── src/
 │   ├── backend/                     # API Express
 │   │   ├── config/                  # Database, logging
@@ -83,7 +83,7 @@ gadgetzone_admin/                    # Port 5173
 │   ├── views/                       # 35+ admin pages
 │   └── stores/                      # Pinia stores
 
-gadgetzone_website/                  # Port 5174
+htfasil_website/                  # Port 5174
 ├── src/
 │   ├── services/                    # API services (7 fichiers)
 │   ├── stores/                      # Pinia stores (5 fichiers)
@@ -100,7 +100,7 @@ gadgetzone_website/                  # Port 5174
 ### **1. Backend + Admin**
 ```bash
 # Terminal 1
-cd c:\wamp64\www\gadgetzone_admin
+cd c:\wamp64\www\htfasil_admin
 npm run dev:backend    # Backend API (port 3003)
 npm run dev           # Frontend Admin (port 5173)
 ```
@@ -108,7 +108,7 @@ npm run dev           # Frontend Admin (port 5173)
 ### **2. Website**
 ```bash
 # Terminal 2  
-cd c:\wamp64\www\gadgetzone_website
+cd c:\wamp64\www\htfasil_website
 npm run dev           # Website (port 5174)
 ```
 
@@ -222,7 +222,7 @@ curl http://localhost:3003/api/promotions
 BACKEND_PORT=3003
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=gadgetzone
+DB_NAME=htfasil
 DB_USER=postgres
 DB_PASSWORD=admin
 JWT_SECRET=votre-secret-jet-ici
@@ -241,11 +241,11 @@ JWT_SECRET=votre-secret-jet-ici
 ### **Production**
 ```bash
 # Build Admin
-cd gadgetzone_admin
+cd htfasil_admin
 npm run build
 
 # Build Website  
-cd gadgetzone_website
+cd htfasil_website
 npm run build
 
 # Start Production
@@ -289,7 +289,7 @@ CMD ["npm", "run", "start:backend"]
 
 ## 🎉 **Conclusion**
 
-GadgetZone est maintenant **100% fonctionnel** avec :
+HTFasil est maintenant **100% fonctionnel** avec :
 
 - ✅ **Architecture complète** : Admin + Website + Backend
 - ✅ **Intégration parfaite** : API unifiée, types partagés
@@ -330,4 +330,4 @@ npm run preview         # Preview build
 
 ---
 
-**🚀 GadgetZone - Votre plateforme e-commerce complète et robuste !**
+**🚀 HTFasil - Votre plateforme e-commerce complète et robuste !**

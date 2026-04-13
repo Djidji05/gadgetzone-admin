@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick, computed, watch } from 'vue'
+import { debounce } from '@/utils/debounce'
 import { useRoute } from 'vue-router'
-import { messageService, authService, userService } from '@/services/api'
+import { messageService, authService, userService, disputeService } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useUIStore } from '@/stores/ui'
+import { useTheme } from '@/components/layout/ThemeProvider.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const uiStore = useUIStore()
+const { isDarkMode } = useTheme()
+
+type ViewMode = 'messages' | 'disputes'
+const viewMode = ref<ViewMode>(route.query.view === 'disputes' ? 'disputes' : 'messages')
+const disputes = ref<any[]>([])
 
 interface Message {
   id: number
-  conversationId: number
+  conversationId?: number
   senderId: number
   content: string
   createdAt: string
@@ -31,10 +38,13 @@ interface Conversation {
   lastMessage: string
   lastMessageAt: string
   unreadCount?: number
+  isDispute?: boolean
+  status?: string
+  orderId?: number
 }
 
 const conversations = ref<Conversation[]>([])
-const selectedConversation = ref<Conversation | null>(null)
+const selectedConversation = ref<any>(null)
 const messages = ref<Message[]>([])
 const newMessage = ref('')
 const isLoadingConversations = ref(false)
@@ -63,11 +73,50 @@ const fetchConversations = async () => {
   }
 }
 
-const selectConversation = async (conversation: Conversation) => {
+const fetchDisputes = async () => {
+  isLoadingConversations.value = true
+  try {
+    const role = authStore.userRole || authStore.user?.role
+    const data = role === 'admin' 
+      ? await disputeService.getAll() 
+      : await disputeService.getSellerDisputes()
+    
+    disputes.value = data.map((d: any) => ({
+      id: d.id,
+      otherParticipant: {
+        id: d.customer?.id || d.user_id,
+        name: d.customer?.name || `Client #${d.user_id}`,
+        role: 'customer'
+      },
+      lastMessage: d.messages?.[d.messages.length - 1]?.message || d.description,
+      lastMessageAt: d.messages?.[d.messages.length - 1]?.created_at || d.created_at,
+      status: d.status,
+      orderId: d.order_id,
+      isDispute: true
+    }))
+  } catch (error) {
+    console.error('Error fetching disputes:', error)
+  } finally {
+    isLoadingConversations.value = false
+  }
+}
+
+const selectConversation = async (conversation: any) => {
   selectedConversation.value = conversation
   isLoadingMessages.value = true
   try {
-    messages.value = await messageService.getConversationMessages(conversation.id)
+    if (conversation.isDispute) {
+      const data = await disputeService.getById(conversation.id)
+      messages.value = data.messages.map((m: any) => ({
+        id: m.id,
+        senderId: m.sender_id,
+        content: m.message,
+        createdAt: m.created_at,
+        isRead: true
+      }))
+    } else {
+      messages.value = await messageService.getConversationMessages(conversation.id)
+    }
     await scrollToBottom()
   } catch (error) {
     console.error('Error fetching messages:', error)
@@ -86,34 +135,50 @@ const sendMessage = async () => {
   newMessage.value = ''
 
   try {
-    const sentMessage = await messageService.sendMessage(receiverId, content)
-    
-    if (isNewConv) {
-      // Refresh conversations to get the real ID and update list
-      await fetchConversations()
-      // Select the new real conversation
-      const realConv = conversations.value.find(c => c.otherParticipant.id === receiverId)
-      if (realConv) {
-        selectedConversation.value = realConv
-        await selectConversation(realConv)
-      }
+    let sentMessage;
+    if (selectedConversation.value.isDispute) {
+      sentMessage = await disputeService.sendMessage(selectedConversation.value.id, content)
+      // Map dispute message to chat message format
+      messages.value.push({
+        id: sentMessage.id,
+        senderId: sentMessage.sender_id,
+        content: sentMessage.message,
+        createdAt: sentMessage.created_at,
+        isRead: true
+      })
     } else {
-      messages.value.push(sentMessage)
+      sentMessage = await messageService.sendMessage(receiverId, content)
       
-      // Update conversation preview
-      const conv = conversations.value.find(c => c.id === selectedConversation.value?.id)
-      if (conv) {
-        conv.lastMessage = content
-        conv.lastMessageAt = new Date().toISOString()
-        
-        // Move to top
-        conversations.value = [
-          conv,
-          ...conversations.value.filter(c => c.id !== conv.id)
-        ]
+      if (isNewConv) {
+        // Refresh conversations to get the real ID and update list
+        await fetchConversations()
+        // Select the new real conversation
+        const realConv = conversations.value.find(c => c.otherParticipant.id === receiverId)
+        if (realConv) {
+          selectedConversation.value = realConv
+          await selectConversation(realConv)
+        }
+        return
+      } else {
+        messages.value.push(sentMessage)
       }
-      await scrollToBottom()
     }
+    
+    // Update conversation preview
+    const list = viewMode.value === 'disputes' ? disputes.value : conversations.value
+    const conv = list.find(c => c.id === selectedConversation.value?.id)
+    if (conv) {
+      conv.lastMessage = content
+      conv.lastMessageAt = new Date().toISOString()
+      
+      // Move to top
+      if (viewMode.value === 'disputes') {
+        disputes.value = [conv, ...disputes.value.filter(c => c.id !== conv.id)]
+      } else {
+        conversations.value = [conv, ...conversations.value.filter(c => c.id !== conv.id)]
+      }
+    }
+    await scrollToBottom()
   } catch (error) {
     uiStore.addToast('Erreur lors de l\'envoi du message', 'error')
     console.error('Error sending message:', error)
@@ -146,7 +211,7 @@ const handleQueryParam = async () => {
   try {
     isLoadingMessages.value = true
     // Try to find if we already have a conversation with this user
-    let conv = conversations.value.find(c => c.otherParticipant.id === parseInt(userId as string))
+    const conv = conversations.value.find(c => c.otherParticipant.id === parseInt(userId as string))
     
     if (conv) {
       await selectConversation(conv)
@@ -200,6 +265,14 @@ const searchUsers = async () => {
   }
 }
 
+const debouncedSearchUsers = debounce(searchUsers, 300)
+
+const openNewChatModal = () => {
+  showNewChatModal.value = true
+  userSearchQuery.value = ''
+  searchUsers()
+}
+
 const startNewChat = async (user: Participant) => {
   showNewChatModal.value = false
   userSearchQuery.value = ''
@@ -221,6 +294,33 @@ const startNewChat = async (user: Participant) => {
     messages.value = []
   }
 }
+onMounted(async () => {
+  await fetchConversations()
+  await fetchDisputes()
+  await handleQueryParam()
+})
+
+watch(() => route.query.view, (newView) => {
+  if (newView === 'disputes') {
+    viewMode.value = 'disputes'
+  } else {
+    viewMode.value = 'messages'
+  }
+})
+
+watch(viewMode, () => {
+  selectedConversation.value = null
+  messages.value = []
+})
+
+const filteredList = computed(() => {
+  const list = viewMode.value === 'disputes' ? disputes.value : conversations.value
+  if (!searchQuery.value) return list
+  return list.filter(c => 
+    c.otherParticipant.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    (c.orderId && c.orderId.toString().includes(searchQuery.value))
+  )
+})
 </script>
 
 <template>
@@ -231,14 +331,35 @@ const startNewChat = async (user: Participant) => {
       selectedConversation ? 'hidden md:flex' : 'flex'
     ]">
       <!-- Sidebar Header -->
-      <div class="p-4 bg-gray-50/50 dark:bg-gray-900/50 border-b border-stroke dark:border-strokedark flex items-center justify-between">
-        <h2 class="text-xl font-bold text-black dark:text-white">Messages</h2>
+      <div class="px-4 pt-4 bg-gray-50/50 dark:bg-gray-900/50 flex items-center justify-between">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Messages</h2>
         <button 
-          @click="showNewChatModal = true"
+          v-if="viewMode === 'messages'"
+          @click="openNewChatModal"
           class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
         >
           <i class="fas fa-edit text-gray-500"></i>
         </button>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="px-4 py-3 bg-gray-50/50 dark:bg-gray-900/50 border-b border-stroke dark:border-strokedark">
+        <div class="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+          <button 
+            @click="viewMode = 'messages'"
+            class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
+            :class="viewMode === 'messages' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'"
+          >
+            Messages
+          </button>
+          <button 
+            @click="viewMode = 'disputes'"
+            class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
+            :class="viewMode === 'disputes' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'"
+          >
+            Litiges
+          </button>
+        </div>
       </div>
 
       <!-- Search -->
@@ -267,7 +388,7 @@ const startNewChat = async (user: Participant) => {
         </div>
 
         <button 
-          v-for="conv in filteredConversations" 
+          v-for="conv in filteredList" 
           :key="conv.id"
           @click="selectConversation(conv)"
           class="w-full flex items-center gap-4 p-3 rounded-2xl transition-all duration-200 group text-left"
@@ -279,10 +400,10 @@ const startNewChat = async (user: Participant) => {
             <img 
               v-if="conv.otherParticipant.logoUrl" 
               :src="conv.otherParticipant.logoUrl" 
-              class="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow-sm"
+              class="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow-sm"
               alt="Avatar"
             >
-            <div v-else class="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xl border-2 border-white dark:border-gray-800 shadow-sm">
+            <div v-else class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg border-2 border-white dark:border-gray-800 shadow-sm">
               {{ conv.otherParticipant.name.charAt(0).toUpperCase() }}
             </div>
             <span v-if="conv.unreadCount" class="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white dark:border-gray-800">
@@ -293,23 +414,39 @@ const startNewChat = async (user: Participant) => {
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between mb-0.5">
               <span class="font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-blue-600 transition-colors">
-                {{ conv.otherParticipant.name }}
+                {{ viewMode === 'disputes' ? `Litige #${conv.id}` : conv.otherParticipant.name }}
               </span>
               <span class="text-[10px] font-medium text-gray-400 whitespace-nowrap">
                 {{ formatTime(conv.lastMessageAt) }}
               </span>
             </div>
+            
+            <div v-if="viewMode === 'disputes'" class="flex items-center gap-2 mb-1">
+              <span class="text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider"
+                :class="{
+                  'bg-orange-100 text-orange-600': conv.status === 'pending',
+                  'bg-blue-100 text-blue-600': conv.status === 'under_review',
+                  'bg-green-100 text-green-600': conv.status === 'resolved',
+                  'bg-red-100 text-red-600': conv.status === 'closed'
+                }">
+                {{ conv.status }}
+              </span>
+              <span class="text-[9px] text-gray-400">Ordre #{{ conv.orderId }}</span>
+            </div>
+
             <p class="text-xs text-gray-500 dark:text-gray-400 truncate pr-2 italic">
               {{ conv.lastMessage }}
             </p>
           </div>
         </button>
 
-        <div v-if="!isLoadingConversations && filteredConversations.length === 0" class="flex flex-col items-center justify-center h-full p-8 text-center mt-10">
+        <div v-if="!isLoadingConversations && filteredList.length === 0" class="flex flex-col items-center justify-center h-full p-8 text-center mt-10">
           <div class="w-16 h-16 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center mb-4">
             <i class="far fa-comments text-gray-300 text-2xl"></i>
           </div>
-          <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Aucun message</p>
+          <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+            {{ viewMode === 'disputes' ? 'Aucun litige en cours' : 'Aucun message' }}
+          </p>
         </div>
       </div>
     </div>
@@ -321,12 +458,12 @@ const startNewChat = async (user: Participant) => {
     ]">
       <!-- Welcome Screen (No selection) -->
       <div v-if="!selectedConversation" class="absolute inset-0 flex flex-col items-center justify-center p-8 text-center backdrop-blur-[1px] z-20">
-        <div class="w-32 h-32 bg-white dark:bg-boxdark rounded-full shadow-2xl flex items-center justify-center mb-8 animate-bounce-slow">
-          <i class="fab fa-whatsapp text-6xl text-green-500"></i>
+        <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full shadow-2xl shadow-blue-500/20 flex items-center justify-center mb-6 animate-bounce-slow border border-blue-400 dark:border-blue-700">
+          <i class="far fa-comments text-4xl text-white"></i>
         </div>
-        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3 text-pretty">Sélectionnez une conversation</h3>
+        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3 text-pretty">Messagerie Interne</h3>
         <p class="text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed text-sm">
-          Communiquez en temps réel avec les vendeurs pour gérer vos opérations.
+          Sélectionnez une conversation pour échanger avec vos clients et vendeurs en temps réel.
         </p>
       </div>
 
@@ -342,10 +479,10 @@ const startNewChat = async (user: Participant) => {
               <img 
                 v-if="selectedConversation.otherParticipant.logoUrl" 
                 :src="selectedConversation.otherParticipant.logoUrl" 
-                class="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-800"
+                class="w-8 h-8 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-800"
                 alt="Avatar"
               >
-              <div v-else class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
+              <div v-else class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm">
                 {{ selectedConversation.otherParticipant.name.charAt(0).toUpperCase() }}
               </div>
               <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full shadow-sm"></span>
@@ -368,9 +505,14 @@ const startNewChat = async (user: Participant) => {
         <!-- Messages Area -->
         <div 
           ref="messagesContainer" 
-          class="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 custom-scrollbar relative"
+          class="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 custom-scrollbar relative bg-gray-50 dark:bg-gray-950"
           :class="{ 'flex flex-col justify-center items-center': isLoadingMessages }"
-          style="background-image: radial-gradient(circle at 2px 2px, rgba(0,0,0,0.03) 1px, transparent 0); background-size: 24px 24px;"
+          :style="{
+            backgroundImage: isDarkMode 
+              ? 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.03) 1px, transparent 0)' 
+              : 'radial-gradient(circle at 2px 2px, rgba(0,0,0,0.03) 1px, transparent 0)',
+            backgroundSize: '24px 24px'
+          }"
         >
           <div v-if="isLoadingMessages" class="flex flex-col items-center gap-4 bg-white/80 dark:bg-gray-900/80 p-6 rounded-3xl backdrop-blur-md z-40">
             <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -451,9 +593,9 @@ const startNewChat = async (user: Participant) => {
     <!-- New Chat Modal -->
     <div v-if="showNewChatModal" class="fixed inset-0 z-[99999] flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showNewChatModal = false"></div>
-      <div class="relative w-full max-w-lg bg-white dark:bg-boxdark rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+      <div class="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 border border-gray-100 dark:border-gray-800">
         <div class="p-6 border-b border-stroke dark:border-strokedark flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/50">
-          <h3 class="text-xl font-bold text-black dark:text-white">Nouveau message</h3>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white">Nouveau message</h3>
           <button @click="showNewChatModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
             <i class="fas fa-times text-xl"></i>
           </button>
@@ -464,7 +606,7 @@ const startNewChat = async (user: Participant) => {
             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input 
               v-model="userSearchQuery"
-              @input="searchUsers"
+              @input="debouncedSearchUsers"
               type="text" 
               placeholder="Rechercher un vendeur par nom ou boutique..." 
               class="w-full pl-11 pr-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-2xl text-sm focus:ring-2 focus:ring-blue-600 transition-all outline-none"
@@ -485,9 +627,9 @@ const startNewChat = async (user: Participant) => {
                 @click="startNewChat(user)"
                 class="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-900 transition-all text-left"
               >
-                <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 font-bold overflow-hidden">
+                <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 font-bold overflow-hidden">
                   <img v-if="user.logoUrl" :src="user.logoUrl" class="w-full h-full object-cover" />
-                  <span v-else>{{ user.name.charAt(0).toUpperCase() }}</span>
+                  <span class="text-xs">{{ user.name.charAt(0).toUpperCase() }}</span>
                 </div>
                 <div class="flex-1">
                   <h4 class="font-bold text-gray-900 dark:text-gray-100">{{ user.name }}</h4>
@@ -504,7 +646,7 @@ const startNewChat = async (user: Participant) => {
             
             <div v-else class="py-20 text-center text-gray-400">
               <i class="fas fa-search text-4xl mb-4 opacity-20"></i>
-              <p class="text-sm">Tapez au moins 2 caractères pour rechercher</p>
+              <p class="text-sm">Commencez par rechercher un vendeur</p>
             </div>
           </div>
         </div>

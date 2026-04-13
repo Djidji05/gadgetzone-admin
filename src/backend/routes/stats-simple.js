@@ -1,7 +1,11 @@
 import express from 'express';
 import sequelize from '../config/database.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// 🔒 SÉCURITÉ: Toutes les routes de statistiques nécessitent une authentification admin
+router.use(authenticateToken, requireAdmin);
 
 /**
  * Calculer la date de début selon la période
@@ -19,6 +23,7 @@ const getStartDate = (period) => {
       return new Date(now.setDate(now.getDate() - 90));
     case '12m':
       return new Date(now.setFullYear(now.getFullYear() - 1));
+
     default:
       return new Date(now.setDate(now.getDate() - 30));
   }
@@ -28,7 +33,7 @@ const getStartDate = (period) => {
  * GET /api/stats/overview
  * Vue d'ensemble des statistiques avec évolution
  */
-router.get('/overview', async (req, res) => {
+router.get('/overview', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const period = req.query.period || '30j';
     const startDate = getStartDate(period);
@@ -38,80 +43,49 @@ router.get('/overview', async (req, res) => {
     const previousStartDate = new Date(startDate.getTime() - periodDuration);
     const previousEndDate = startDate;
 
-    // Statistiques période actuelle - SQL brut
-    const [currentStats] = await sequelize.query(`
-      SELECT 
-        COALESCE(SUM(total_amount), 0) as revenue,
-        COUNT(*) as orders
-      FROM orders
-      WHERE status = 'delivered'
-        AND created_at >= :startDate
-    `, {
-      replacements: { startDate },
-      type: sequelize.QueryTypes.SELECT
-    });
+    // 🚀 Optimisation massive : Exécuter toutes les comparaisons de périodes en parallèle
+    const results = await Promise.all([
+      // 1. Statistiques période actuelle
+      sequelize.query(`
+        SELECT COALESCE(SUM(total_amount), 0) as revenue, COUNT(*) as orders
+        FROM orders WHERE status = 'delivered' AND created_at >= :startDate
+      `, { replacements: { startDate }, type: sequelize.QueryTypes.SELECT }),
 
-    // Statistiques période précédente
-    const [previousStats] = await sequelize.query(`
-      SELECT 
-        COALESCE(SUM(total_amount), 0) as revenue,
-        COUNT(*) as orders
-      FROM orders
-      WHERE status = 'delivered'
-        AND created_at >= :previousStartDate
-        AND created_at < :previousEndDate
-    `, {
-      replacements: { previousStartDate, previousEndDate },
-      type: sequelize.QueryTypes.SELECT
-    });
+      // 2. Statistiques période précédente
+      sequelize.query(`
+        SELECT COALESCE(SUM(total_amount), 0) as revenue, COUNT(*) as orders
+        FROM orders WHERE status = 'delivered' AND created_at >= :previousStartDate AND created_at < :previousEndDate
+      `, { replacements: { previousStartDate, previousEndDate }, type: sequelize.QueryTypes.SELECT }),
 
-    // Produits vendus (période actuelle)
-    const [productsResult] = await sequelize.query(`
-      SELECT COALESCE(SUM(oi.quantity), 0) as total
-      FROM order_items oi
-      JOIN orders o ON oi.order_id = o.id
-      WHERE o.status = 'delivered'
-        AND o.created_at >= :startDate
-    `, {
-      replacements: { startDate },
-      type: sequelize.QueryTypes.SELECT
-    });
+      // 3. Produits vendus (actuel)
+      sequelize.query(`
+        SELECT COALESCE(SUM(oi.quantity), 0) as total FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        WHERE o.status = 'delivered' AND o.created_at >= :startDate
+      `, { replacements: { startDate }, type: sequelize.QueryTypes.SELECT }),
 
-    // Produits vendus (période précédente)
-    const [previousProductsResult] = await sequelize.query(`
-      SELECT COALESCE(SUM(oi.quantity), 0) as total
-      FROM order_items oi
-      JOIN orders o ON oi.order_id = o.id
-      WHERE o.status = 'delivered'
-        AND o.created_at >= :previousStartDate
-        AND o.created_at < :previousEndDate
-    `, {
-      replacements: { previousStartDate, previousEndDate },
-      type: sequelize.QueryTypes.SELECT
-    });
+      // 4. Produits vendus (précédent)
+      sequelize.query(`
+        SELECT COALESCE(SUM(oi.quantity), 0) as total FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        WHERE o.status = 'delivered' AND o.created_at >= :previousStartDate AND o.created_at < :previousEndDate
+      `, { replacements: { previousStartDate, previousEndDate }, type: sequelize.QueryTypes.SELECT }),
 
-    // Nouveaux clients (période actuelle)
-    const [newUsersResult] = await sequelize.query(`
-      SELECT COUNT(*) as count
-      FROM users
-      WHERE created_at >= :startDate
-      AND role = 'user'
-    `, {
-      replacements: { startDate },
-      type: sequelize.QueryTypes.SELECT
-    });
+      // 5. Nouveaux clients (actuel)
+      sequelize.query(`
+        SELECT COUNT(*) as count FROM users WHERE created_at >= :startDate AND role = 'user'
+      `, { replacements: { startDate }, type: sequelize.QueryTypes.SELECT }),
 
-    // Nouveaux clients (période précédente)
-    const [previousNewUsersResult] = await sequelize.query(`
-      SELECT COUNT(*) as count
-      FROM users
-      WHERE created_at >= :previousStartDate
-        AND created_at < :previousEndDate
-        AND role = 'user'
-    `, {
-      replacements: { previousStartDate, previousEndDate },
-      type: sequelize.QueryTypes.SELECT
-    });
+      // 6. Nouveaux clients (précédent)
+      sequelize.query(`
+        SELECT COUNT(*) as count FROM users WHERE created_at >= :previousStartDate AND created_at < :previousEndDate AND role = 'user'
+      `, { replacements: { previousStartDate, previousEndDate }, type: sequelize.QueryTypes.SELECT })
+    ]);
+
+    const [
+      [currentStats], [previousStats], [productsResult], 
+      [previousProductsResult], [newUsersResult], [previousNewUsersResult]
+    ] = results;
 
     // Calculer les valeurs
     const chiffreAffaires = parseFloat(currentStats.revenue || 0);
@@ -140,17 +114,15 @@ router.get('/overview', async (req, res) => {
       ? parseFloat(((newUsersCount - previousNewUsersCount) / previousNewUsersCount * 100).toFixed(1))
       : 0;
 
-    // --- GLOBAL TOTALS (Requested by user) ---
-    const [globalTotals] = await sequelize.query(`
-      SELECT 
-        (SELECT COUNT(*) FROM users WHERE role IN ('user', 'seller')) as totalUsers,
-        (SELECT COUNT(*) FROM products) as totalProducts,
-        (SELECT COUNT(*) FROM orders) as totalOrders,
-        (SELECT COUNT(*) FROM stores WHERE status = 'active') as totalSellers,
-        (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE status = 'delivered') as totalRevenue
-    `, {
-      type: sequelize.QueryTypes.SELECT
-    });
+    // --- GLOBAL TOTALS (Optimized: Individual queries are faster in PG than 6 subqueries in one row) ---
+    const [[{ count: totalUsers }], [{ count: totalProducts }], [{ count: totalOrders }], [{ count: totalSellers }], [{ revenue: totalRevenue }], [{ revenue: totalBoostsRevenue }]] = await Promise.all([
+      sequelize.query("SELECT COUNT(*) as count FROM users WHERE role IN ('user', 'seller') AND created_at >= :startDate", { replacements: { startDate }, type: sequelize.QueryTypes.SELECT }),
+      sequelize.query("SELECT COUNT(*) as count FROM products WHERE created_at >= :startDate", { replacements: { startDate }, type: sequelize.QueryTypes.SELECT }),
+      sequelize.query("SELECT COUNT(*) as count FROM orders WHERE created_at >= :startDate", { replacements: { startDate }, type: sequelize.QueryTypes.SELECT }),
+      sequelize.query("SELECT COUNT(*) as count FROM stores WHERE status = 'active' AND created_at >= :startDate", { replacements: { startDate }, type: sequelize.QueryTypes.SELECT }),
+      sequelize.query("SELECT COALESCE(SUM(total_amount), 0) as revenue FROM orders WHERE status = 'delivered' AND created_at >= :startDate", { replacements: { startDate }, type: sequelize.QueryTypes.SELECT }),
+      sequelize.query("SELECT COALESCE(SUM(amount), 0) as revenue FROM boosts WHERE status IN ('active', 'expired', 'pending') AND created_at >= :startDate", { replacements: { startDate }, type: sequelize.QueryTypes.SELECT })
+    ]);
 
     const stats = {
       chiffreAffaires,
@@ -162,11 +134,12 @@ router.get('/overview', async (req, res) => {
       nouveauxClients: newUsersCount,
       evolutionClients,
       // Global Totals
-      totalUsers: parseInt(globalTotals.totalusers || 0),
-      totalProducts: parseInt(globalTotals.totalproducts || 0),
-      totalOrders: parseInt(globalTotals.totalorders || 0),
-      totalSellers: parseInt(globalTotals.totalsellers || 0),
-      totalRevenue: parseFloat(globalTotals.totalrevenue || 0)
+      totalUsers: parseInt(totalUsers || 0),
+      totalProducts: parseInt(totalProducts || 0),
+      totalOrders: parseInt(totalOrders || 0),
+      totalSellers: parseInt(totalSellers || 0),
+      totalRevenue: parseFloat(totalRevenue || 0),
+      totalBoostsRevenue: parseFloat(totalBoostsRevenue || 0)
     };
 
     console.log('📊 Stats overview - Period:', period, 'Stats:', stats);
@@ -175,6 +148,68 @@ router.get('/overview', async (req, res) => {
   } catch (error) {
     console.error('❌ Error in stats overview:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des statistiques' });
+  }
+});
+
+/**
+ * GET /api/stats/notifications-count
+ * Badges de notifications pour la sidebar (admin)
+ */
+router.get('/notifications-count', async (req, res) => {
+  try {
+    // 🚀 Optimisation : Exécuter toutes les requêtes en parallèle (batching)
+    const results = await Promise.all([
+      // 1. Commandes en attente
+      sequelize.query("SELECT COUNT(*) as count FROM orders WHERE status = 'pending'", { type: sequelize.QueryTypes.SELECT }),
+      
+      // 2. Nouveaux clients (24h)
+      sequelize.query("SELECT COUNT(*) as count FROM users WHERE role = 'user' AND created_at >= NOW() - INTERVAL '1 DAY'", { type: sequelize.QueryTypes.SELECT }),
+      
+      // 3. Nouveaux produits (24h)
+      sequelize.query("SELECT COUNT(*) as count FROM products WHERE created_at >= NOW() - INTERVAL '1 DAY'", { type: sequelize.QueryTypes.SELECT }),
+      
+      // 4. Demandes de boutiques
+      sequelize.query("SELECT COUNT(*) as count FROM stores WHERE status = 'pending'", { type: sequelize.QueryTypes.SELECT }),
+      
+      // 5. Avis en attente
+      sequelize.query("SELECT COUNT(*) as count FROM reviews WHERE status = 'pending'", { type: sequelize.QueryTypes.SELECT }),
+      
+      // 6. Litiges en attente
+      sequelize.query("SELECT COUNT(*) as count FROM disputes WHERE status IN ('pending', 'under_review')", { type: sequelize.QueryTypes.SELECT }),
+      
+      // 7. Commandes livrées récemment
+      sequelize.query("SELECT COUNT(*) as count FROM orders WHERE status = 'delivered' AND updated_at >= NOW() - INTERVAL '1 DAY'", { type: sequelize.QueryTypes.SELECT }),
+      
+      // 8. Commandes annulées récemment
+      sequelize.query("SELECT COUNT(*) as count FROM orders WHERE status = 'cancelled' AND updated_at >= NOW() - INTERVAL '1 DAY'", { type: sequelize.QueryTypes.SELECT }),
+      
+      // 9. Messages non lus
+      sequelize.query(`
+        SELECT COUNT(m.id) as count FROM messages m 
+        JOIN users u ON m.sender_id = u.id 
+        WHERE m.is_read = false AND u.role != 'admin'
+      `, { type: sequelize.QueryTypes.SELECT })
+    ]);
+
+    const [
+      [pendingOrders], [newUsers], [newProducts], [pendingStores],
+      [pendingReviews], [pendingDisputes], [recentDelivered], [recentCancelled], [unreadMessages]
+    ] = results;
+
+    res.json({
+      pendingOrdersCount: parseInt(pendingOrders?.count || 0),
+      newClientsCount: parseInt(newUsers?.count || 0),
+      newProductsCount: parseInt(newProducts?.count || 0),
+      pendingStoresCount: parseInt(pendingStores?.count || 0),
+      pendingReviewsCount: parseInt(pendingReviews?.count || 0),
+      pendingDisputesCount: parseInt(pendingDisputes?.count || 0),
+      recentDeliveredOrdersCount: parseInt(recentDelivered?.count || 0),
+      recentCancelledOrdersCount: parseInt(recentCancelled?.count || 0),
+      unreadMessagesCount: parseInt(unreadMessages?.count || 0)
+    });
+  } catch (error) {
+    console.error('❌ Error fetching notifications counts:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des notifications' });
   }
 });
 
@@ -570,7 +605,17 @@ router.get('/monthly-target', async (req, res) => {
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
     // Objectif mensuel fixe (peut être configuré)
-    const monthlyTarget = 20000; // 20K HTG
+    let monthlyTarget = 20000; // 20K HTG par défaut
+    try {
+      const targetSetting = await sequelize.models.Setting.findOne({ 
+        where: { category: 'finance', key: 'monthly_target' } 
+      });
+      if (targetSetting && targetSetting.value) {
+        monthlyTarget = parseFloat(targetSetting.value);
+      }
+    } catch (e) {
+      console.error('Error fetching monthly target setting', e);
+    }
 
     // Revenus du mois en cours
     const [currentMonthRevenue] = await sequelize.query(`
@@ -640,51 +685,79 @@ router.get('/monthly-target', async (req, res) => {
 });
 
 /**
+ * POST /api/stats/monthly-target
+ * Mettre à jour l'objectif mensuel
+ */
+router.post('/monthly-target', async (req, res) => {
+  try {
+    const { target } = req.body;
+    if (target === undefined || isNaN(target)) {
+      return res.status(400).json({ error: 'Montant invalide' });
+    }
+
+    let setting = await sequelize.models.Setting.findOne({ 
+      where: { category: 'finance', key: 'monthly_target' } 
+    });
+
+    if (setting) {
+      setting.value = target.toString();
+      setting.updated_at = new Date();
+      await setting.save();
+    } else {
+      await sequelize.models.Setting.create({
+        category: 'finance',
+        key: 'monthly_target',
+        value: target.toString()
+      });
+    }
+
+    res.json({ success: true, target });
+  } catch (error) {
+    console.error('❌ Error updating monthly target:', error);
+    res.status(500).json({ error: "Erreur lors de la mise à jour de l'objectif" });
+  }
+});
+
+/**
  * GET /api/stats/customer-demographics
  * Démographie des clients
  */
 router.get('/customer-demographics', async (req, res) => {
   try {
-    // Total des clients
-    const [totalCustomers] = await sequelize.query(`
-      SELECT COUNT(*) as total
-      FROM users
-      WHERE role != 'admin'
-    `, { type: sequelize.QueryTypes.SELECT });
-
-    // Nouveaux clients ce mois
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const [newThisMonth] = await sequelize.query(`
-      SELECT COUNT(*) as total
-      FROM users
-      WHERE role != 'admin'
-        AND created_at >= :startOfMonth
-    `, {
-      replacements: { startOfMonth },
-      type: sequelize.QueryTypes.SELECT
-    });
 
-    // Clients actifs (ayant passé au moins une commande)
-    const [activeCustomers] = await sequelize.query(`
-      SELECT COUNT(DISTINCT user_id) as total
-      FROM orders
-    `, { type: sequelize.QueryTypes.SELECT });
+    // 🚀 Exécuter toutes les requêtes démographiques en parallèle
+    const results = await Promise.all([
+      // 1. Total des clients
+      sequelize.query("SELECT COUNT(*) as total FROM users WHERE role != 'admin'", { type: sequelize.QueryTypes.SELECT }),
+      
+      // 2. Nouveaux clients ce mois
+      sequelize.query("SELECT COUNT(*) as total FROM users WHERE role != 'admin' AND created_at >= :startOfMonth", { 
+        replacements: { startOfMonth }, 
+        type: sequelize.QueryTypes.SELECT 
+      }),
+      
+      // 3. Clients actifs
+      sequelize.query("SELECT COUNT(DISTINCT user_id) as total FROM orders", { type: sequelize.QueryTypes.SELECT }),
+      
+      // 4. Clients par rôle
+      sequelize.query(`
+        SELECT 
+          CASE 
+            WHEN role = 'admin' THEN 'Administrateurs'
+            WHEN role = 'gestionnaire' THEN 'Gestionnaires'
+            ELSE 'Clients'
+          END as category,
+          COUNT(*) as count
+        FROM users
+        GROUP BY role
+        ORDER BY count DESC
+        LIMIT 5
+      `, { type: sequelize.QueryTypes.SELECT })
+    ]);
 
-    // Clients par rôle (statistique alternative)
-    const topRoles = await sequelize.query(`
-      SELECT 
-        CASE 
-          WHEN role = 'admin' THEN 'Administrateurs'
-          WHEN role = 'gestionnaire' THEN 'Gestionnaires'
-          ELSE 'Clients'
-        END as category,
-        COUNT(*) as count
-      FROM users
-      GROUP BY role
-      ORDER BY count DESC
-      LIMIT 5
-    `, { type: sequelize.QueryTypes.SELECT });
+    const [[totalCustomers], [newThisMonth], [activeCustomers], topRoles] = results;
 
     const total = parseInt(totalCustomers.total || 0);
     const newCustomers = parseInt(newThisMonth.total || 0);
@@ -769,10 +842,58 @@ router.get('/sales-data', async (req, res) => {
     // Initialiser les tableaux de résultats
     let sales = [];
     let revenue = [];
+    let labels = [];
 
-    if (period === 'monthly') {
-      // Pour chaque mois (1-12)
-      // On utilise une requête qui génère la série des mois pour s'assurer d'avoir 12 points
+    if (period === 'today') {
+      stats = await sequelize.query(`
+        WITH hours AS (
+          SELECT generate_series(
+            date_trunc('hour', NOW() - interval '23 hours'),
+            date_trunc('hour', NOW()),
+            '1 hour'
+          ) as hour
+        )
+        SELECT 
+          to_char(h.hour, 'HH24:00') as label,
+          COALESCE(COUNT(o.id), 0) as sales_count,
+          COALESCE(SUM(o.total_amount), 0) as total_revenue
+        FROM hours h
+        LEFT JOIN orders o ON date_trunc('hour', o.created_at) = h.hour 
+          AND o.status != 'cancelled'
+        GROUP BY h.hour
+        ORDER BY h.hour;
+      `, { type: sequelize.QueryTypes.SELECT });
+
+      sales = stats.map(s => parseInt(s.sales_count));
+      revenue = stats.map(s => parseFloat(s.total_revenue));
+      labels = stats.map(s => s.label);
+
+    } else if (period === '7days' || period === '30days') {
+      const days = period === '7days' ? 6 : 29;
+      stats = await sequelize.query(`
+        WITH days AS (
+          SELECT generate_series(
+            date_trunc('day', NOW() - interval '${days} days'),
+            date_trunc('day', NOW()),
+            '1 day'
+          ) as day
+        )
+        SELECT 
+          to_char(d.day, 'DD/MM') as label,
+          COALESCE(COUNT(o.id), 0) as sales_count,
+          COALESCE(SUM(o.total_amount), 0) as total_revenue
+        FROM days d
+        LEFT JOIN orders o ON date_trunc('day', o.created_at) = d.day 
+          AND o.status != 'cancelled'
+        GROUP BY d.day
+        ORDER BY d.day;
+      `, { type: sequelize.QueryTypes.SELECT });
+
+      sales = stats.map(s => parseInt(s.sales_count));
+      revenue = stats.map(s => parseFloat(s.total_revenue));
+      labels = stats.map(s => s.label);
+
+    } else if (period === 'monthly') {
       stats = await sequelize.query(`
         WITH months AS (
           SELECT generate_series(
@@ -797,7 +918,8 @@ router.get('/sales-data', async (req, res) => {
       });
 
       sales = stats.map(s => parseInt(s.sales_count));
-      revenue = stats.map(s => parseFloat(s.total_revenue)); // Garder les valeurs réelles, pas de division par 1000 ici, le front gère l'affichage (k)
+      revenue = stats.map(s => parseFloat(s.total_revenue));
+      labels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
     } else if (period === 'quarterly') {
       stats = await sequelize.query(`
@@ -824,30 +946,39 @@ router.get('/sales-data', async (req, res) => {
 
       sales = stats.map(s => parseInt(s.sales_count));
       revenue = stats.map(s => parseFloat(s.total_revenue));
+      labels = ['T1', 'T2', 'T3', 'T4'];
 
-    } else {
-      // Annually (just one point or comparison?)
-      // Pour l'instant on retourne le total de l'année
-      const [stat] = await sequelize.query(`
+    } else if (period === 'year' || period === 'annually') {
+      stats = await sequelize.query(`
+        WITH months AS (
+          SELECT generate_series(
+            date_trunc('year', make_date(:year, 1, 1)),
+            date_trunc('year', make_date(:year, 1, 1)) + interval '11 months',
+            '1 month'
+          ) as month
+        )
         SELECT 
-          COALESCE(COUNT(id), 0) as sales_count,
-          COALESCE(SUM(total_amount), 0) as total_revenue
-        FROM orders
-        WHERE EXTRACT(YEAR FROM created_at) = :year
-          AND status != 'cancelled'
+          to_char(m.month, 'Mon') as label,
+          COALESCE(COUNT(o.id), 0) as sales_count,
+          COALESCE(SUM(o.total_amount), 0) as total_revenue
+        FROM months m
+        LEFT JOIN orders o ON date_trunc('month', o.created_at) = m.month 
+          AND o.status != 'cancelled'
+        GROUP BY m.month
+        ORDER BY m.month;
       `, {
         replacements: { year: targetYear },
         type: sequelize.QueryTypes.SELECT
       });
 
-      sales = [parseInt(stat.sales_count)];
-      revenue = [parseFloat(stat.total_revenue)];
+      sales = stats.map(s => parseInt(s.sales_count));
+      revenue = stats.map(s => parseFloat(s.total_revenue));
+      labels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
     }
 
     console.log(`✅ Chart data generated. Sales points: ${sales.length}`);
 
-    // Le front attend { sales: [], revenue: [] }
-    res.json({ sales, revenue });
+    res.json({ sales, revenue, labels });
 
   } catch (error) {
     console.error('❌ Error in sales data:', error);

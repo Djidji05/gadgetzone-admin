@@ -571,12 +571,66 @@ const loadStatsData = async () => {
 
 // Méthodes
 const formatPrix = (prix: number) => {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(prix);
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(prix) + ' HTG';
 };
 
 const exporterRapport = () => {
-  console.log('Exportation du rapport...');
-  alert('Fonctionnalité d\'exportation à implémenter');
+  // Fonction utilitaire pour échapper les valeurs CSV
+  const escapeCsv = (str: string | number) => {
+    const stringValue = String(str);
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+
+  // 1. Préparer les données pour le CSV
+  const rows = [];
+  
+  // Section: Synthèse
+  rows.push(['SYNTHESE_PERIODE', periode.value]);
+  rows.push(['Chiffre d\'affaires', stats.value.chiffreAffaires]);
+  rows.push(['Commandes', stats.value.nbCommandes]);
+  rows.push(['Produits vendus', stats.value.nbProduitsVendus]);
+  rows.push(['Nouveaux clients', stats.value.nouveauxClients]);
+  rows.push([]); // Ligne vide
+
+  // Section: Top Produits
+  rows.push(['TOP_PRODUITS']);
+  rows.push(['Produit', 'Catégorie', 'Quantité Vendue', 'Chiffre d\'affaires']);
+  topProduits.value.forEach(p => {
+    rows.push([
+      escapeCsv(p.name),
+      escapeCsv(p.category || 'N/A'),
+      p.quantity_sold,
+      p.revenue
+    ]);
+  });
+  rows.push([]);
+
+  // Section: Top Clients
+  rows.push(['TOP_CLIENTS']);
+  rows.push(['Client', 'Commandes', 'Total Dépensé']);
+  topClients.value.forEach(c => {
+    rows.push([
+      escapeCsv(c.name),
+      c.total_orders,
+      c.total_spent
+    ]);
+  });
+
+  // 2. Convertir en chaîne CSV
+  const csvContent = rows.map(row => row.join(',')).join('\n');
+
+  // 3. Déclencher le téléchargement
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `rapport_htfasil_${periode.value}_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 // Watcher pour la période

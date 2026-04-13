@@ -1,8 +1,13 @@
 import express from 'express';
 import Role from '../models/Role.js';
 import { User } from '../models/index.js';
+import { authenticateToken, hasPermission } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// All roles routes require authentication and manage_roles permission
+router.use(authenticateToken);
+router.use(hasPermission('manage_roles'));
 
 // Get all roles with user counts
 router.get('/', async (req, res) => {

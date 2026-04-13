@@ -1,5 +1,6 @@
 import express from 'express';
 import { Category } from '../models/index.js';
+import { clearCache } from '../middleware/cacheMiddleware.js';
 
 const router = express.Router();
 
@@ -47,7 +48,7 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, slug, icon, commission_rate, parentId } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Le nom est obligatoire' });
@@ -55,8 +56,16 @@ router.post('/', async (req, res) => {
 
     const newCategory = await Category.create({
       name,
-      description: description || null
+      description: description || null,
+      slug: slug || null,
+      icon: icon || 'fas fa-tag',
+      parentId: parentId || null,
+      commission_rate: commission_rate !== undefined ? parseFloat(commission_rate) : 10.00
     });
+
+    // Invalider le cache
+    clearCache('/api/categories');
+    clearCache('/api/products');
 
     res.status(201).json(newCategory);
   } catch (error) {
@@ -72,7 +81,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description } = req.body;
+    const { name, description, slug, icon, commission_rate, parentId } = req.body;
 
     const category = await Category.findByPk(id);
 
@@ -82,8 +91,16 @@ router.put('/:id', async (req, res) => {
 
     await category.update({
       name: name || category.name,
-      description: description !== undefined ? description : category.description
+      description: description !== undefined ? description : category.description,
+      slug: slug !== undefined ? slug : category.slug,
+      icon: icon !== undefined ? icon : category.icon,
+      parentId: parentId !== undefined ? parentId : category.parentId,
+      commission_rate: commission_rate !== undefined ? parseFloat(commission_rate) : category.commission_rate
     });
+
+    // Invalider le cache
+    clearCache('/api/categories');
+    clearCache('/api/products');
 
     res.json(category);
   } catch (error) {
@@ -107,6 +124,10 @@ router.delete('/:id', async (req, res) => {
     }
 
     await category.destroy();
+
+    // Invalider le cache
+    clearCache('/api/categories');
+    clearCache('/api/products');
 
     res.json({ message: 'Catégorie supprimée avec succès' });
   } catch (error) {

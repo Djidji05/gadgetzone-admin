@@ -29,7 +29,7 @@ const props = defineProps({
   }
 })
 
-const displayValue = ref(props.isCurrency ? '0 HTG' : '0')
+const displayValue = ref(props.isCurrency ? '0' : '0')
 const currentValue = ref(0)
 
 const formatCurrency = (value) => {
@@ -38,12 +38,12 @@ const formatCurrency = (value) => {
       notation: 'compact',
       compactDisplay: 'short',
       maximumFractionDigits: 1
-    }).format(value) + ' HTG'
+    }).format(value)
   }
   return new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(value) + ' HTG'
+  }).format(value)
 }
 
 const formatNumber = (value) => {

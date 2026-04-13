@@ -19,11 +19,11 @@ async function restoreDatabase() {
         port: process.env.DB_PORT || 5432,
         user: process.env.DB_USER || 'postgres',
         password: process.env.DB_PASSWORD || '',
-        database: process.env.DB_NAME || 'gadgetzone',
+        database: process.env.DB_NAME || 'htfasil',
     });
 
     try {
-        const dumpPath = path.resolve(__dirname, '../../../gadgetzone_data_dump.sql');
+        const dumpPath = path.resolve(__dirname, '../../../htfasil_data_dump.sql');
 
         console.log('📦 Démarrage de la restauration...');
         console.log(`📂 Fichier source : ${dumpPath}`);
@@ -31,7 +31,7 @@ async function restoreDatabase() {
         try {
             await fs.access(dumpPath);
         } catch {
-            console.error('❌ Erreur : Le fichier gadgetzone_data_dump.sql est introuvable.');
+            console.error('❌ Erreur : Le fichier htfasil_data_dump.sql est introuvable.');
             process.exit(1);
         }
 

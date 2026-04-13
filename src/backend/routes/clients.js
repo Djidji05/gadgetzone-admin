@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
     const offset = (page - 1) * limit;
 
     const whereClause = {
-      role: 'user' // Ne récupérer que les clients (pas les admins)
+      role: { [Op.in]: ['customer', 'seller'] } // Clients et vendeurs
     };
 
     // Filtrer par recherche (utiliser Op.like pour MySQL)
@@ -27,6 +27,7 @@ router.get('/', async (req, res) => {
     }
 
     const users = await User.findAndCountAll({
+      distinct: true,
       where: whereClause,
       include: [
         {
@@ -35,7 +36,7 @@ router.get('/', async (req, res) => {
           attributes: ['id', 'total_amount', 'status', 'created_at']
         }
       ],
-      attributes: { exclude: ['password'] }, // Ne pas renvoyer le mot de passe
+      attributes: { exclude: ['password'] },
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['created_at', 'DESC']]
@@ -81,8 +82,8 @@ router.get('/:id', async (req, res) => {
       attributes: { exclude: ['password'] }
     });
 
-    if (!user || user.role !== 'user') {
-      return res.status(404).json({ error: 'Client non trouvé' });
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
     res.json({
@@ -120,7 +121,7 @@ router.post('/', async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role: 'user',
+      role: 'customer',
       phone
     });
 
@@ -147,7 +148,7 @@ router.put('/:id', async (req, res) => {
 
     const user = await User.findByPk(id);
 
-    if (!user || user.role !== 'user') {
+    if (!user || !['customer', 'seller'].includes(user.role)) {
       return res.status(404).json({ error: 'Client non trouvé' });
     }
 
@@ -194,7 +195,7 @@ router.delete('/:id', async (req, res) => {
 
     const user = await User.findByPk(id);
 
-    if (!user || user.role !== 'user') {
+    if (!user || !['customer', 'seller'].includes(user.role)) {
       return res.status(404).json({ error: 'Client non trouvé' });
     }
 

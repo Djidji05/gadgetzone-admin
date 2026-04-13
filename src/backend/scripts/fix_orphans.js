@@ -25,13 +25,13 @@ async function fixOrphans() {
         if (!store) {
             console.log('Admin has no store. Creating one...');
             store = await Store.create({
-                name: "GadgetZone Official",
-                description: "Official store for GadgetZone products",
+                name: "htfasil Official",
+                description: "Official store for htfasil products",
                 userId: admin.id,
                 status: 'active',
                 logo_url: '/images/logo.png',
                 settings: {
-                    address: 'GadgetZone HQ',
+                    address: 'htfasil HQ',
                     whatsapp: '+50900000000'
                 }
             });

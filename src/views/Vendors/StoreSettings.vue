@@ -14,11 +14,11 @@
         {{ error }}
       </div>
 
-      <div v-else class="space-y-6">
+      <div v-else-if="store" class="space-y-6">
         <!-- Bannière de la boutique -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div class="h-48 w-full bg-gray-100 dark:bg-gray-700 relative">
-            <img v-if="store.bannerUrl" :src="store.bannerUrl" class="w-full h-full object-cover" alt="Bannière" />
+            <img v-if="store?.bannerUrl" :src="store.bannerUrl" class="w-full h-full object-cover" alt="Bannière" />
             <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
               <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -38,7 +38,7 @@
              <!-- Logo -->
             <div class="relative -mt-12 mb-4">
                <div class="h-24 w-24 rounded-2xl border-4 border-white dark:border-gray-800 bg-white dark:bg-gray-700 shadow-md overflow-hidden relative group">
-                  <img v-if="store.logoUrl" :src="store.logoUrl" class="w-full h-full object-cover" alt="Logo" />
+                  <img v-if="store?.logoUrl" :src="store.logoUrl" class="w-full h-full object-cover" alt="Logo" />
                    <div v-else class="w-full h-full flex items-center justify-center text-gray-300">
                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -53,15 +53,15 @@
             </div>
 
             <div>
-              <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ store.name }}</h3>
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ store?.name }}</h3>
               <div class="mt-1 flex items-center gap-2">
                 <span :class="[
                   'px-2 py-0.5 rounded text-xs font-medium uppercase',
-                  store.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30' : 'bg-yellow-100 text-yellow-700'
+                  store?.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30' : 'bg-yellow-100 text-yellow-700'
                 ]">
-                  {{ store.status === 'active' ? 'Boutique Active' : 'En attente' }}
+                  {{ store?.status === 'active' ? 'Boutique Active' : 'En attente' }}
                 </span>
-                <span class="text-xs text-gray-500">Membre depuis {{ formatDate(store.created_at) }}</span>
+                <span class="text-xs text-gray-500">Membre depuis {{ store?.created_at ? formatDate(store.created_at) : '' }}</span>
               </div>
             </div>
           </div>
@@ -85,7 +85,7 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Type d'activité</label>
                 <input 
                   type="text" 
-                  :value="store.settings?.businessType || 'N/A'" 
+                  :value="store?.settings?.businessType || 'N/A'" 
                   disabled
                   class="block w-full px-4 py-2.5 rounded-lg border-gray-100 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 cursor-not-allowed"
                 />
@@ -171,7 +171,7 @@ const bannerInput = ref<HTMLInputElement | null>(null)
 const loadStoreData = async () => {
   try {
     loading.value = true
-    const data = await vendorService.getMe()
+    const data = await vendorService.getMe() as any
     store.value = data
     
     // Sync form
@@ -215,19 +215,47 @@ const saveSettings = async () => {
 const triggerLogoUpload = () => logoInput.value?.click()
 const triggerBannerUpload = () => bannerInput.value?.click()
 
+const handleUpload = async (file: File, type: 'logo' | 'banner') => {
+  try {
+    saving.value = true
+    const formData = new FormData()
+    formData.append('images', file)
+    
+    // We reuse the update logic or a specific upload endpoint if available.
+    // Based on the current vendorService, we might need to upload first.
+    // Let's check how Settings.vue does it. It uses api.post('/upload')
+    
+    const uploadRes = await vendorService.uploadImages(formData)
+    const newUrl = uploadRes.urls[0]
+    
+    const updateData: any = {
+      name: formData.name,
+      description: formData.description,
+      settings: store.value?.settings || {}
+    }
+    
+    if (type === 'logo') updateData.logoUrl = newUrl
+    else updateData.bannerUrl = newUrl
+    
+    const updated = await vendorService.updateMe(updateData)
+    store.value = updated
+    alert(`${type === 'logo' ? 'Logo' : 'Bannière'} mis à jour !`)
+  } catch (err) {
+    console.error('Upload failed:', err)
+    alert('Erreur lors du téléchargement.')
+  } finally {
+    saving.value = false
+  }
+}
+
 const handleLogoChange = (e: Event) => {
   const target = e.target as HTMLInputElement
-  if (target.files?.length) {
-    // Simuler un upload pour l'instant ou gestion réelle via service upload
-    alert('Upload de logo sera implémenté avec le service de fichiers.')
-  }
+  if (target.files?.length) handleUpload(target.files[0], 'logo')
 }
 
 const handleBannerChange = (e: Event) => {
   const target = e.target as HTMLInputElement
-  if (target.files?.length) {
-    alert('Upload de bannière sera implémenté avec le service de fichiers.')
-  }
+  if (target.files?.length) handleUpload(target.files[0], 'banner')
 }
 
 const formatDate = (dateString: string) => {

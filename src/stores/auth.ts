@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { authService } from '@/services/api'
 import { inactivityTracker } from '@/services/inactivity'
 import type { User, LoginCredentials, RegisterData, ProfileUpdateData, PasswordChangeData } from '@/types'
@@ -9,6 +9,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const token = ref<string | null>(null)
   const isLoading = ref(false)
+  const isReady = ref(false)
   const error = ref<string | null>(null)
 
   // Getters
@@ -24,17 +25,27 @@ export const useAuthStore = defineStore('auth', () => {
 
       const response = await authService.login(credentials)
 
+      // Axios returns data in response.data
+      const data = response.data
+
+      // Vérifier le rôle de l'utilisateur
+      const role = data.user?.role?.toLowerCase()
+      if (!['admin', 'gestionnaire'].includes(role)) {
+        error.value = 'Identifiants invalides'
+        return { success: false, error: error.value }
+      }
+
       // Sauvegarder les données
-      token.value = response.token
-      user.value = response.user as any
+      token.value = data.token
+      user.value = data.user as any
 
       // Persister dans localStorage
-      authService.setUser(response.user, response.token)
+      authService.setUser(data.user, data.token)
 
       // Démarrer le suivi d'activité
       inactivityTracker.start()
 
-      return { success: true, data: response }
+      return { success: true, data: data }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { data?: { error?: string } } }
       error.value = errorResponse.response?.data?.error || 'Erreur lors de la connexion'
@@ -51,14 +62,17 @@ export const useAuthStore = defineStore('auth', () => {
 
       const response = await authService.register(userData)
 
+      // Axios returns data in response.data
+      const data = response.data
+
       // Sauvegarder les données
-      token.value = response.token
-      user.value = response.user as any
+      token.value = data.token
+      user.value = data.user as any
 
       // Persister dans localStorage
-      authService.setUser(response.user, response.token)
+      authService.setUser(data.user, data.token)
 
-      return { success: true, data: response }
+      return { success: true, data: data }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { data?: { error?: string } } }
       error.value = errorResponse.response?.data?.error || 'Erreur lors de l\'inscription'
@@ -89,9 +103,6 @@ export const useAuthStore = defineStore('auth', () => {
       // Mettre à jour l'utilisateur
       user.value = (response.data?.user as any) || null
 
-      // Mettre à jour localStorage
-      localStorage.setItem('user_data', JSON.stringify(response.data?.user))
-
       return { success: true, data: response }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { data?: { error?: string } } }
@@ -120,30 +131,16 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const checkAuth = () => {
-    // Vérifier s'il y a des données dans localStorage
-    const savedToken = localStorage.getItem('auth_token')
-    const savedUser = localStorage.getItem('user_data')
-
-    if (savedToken && savedUser) {
-      try {
-        token.value = savedToken
-        user.value = JSON.parse(savedUser)
-        return true
-      } catch {
-        // Nettoyer si les données sont corrompues
-        logout()
-        return false
-      }
-    }
-
-    return false
+    // Lire depuis le store Pinia persist (clé 'auth-store')
+    // La persistance est gérée par pinia-plugin-persistedstate
+    // Cette fonction sert de fallback si le store n'est pas encore hydraté
+    return !!(token.value && user.value)
   }
 
   const refreshProfile = async () => {
     try {
       const response = await authService.getProfile()
       user.value = (response.data?.user as any) || null
-      localStorage.setItem('user_data', JSON.stringify(response.data?.user))
       return { success: true, data: response }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { data?: { error?: string } } }
@@ -158,9 +155,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   const refreshToken = async () => {
     try {
-      const response = await authService.refreshToken()
-      if (response.token) {
-        token.value = response.token
+      const tokenString = await authService.refreshToken()
+      if (tokenString) {
+        token.value = tokenString
       }
       return { success: true }
     } catch (err: unknown) {
@@ -171,13 +168,36 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Initialiser l'auth au chargement du store
-  const init = () => {
+  const init = async () => {
+    if (isReady.value) return
+    
+    // Force reset loading and error states on initialization
+    isLoading.value = false
+    clearError()
+
     const isAuth = checkAuth()
 
-    // Si authentifié, démarrer le suivi d'activité
+    // Si authentifié, valider le jeton avec le backend
     if (isAuth) {
-      inactivityTracker.start()
+      console.log('🔍 Validating existing session on init...')
+      try {
+        const result = await refreshProfile()
+        if (!result.success) {
+          console.warn('⚠️ Stale session detected during init, cleaning up.')
+          logout()
+        } else {
+          console.log('✅ Session validated.')
+          inactivityTracker.start()
+        }
+      } catch (err) {
+        console.error('❌ Session validation failed:', err)
+        logout()
+      }
     }
+
+    // Attendre un tick pour s'assurer que l'état est stabilisé
+    await nextTick()
+    isReady.value = true
   }
 
   return {
@@ -185,6 +205,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     token,
     isLoading,
+    isReady,
     error,
 
     // Getters

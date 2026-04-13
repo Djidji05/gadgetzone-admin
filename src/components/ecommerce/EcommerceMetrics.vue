@@ -299,6 +299,47 @@
         </div>
       </div>
     </div>
+
+    <!-- Revenus Boosts Card -->
+    <div
+      v-if="metrics?.counts?.boostsRevenue !== undefined"
+      class="group sm:rounded-2xl sm:border border-transparent sm:border-gray-200 sm:bg-white p-5 sm:dark:border-gray-800 sm:dark:bg-white/[0.03] bg-transparent dark:bg-transparent md:p-6 hover:shadow-lg transition-all duration-300 hover:border-yellow-300 dark:hover:border-yellow-700"
+    >
+      <div
+        class="flex items-center justify-center w-14 h-14 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl dark:from-yellow-900/30 dark:to-yellow-800/30 group-hover:scale-110 transition-transform duration-300"
+      >
+        <svg
+          class="fill-yellow-600 dark:fill-yellow-400"
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M13.5 2L5.5 14h6v8l8-12h-6V2z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <div class="mt-5">
+        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Revenus Boosts</span>
+        <h4 class="mt-2 font-bold text-gray-800 text-3xl dark:text-white/90 tabular-nums">
+          <AnimatedCounter
+            :value="metrics?.counts?.boostsRevenue || 0"
+            :isLoading="isLoading"
+            :isCurrency="true"
+            compact
+          />
+        </h4>
+
+        <div class="mt-3 flex">
+          <span
+            class="flex items-center gap-1 rounded-full bg-yellow-50 py-1.5 pl-2 pr-3 text-sm font-semibold text-yellow-600 shadow-sm dark:bg-yellow-500/15 dark:text-yellow-400"
+          >
+            Total
+          </span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -326,6 +367,11 @@ const formatPercentage = (value) => {
 }
 
 const fetchMetrics = async () => {
+  if (!authStore.isAuthenticated) {
+    console.log('🛑 Skip fetchMetrics: User not authenticated')
+    return
+  }
+
   try {
     isLoading.value = true
     error.value = null
@@ -339,14 +385,14 @@ const fetchMetrics = async () => {
       
       metrics.value = {
         counts: {
-          users: 0, // Not applicable for vendors
+          users: 0, 
           orders: response.orders || 0,
           revenue: response.sales || response.revenue || 0,
           products: response.products || 0
         },
         growth: {
           users: 0,
-          orders: 0, // Stats endpoint doesn't return growth yet for vendors
+          orders: 0,
           revenue: 0,
           products: 0
         }
@@ -369,7 +415,8 @@ const fetchMetrics = async () => {
             orders: response.totalOrders || 0,
             revenue: response.totalRevenue || 0,
             products: response.totalProducts || 0,
-            sellers: response.totalSellers || 0
+            sellers: response.totalSellers || 0,
+            boostsRevenue: response.totalBoostsRevenue || 0
           },
           growth: {
             users: response.evolutionClients || 0,
@@ -385,7 +432,8 @@ const fetchMetrics = async () => {
             orders: response.counts.orders || 0,
             revenue: response.counts.revenue || 0,
             products: response.counts.products || 0,
-            sellers: 0
+            sellers: 0,
+            boostsRevenue: response.counts.boostsRevenue || 0
           },
           growth: {
             users: response.growth?.users || 0,
@@ -401,7 +449,8 @@ const fetchMetrics = async () => {
             orders: response.nbCommandes || 0,
             revenue: response.chiffreAffaires || 0,
             products: response.nbProduitsVendus || 0,
-            sellers: 0
+            sellers: 0,
+            boostsRevenue: response.totalBoostsRevenue || 0
           },
           growth: {
             users: response.evolutionClients || 0,
@@ -426,13 +475,25 @@ const fetchMetrics = async () => {
 }
 
 onMounted(() => {
-  fetchMetrics()
+  if (authStore.isAuthenticated) {
+    fetchMetrics()
+  }
+})
+
+// Watch for authentication to trigger initial fetch
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    console.log('🔐 Auth detected, fetching metrics...')
+    fetchMetrics()
+  }
 })
 
 // Watch for period changes
 watch(() => props.period, () => {
-  console.log('🔄 Period changed to:', props.period)
-  fetchMetrics()
+  if (authStore.isAuthenticated) {
+    console.log('🔄 Period changed to:', props.period)
+    fetchMetrics()
+  }
 })
 </script>
 

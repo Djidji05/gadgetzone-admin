@@ -38,7 +38,12 @@ const Conversation = sequelize.define('Conversation', {
 }, {
     tableName: 'conversations',
     timestamps: true,
-    underscored: true
+    underscored: true,
+    indexes: [
+        { fields: ['participant1_id'] },
+        { fields: ['participant2_id'] },
+        { fields: ['last_message_at'] }
+    ]
 });
 
 export default Conversation;

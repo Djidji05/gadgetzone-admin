@@ -15,7 +15,7 @@
   >
     <div
       :class="[
-        'pt-8 pb-4 flex',
+        'pt-4 pb-2 flex',
         !isExpanded && !isHovered ? 'lg:justify-center' : 'justify-start',
       ]"
       style="flex-shrink: 0;"
@@ -23,22 +23,20 @@
       <router-link to="/">
         <img
           v-if="isExpanded || isHovered || isMobileOpen"
-          :src="logoLight"
+          :src="settingsStore.logoUrl"
           alt="Logo"
-          width="140"
-          height="35"
+          class="max-h-[80px] w-auto"
         />
         <img
           v-else
-          :src="logoIcon"
+          :src="settingsStore.logoIconUrl"
           alt="Logo"
-          width="40"
-          height="40"
+          class="max-h-[75px] max-w-[75px] object-contain"
         />
       </router-link>
     </div>
     <div
-      class="flex flex-col overflow-y-auto duration-300 ease-linear custom-scrollbar"
+      class="flex flex-col overflow-y-auto duration-300 ease-linear custom-scrollbar-hover"
       style="height: calc(100vh - 8rem)"
     >
       <nav class="flex-1">
@@ -46,7 +44,7 @@
           <div v-for="(menuGroup, groupIndex) in menuGroups" :key="groupIndex">
             <h2
               :class="[
-                'mb-4 text-xs uppercase flex leading-[20px] text-gray-400',
+                'mb-4 text-xs uppercase flex leading-[20px] text-gray-400 dark:text-gray-500',
                 !isExpanded && !isHovered
                   ? 'lg:justify-center'
                   : 'justify-start',
@@ -84,9 +82,13 @@
                   </span>
                   <span
                     v-if="isExpanded || isHovered || isMobileOpen"
-                    class="menu-item-text"
-                    >{{ item.name }}</span
+                    class="menu-item-text flex items-center"
                   >
+                    {{ item.name }}
+                    <span v-if="item.badge && item.badge > 0 && !isSubmenuOpenWithRoute(groupIndex, index)" class="ml-2 font-bold text-red-600 text-[13px]">
+                      {{ item.badge > 99 ? '99+' : item.badge }}
+                    </span>
+                  </span>
                   <span
                     v-if="isExpanded || isHovered || isMobileOpen"
                     :class="[
@@ -126,9 +128,13 @@
                   </span>
                   <span
                     v-if="isExpanded || isHovered || isMobileOpen"
-                    class="menu-item-text"
-                    >{{ item.name }}</span
+                    class="menu-item-text flex items-center"
                   >
+                    {{ item.name }}
+                    <span v-if="item.badge && item.badge > 0" class="ml-2 font-bold text-red-600 text-[13px]">
+                      {{ item.badge > 99 ? '99+' : item.badge }}
+                    </span>
+                  </span>
                 </router-link>
                 <transition
                   @enter="startTransition"
@@ -157,6 +163,9 @@
                         >
                           {{ subItem.name }}
                           <span class="flex items-center gap-1 ml-auto">
+                            <span v-if="subItem.badge && subItem.badge > 0" class="font-bold text-red-600 text-[13px]">
+                              {{ subItem.badge > 99 ? '99+' : subItem.badge }}
+                            </span>
                             <span
                               v-if="subItem.pro"
                               :class="[
@@ -200,9 +209,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { Component } from "vue";
-const logoLight = '/images/logo/logo-gadgetzone.png';
-const logoDark = '/images/logo/logo-gadgetzone.png';  // Utilisation du PNG pour les deux modes
-const logoIcon = '/images/logo/logo-icon.svg';  // Utilisation du SVG existant
+import { useSettingsStore } from "@/stores/settings";
 import { useRoute } from "vue-router";
 
 // Types pour les menu items
@@ -213,6 +220,7 @@ interface MenuItem {
   icon?: Component; // Changed to accept Vue components
   new?: boolean;
   pro?: boolean;
+  badge?: number;
 }
 
 interface MenuGroup {
@@ -233,28 +241,69 @@ import HorizontalDots from '@/icons/HorizontalDots.vue';
 import ChevronDownIcon from '@/icons/ChevronDownIcon.vue';
 import ChatIcon from "@/icons/ChatIcon.vue";
 import SettingsIcon from "@/icons/SettingsIcon.vue";
+import { Activity as ActivityIcon } from 'lucide-vue-next';
 import { useSidebar } from "@/composables/useSidebar";
 import { useAuthStore } from "@/stores/auth";
+import { useI18n } from "vue-i18n";
+import { vendorService, statsService } from "@/services/api";
+import { ref, onMounted, onUnmounted } from "vue";
 import SidebarWidget from "./SidebarWidget.vue";
 
+const { t } = useI18n();
 const route = useRoute();
 const authStore = useAuthStore();
+const settingsStore = useSettingsStore();
 
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar();
+
+const notificationStats = ref({
+  pendingOrdersCount: 0,
+  unreadMessagesCount: 0,
+  newClientsCount: 0,
+  newProductsCount: 0,
+  pendingStoresCount: 0,
+});
+
+const fetchNotificationStats = async () => {
+  const role = authStore.userRole || authStore.user?.role;
+  
+  try {
+    if (role === 'seller') {
+      const data = await vendorService.getSummary();
+      notificationStats.value = data;
+    } else {
+      const data = await statsService.getNotificationsCount();
+      notificationStats.value = data;
+    }
+  } catch (error) {
+    console.error('Error fetching notification stats:', error);
+  }
+};
+
+let statsInterval: any = null;
+
+onMounted(() => {
+  fetchNotificationStats();
+  statsInterval = setInterval(fetchNotificationStats, 60000);
+});
+
+onUnmounted(() => {
+  if (statsInterval) clearInterval(statsInterval);
+});
 
 const allMenuGroups: MenuGroup[] = [
   {
     title: "Menu",
     items: [
       {
-        icon: ChatIcon,
-        name: "Messages",
-        path: "/messages"
-      },
-      {
         icon: GridIcon,
         name: "Tableau de bord",
         subItems: [{ name: "Tableau de bord", path: "/" }],
+      },
+      {
+        icon: ChatIcon,
+        name: "Messages", // Sera renommé dynamiquement dans menuGroups
+        path: "/messages",
       },
       {
         icon: UserCircleIcon,
@@ -265,15 +314,17 @@ const allMenuGroups: MenuGroup[] = [
         icon: BoxCubeIcon,
         name: "Produits",
         subItems: [
+          { name: "Tous les produits", path: "/liste-produits" },
           { name: "Ajouter un produit", path: "/ajouter-produit" },
-          { name: "Liste des produits", path: "/liste-produits" },
+          { name: "Marques", path: "/produits/marques" },
+          { name: "Catégories", path: "/categories" },
         ],
       },
       {
         icon: BoxCubeIcon,
         name: "Commandes",
         subItems: [
-          { name: "Liste commandes", path: "/liste-commandes" },
+          { name: "Toutes les commandes", path: "/liste-commandes" },
           { name: "En cours", path: "/commandes-en-cours" },
           { name: "Livrées", path: "/commandes-livrees" },
           { name: "Annulées", path: "/commandes-annulees" },
@@ -281,31 +332,18 @@ const allMenuGroups: MenuGroup[] = [
       },
       {
         icon: CreditCardIcon,
-        name: "Finance",
-        path: "/finance"
-      },
-      {
-        name: "Rapports",
-        icon: TableIcon,
-        path: "/rapports",
-      },
-
-      {
-        name: "SEO Management",
-        icon: PieChartIcon,
-        path: "/seo",
-      },
-      {
-        icon: SettingsIcon,
-        name: "Ma Boutique",
-        path: "/vendors/settings",
+        name: "Finances",
+        subItems: [
+          { name: "Vue d'ensemble", path: "/finance" },
+          { name: "Paiements & Retraits", path: "/paiements" },
+        ],
       },
       {
         icon: BoxCubeIcon,
         name: "Vendeurs",
         subItems: [
           { name: "Candidatures", path: "/vendors/applications" },
-          { name: "Messages", path: "/messages" },
+          { name: "Ma Boutique", path: "/vendors/settings" },
         ],
       },
     ],
@@ -318,9 +356,32 @@ const allMenuGroups: MenuGroup[] = [
         name: "Marketing",
         subItems: [
           { name: "Newsletter", path: "/marketing/newsletter" },
-          { name: "Personnalisation", path: "/personalization" },
+          { name: "Ambassadeurs", path: "/marketing/ambassadeurs" },
+          { name: "Promotions", path: "/marketing/promos" },
+          { name: "Campagnes", path: "/marketing/campagnes" },
+          { name: "Boosts", path: "/marketing/boosts" },
         ],
       },
+      {
+        icon: PageIcon,
+        name: "Blog",
+        path: "/marketing/blog",
+      },
+      {
+        icon: PageIcon,
+        name: "Pages Statiques",
+        path: "/parametres/pages",
+      },
+      {
+        icon: PageIcon,
+        name: "Académie Vendeurs",
+        path: "/academy",
+      },
+      {
+        icon: BoxCubeIcon,
+        name: "Bannières & Slider",
+        path: "/personalization",
+      }
     ],
   },
   {
@@ -335,14 +396,21 @@ const allMenuGroups: MenuGroup[] = [
         ],
       },
       {
-        icon: GridIcon,
+        icon: SettingsIcon,
         name: "Paramètres",
         subItems: [
           { name: "Général", path: "/parametres/general" },
           { name: "Sécurité", path: "/parametres/securite" },
           { name: "Email", path: "/parametres/email" },
           { name: "Paiements", path: "/parametres/paiements" },
+          { name: "Commissions", path: "/parametres/commissions" },
+          { name: "Documentation API", path: "/parametres/api" },
         ],
+      },
+      {
+        icon: ActivityIcon,
+        name: "SEO & Santé",
+        path: "/seo",
       },
     ],
   },
@@ -353,9 +421,11 @@ const allMenuGroups: MenuGroup[] = [
         icon: UserCircleIcon,
         name: "Support",
         subItems: [
-          { name: "Tickets", path: "/support/tickets" },
           { name: "FAQ", path: "/support/faq" },
+          { name: "Tickets", path: "/support/tickets" },
+          { name: "Litiges", path: "/support/disputes" },
           { name: "Documentation", path: "/support/documentation" },
+          { name: "Modération Avis", path: "/support/reviews" },
         ],
       },
       {
@@ -367,8 +437,60 @@ const allMenuGroups: MenuGroup[] = [
   },
 ];
 
+const nameToKey: Record<string, string> = {
+  "Menu": "menu",
+  "Tableau de bord": "dashboard",
+  "Messages": "messages",
+  "Clients": "customers",
+  "Produits": "products",
+  "Tous les produits": "allProducts",
+  "Ajouter un produit": "addProduct",
+  "Marques": "brands",
+  "Catégories": "categories",
+  "Commandes": "orders",
+  "Toutes les commandes": "allOrders",
+  "En cours": "pending",
+  "Livrées": "delivered",
+  "Annulées": "cancelled",
+  "Finances": "finance",
+  "Vue d'ensemble": "overview",
+  "Paiements & Retraits": "payouts",
+  "Vendeurs": "vendors",
+  "Candidatures": "applications",
+  "Ma Boutique": "myStore",
+  "Marketing & Contenu": "marketingContent",
+  "Marketing": "marketing",
+  "Newsletter": "newsletter",
+  "Ambassadeurs": "ambassadors",
+  "Promotions": "promotions",
+  "Campagnes": "campaigns",
+  "Blog": "blog",
+  "Pages Statiques": "staticPages",
+  "Académie Vendeurs": "sellerAcademy",
+  "Bannières & Slider": "bannersSlider",
+  "Système": "system",
+  "Utilisateurs": "users",
+  "Liste utilisateurs": "userList",
+  "Rôles & Permissions": "rolesPermissions",
+  "Paramètres": "settings",
+  "Général": "general",
+  "Sécurité": "security",
+  "Email": "email",
+  "Paiements": "payments",
+  "Commissions": "commissions",
+  "Documentation API": "apiDocs",
+  "SEO & Santé": "seoHealth",
+  "Support": "support",
+  "FAQ": "faq",
+  "Tickets": "tickets",
+  "Litiges": "disputes",
+  "Documentation": "documentation",
+  "Modération Avis": "reviews",
+  "Analytics": "analytics",
+};
+
 const menuGroups = computed(() => {
-  const role = authStore.user?.role;
+  const role = authStore.userRole || authStore.user?.role;
   
   // Filter groups
   const filteredGroups = allMenuGroups.filter(group => {
@@ -384,27 +506,88 @@ const menuGroups = computed(() => {
   });
 
   return filteredGroups.map(group => {
-    if (group.title === 'Menu') {
-      let filteredItems = group.items;
+    // Translate group title
+    const groupKey = nameToKey[group.title] || group.title.toLowerCase();
+    const translatedTitle = t(`nav.${groupKey}`);
 
-      // For Sellers: Hide specific admin-only items
-      // Messages is ok for sellers.
-      if (role === 'seller') {
-        filteredItems = filteredItems.filter(item => 
-          !['Clients', 'Finance', 'SEO Management', 'Vendeurs'].includes(item.name)
-        );
-      } else {
-        // For Admins (or others): 
-        // Hide top-level "Messages" because it's now inside "Vendeurs"
-        filteredItems = filteredItems.filter(item => item.name !== 'Messages');
+    const translatedItems = group.items.map(item => {
+      // Special case for Sellers: Rename "Messages" to "Litiges"
+      if (item.name === 'Messages' && role === 'seller') {
+        const itemKey = nameToKey['Litiges'] || 'disputes';
+        return { 
+          ...item, 
+          name: t(`nav.${itemKey}`), 
+          path: '/messages?view=disputes',
+          badge: notificationStats.value.unreadMessagesCount
+        };
       }
+      
+      // Special case for Sellers: Add badge to "Commandes"
+      if (item.name === 'Commandes' && role === 'seller') {
+        const itemKey = nameToKey['Commandes'] || 'orders';
+        return {
+          ...item,
+          name: t(`nav.${itemKey}`),
+          badge: notificationStats.value.pendingOrdersCount
+        };
+      }
+      
+      // Badges for admin
+      if (role !== 'seller') {
+        if (item.name === 'Clients' || item.name === 'Utilisateurs') {
+          item.badge = notificationStats.value.newClientsCount;
+        } else if (item.name === 'Messages') {
+          item.badge = notificationStats.value.unreadMessagesCount;
+        }
+      }
+      
+      const itemKey = nameToKey[item.name] || item.name.toLowerCase();
+      const translatedName = t(`nav.${itemKey}`);
+
+      const translatedSubItems = item.subItems?.map(sub => {
+        const subKey = nameToKey[sub.name] || sub.name.toLowerCase().replace(/ & /g, '').replace(/ /g, '');
+        let subItemBadge = sub.badge;
+        
+        if (role !== 'seller') {
+          if (sub.name === 'Litiges') {
+            subItemBadge = notificationStats.value.pendingDisputesCount;
+          } else if (sub.name === 'Modération Avis') {
+            subItemBadge = notificationStats.value.pendingReviewsCount;
+          } else if (sub.name === 'En cours') {
+            subItemBadge = notificationStats.value.pendingOrdersCount;
+          } else if (sub.name === 'Livrées') {
+            subItemBadge = notificationStats.value.recentDeliveredOrdersCount;
+          } else if (sub.name === 'Annulées') {
+            subItemBadge = notificationStats.value.recentCancelledOrdersCount;
+          } else if (sub.name === 'Tous les produits') {
+            subItemBadge = notificationStats.value.newProductsCount;
+          } else if (sub.name === 'Candidatures') {
+            subItemBadge = notificationStats.value.pendingStoresCount;
+          }
+        }
+        
+        return {
+          ...sub,
+          name: t(`nav.${subKey}`),
+          badge: subItemBadge
+        };
+      });
+
+      const totalSubItemBadges = translatedSubItems?.reduce((sum, sub) => sum + (sub.badge || 0), 0) || 0;
 
       return {
-        ...group,
-        items: filteredItems
+        ...item,
+        name: translatedName,
+        subItems: translatedSubItems,
+        badge: (item.badge || 0) + totalSubItemBadges
       };
-    }
-    return group;
+    });
+
+    return {
+      ...group,
+      title: translatedTitle,
+      items: translatedItems
+    };
   });
 });
 

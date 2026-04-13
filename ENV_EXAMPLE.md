@@ -1,4 +1,4 @@
-# Configuration complète - GadgetZone Admin
+# Configuration complète - HTFasil Admin
 
 ## Variables d'environnement requises
 
@@ -10,7 +10,7 @@ FRONTEND_URL=http://localhost:5174
 ### Base de Données PostgreSQL
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=gadgetzone
+DB_NAME=htfasil
 DB_USER=postgres
 DB_PASSWORD=your_secure_password_here
 
@@ -23,7 +23,7 @@ EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASSWORD=your-app-password
-EMAIL_FROM=noreply@gadgetzone.com
+EMAIL_FROM=noreply@htfasil.com
 
 ### OAuth (Optionnel)
 GOOGLE_CLIENT_ID=your_google_client_id
@@ -48,5 +48,11 @@ PAYPAL_MODE=sandbox
 ### Upload & Monitoring (Optionnel)
 MAX_FILE_SIZE=10
 UPLOAD_DIR=./public/uploads
+
+# Cloudinary Storage
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
 SENTRY_DSN=your_sentry_dsn
 LOG_LEVEL=info

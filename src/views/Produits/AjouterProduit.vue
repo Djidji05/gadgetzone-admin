@@ -128,114 +128,6 @@
             </div>
           </div>
 
-          <!-- Section 2: Options du produit -->
-          <div class="space-y-6">
-            <div class="flex items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-              <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
-              </div>
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Options et Détails</h3>
-            </div>
-
-            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div class="flex items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border-2 border-blue-200 dark:border-blue-800 hover:shadow-md transition-shadow">
-                <input
-                  id="is_featured"
-                  v-model="produit.is_featured"
-                  type="checkbox"
-                  class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
-                />
-                <label for="is_featured" class="ml-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                  <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                  </svg>
-                  <div>
-                    <div class="font-semibold">Produit vedette</div>
-                    <div class="text-xs text-blue-600 dark:text-blue-400">Affiché en page d'accueil</div>
-                  </div>
-                </label>
-              </div>
-
-              <div class="flex items-center p-4 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl border-2 border-green-200 dark:border-green-800 hover:shadow-md transition-shadow">
-                <input
-                  id="is_new"
-                  v-model="produit.is_new"
-                  type="checkbox"
-                  class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700"
-                />
-                <label for="is_new" class="ml-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                  <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                  </svg>
-                  <div>
-                    <div class="font-semibold">Nouveau produit</div>
-                    <div class="text-xs text-green-600 dark:text-green-400">Badge "Nouveau"</div>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <!-- Caractéristiques (Features) -->
-            <div class="mt-4">
-              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Caractéristiques principales (Liste à puces)
-              </label>
-              <div class="space-y-2">
-                <div v-for="(feature, index) in featureList" :key="index" class="flex gap-2">
-                  <input
-                    v-model="featureList[index]"
-                    type="text"
-                    class="form-input flex-1"
-                    placeholder="Ex: Écran Super Retina XDR"
-                  />
-                  <button type="button" @click="removeFeature(index)" class="p-2 text-red-500 hover:bg-red-50 rounded-lg">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
-                </div>
-                <button type="button" @click="addFeature" class="text-sm text-primary-600 font-medium hover:text-primary-700 flex items-center gap-1">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                  Ajouter une caractéristique
-                </button>
-              </div>
-            </div>
-
-            <!-- Spécifications (Key-Value) -->
-            <div class="mt-4">
-              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Spécifications techniques
-              </label>
-              <div class="space-y-2 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
-                <div v-for="(spec, index) in specificationList" :key="index" class="flex gap-2 items-start">
-                  <div class="w-1/3">
-                    <input
-                      v-model="spec.key"
-                      type="text"
-                      class="form-input w-full"
-                      placeholder="Caractéristique (ex: Poids)"
-                    />
-                  </div>
-                  <div class="flex-1">
-                    <input
-                      v-model="spec.value"
-                      type="text"
-                      class="form-input w-full"
-                      placeholder="Valeur (ex: 180g)"
-                    />
-                  </div>
-                  <button type="button" @click="removeSpecification(index)" class="p-2 text-red-500 hover:bg-red-50 rounded-lg mt-0.5">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </div>
-                <button type="button" @click="addSpecification" class="text-sm text-primary-600 font-medium hover:text-primary-700 flex items-center gap-1">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                  Ajouter une spécification
-                </button>
-              </div>
-            </div>
-          </div>
-
           <!-- Section 3: Images du produit -->
           <div class="space-y-6">
             <div class="flex items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
@@ -396,11 +288,7 @@ if (productId) {
       category_id: 1,
       image_url: 'https://placehold.co/300x300/3B82F6/FFFFFF?text=Product',
       images: ['https://placehold.co/300x300/3B82F6/FFFFFF?text=Product'], // Init images array
-      is_featured: false,
-      is_new: false,
-      brand_id: null,
-      features: [],
-      specifications: {}
+      brand_id: null
     };
     loading.value = false;
   }, 500);
@@ -438,31 +326,7 @@ const produit = ref({
   brand_id: null as number | null,
   image_url: '', // Main image (first one)
   images: [] as string[], // All images
-  features: [] as string[],
-  specifications: {} as Record<string, string>,
-  is_featured: false,
-  is_new: false,
 });
-
-// State for dynamic lists
-const featureList = ref<string[]>(['']); // Start with one empty line
-const specificationList = ref<{ key: string; value: string }[]>([{ key: '', value: '' }]);
-
-const addFeature = () => {
-  featureList.value.push('');
-};
-
-const removeFeature = (index: number) => {
-  featureList.value.splice(index, 1);
-};
-
-const addSpecification = () => {
-  specificationList.value.push({ key: '', value: '' });
-};
-
-const removeSpecification = (index: number) => {
-  specificationList.value.splice(index, 1);
-};
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
@@ -477,15 +341,6 @@ const loadProduit = async () => {
       // Ensure images array exists
       const images = (product as any).images || (product.image_url ? [product.image_url] : []);
       
-      // Initialize dynamic lists
-      const features = (product as any).features || [];
-      featureList.value = features.length > 0 ? [...features] : [''];
-      
-      const specs = (product as any).specifications || {};
-      specificationList.value = Object.keys(specs).length > 0 
-        ? Object.entries(specs).map(([key, value]) => ({ key, value: String(value) }))
-        : [{ key: '', value: '' }];
-
       produit.value = {
         id: product.id,
         name: product.name,
@@ -495,11 +350,7 @@ const loadProduit = async () => {
         category_id: product.category_id || null,
         brand_id: (product as any).brand_id || null,
         image_url: product.image_url || '',
-        images: images,
-        features: features,
-        specifications: specs,
-        is_featured: (product as any).is_featured || false,
-        is_new: (product as any).is_new || false,
+        images: images
       };
     }
   } catch (error) {
@@ -588,17 +439,6 @@ const submitForm = async () => {
   try {
     loading.value = true;
 
-    // Prepare features (filter empty)
-    const cleanFeatures = featureList.value.filter(f => f.trim() !== '');
-    
-    // Prepare specifications (filter empty keys)
-    const cleanSpecs: Record<string, string> = {};
-    specificationList.value.forEach(item => {
-      if (item.key.trim()) {
-        cleanSpecs[item.key.trim()] = item.value.trim();
-      }
-    });
-
     const productData = {
       name: produit.value.name,
       description: produit.value.description,
@@ -608,10 +448,6 @@ const submitForm = async () => {
       brand_id: produit.value.brand_id,
       image_url: produit.value.image_url,
       images: produit.value.images,
-      features: cleanFeatures,
-      specifications: cleanSpecs,
-      is_featured: produit.value.is_featured,
-      is_new: produit.value.is_new,
     };
 
     if (isEditing.value && produit.value.id) {

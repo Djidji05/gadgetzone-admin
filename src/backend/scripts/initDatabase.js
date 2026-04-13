@@ -85,7 +85,7 @@ const initializeDatabase = async () => {
     const users = await User.bulkCreate([
       {
         name: 'Admin User',
-        email: 'admin@gadgetzone.com',
+        email: 'admin@htfasil.com',
         password: hashedPassword,
         role: 'admin'
       },
@@ -115,7 +115,7 @@ const initializeDatabase = async () => {
     console.log(`👥 ${users.length} utilisateurs créés`);
     console.log('');
     console.log('🔑 Comptes de test :');
-    console.log('Admin: admin@gadgetzone.com / password123');
+    console.log('Admin: admin@htfasil.com / password123');
     console.log('Client: jean.dupont@example.com / password123');
 
   } catch (error) {

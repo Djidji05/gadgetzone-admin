@@ -37,7 +37,7 @@
           to="/commandes"
           class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
         >
-          Voir tout
+          Voir
         </router-link>
       </div>
     </div>
@@ -142,7 +142,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { orderService, vendorService } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -181,6 +181,11 @@ const getStatusLabel = (status) => {
 }
 
 const loadOrders = async () => {
+  if (!authStore.isAuthenticated) {
+    console.log('🛑 Skip loadOrders: User not authenticated')
+    return
+  }
+
   try {
     isLoading.value = true
     error.value = null
@@ -190,7 +195,6 @@ const loadOrders = async () => {
     if (role === 'seller') {
       console.log('🔄 Loading vendor orders...')
       const response = await vendorService.getOrders(1, 5)
-      // Map vendor orders to match the component's expected format
       orders.value = response.orders.map(order => ({
         ...order,
         user_name: order.user?.name || 'Client inconnu',
@@ -199,7 +203,11 @@ const loadOrders = async () => {
     } else {
       console.log('🔄 Loading admin orders...')
       const allOrders = await orderService.getAll()
-      orders.value = allOrders.slice(0, 5)
+      orders.value = allOrders.slice(0, 5).map(order => ({
+        ...order,
+        user_name: order.user?.name || order.user_name || 'Client inconnu',
+        user_email: order.user?.email || order.user_email || ''
+      }))
     }
   } catch (err) {
     console.error('Erreur lors du chargement des commandes:', err)
@@ -214,6 +222,16 @@ const goToOrder = (orderId) => {
 }
 
 onMounted(() => {
-  loadOrders()
+  if (authStore.isAuthenticated) {
+    loadOrders()
+  }
+})
+
+// Watch for authentication to trigger initial load
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    console.log('🔐 Auth detected, loading orders...')
+    loadOrders()
+  }
 })
 </script>

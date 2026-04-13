@@ -28,9 +28,8 @@ export const advancedLogger = (req, res, next) => {
     console.log(`🔵 IN: ${req.method} ${req.url} - IP: ${logData.ip}`);
   }
 
-  // Intercepter la réponse pour capturer le statut et le temps
-  const originalSend = res.send;
-  res.send = function (data) {
+  // Intercepter la fin de la réponse pour capturer le statut et le temps
+  res.on('finish', () => {
     const duration = Date.now() - start;
     const statusCode = res.statusCode;
 
@@ -43,15 +42,17 @@ export const advancedLogger = (req, res, next) => {
     // Logger dans un fichier en production
     if (process.env.NODE_ENV === 'production') {
       logToFile({
-        ...logData,
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        url: req.url,
+        ip: req.ip || (req.socket ? req.socket.remoteAddress : 'unknown'),
         statusCode,
-        duration,
-        responseSize: Buffer.byteLength(data, 'utf8')
+        duration
       });
     }
+  });
 
-    return originalSend.call(this, data);
-  };
+
 
   next();
 };

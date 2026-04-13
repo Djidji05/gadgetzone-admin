@@ -97,11 +97,27 @@ export const uploadLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+/**
+ * Rate limiter strict pour les Webhooks de paiement
+ * Limite: 10 requêtes par minute par IP
+ */
+export const webhookLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: {
+        error: 'Trop de tentatives de Webhook',
+        message: 'Accès limité pour protéger l\'infrastructure.'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 export default {
     generalLimiter,
     authLimiter,
     createLimiter,
     modifyLimiter,
     searchLimiter,
-    uploadLimiter
+    uploadLimiter,
+    webhookLimiter
 };

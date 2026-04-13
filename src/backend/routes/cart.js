@@ -1,7 +1,7 @@
-import express from 'express';
-import { Cart, CartItem } from '../models/index.js';
+import { Cart, CartItem, Offer, Store, Promotion } from '../models/index.js';
 import Product from '../models/Product.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { Op } from 'sequelize';
 
 const router = express.Router();
 
@@ -60,10 +60,16 @@ router.get('/', async (req, res) => {
       where: { customerId },
       include: [{
         model: CartItem,
-        include: [{
-          model: Product,
-          attributes: ['id', 'name', 'price', 'image_url', 'images']
-        }]
+        include: [
+          {
+            model: Product,
+            attributes: ['id', 'name', 'description', 'price', 'image_url', 'images']
+          },
+          {
+            model: Offer,
+            include: [{ model: Store, attributes: ['id', 'name'] }]
+          }
+        ]
       }]
     });
 
@@ -74,7 +80,7 @@ router.get('/', async (req, res) => {
 
     // Calculer le total
     const totalAmount = cart.CartItems ? cart.CartItems.reduce((total, item) => {
-      return total + (item.quantity * item.Product.price);
+      return total + Number(item.subtotal || (item.quantity * item.Product.price));
     }, 0) : 0;
 
     const response = {
@@ -82,15 +88,20 @@ router.get('/', async (req, res) => {
       customerId: cart.customerId,
       items: cart.CartItems ? cart.CartItems.map(item => {
         const img = item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null);
-        console.log(`[CartDebug] Product ${item.Product.id}: url=${item.Product.image_url}, images=${JSON.stringify(item.Product.images)}, result=${img}`);
+        console.log(`[CartDebug] Product ${item.Product.id} - name: ${item.Product.name} - description: ${item.Product.description}`);
         return {
           id: item.id,
           productId: item.productId,
+          offerId: item.offerId,
           quantity: item.quantity,
-          subtotal: item.quantity * item.Product.price,
+          subtotal: Number(item.subtotal),
+          unitPrice: Number(item.unitPrice),
+          metadata: item.metadata,
+          offer: item.Offer,
           product: {
             id: item.Product.id,
             name: item.Product.name,
+            description: item.Product.description,
             price: item.Product.price,
             image: item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null)
           }
@@ -112,12 +123,25 @@ router.get('/', async (req, res) => {
 router.post('/add', async (req, res) => {
   try {
     const customerId = req.user.id;
-    const { productId, quantity = 1 } = req.body;
+    const { productId, offerId, quantity = 1, metadata = null } = req.body;
 
-    // Vérifier que le produit existe et est en stock
+    // Vérifier que le produit existe
     const product = await Product.findByPk(productId);
     if (!product) {
       return res.status(404).json({ message: 'Produit non trouvé' });
+    }
+
+    // Déterminer le prix (Offre, variante ou de base)
+    let unitPrice = product.price;
+
+    if (offerId) {
+      const offer = await Offer.findByPk(offerId);
+      if (!offer || offer.productId !== productId) {
+        return res.status(404).json({ message: 'Offre non trouvée pour ce produit' });
+      }
+      unitPrice = offer.price;
+    } else if (metadata && metadata.variant && metadata.variant.price) {
+      unitPrice = metadata.variant.price;
     }
 
     // Récupérer ou créer le panier
@@ -126,22 +150,36 @@ router.post('/add', async (req, res) => {
       cart = await Cart.create({ customerId });
     }
 
-    // Vérifier si le produit est déjà dans le panier
-    let cartItem = await CartItem.findOne({
-      where: { cartId: cart.id, productId }
+    // Vérifier si le produit avec la MÊME variante est déjà dans le panier
+    // Note: Pour une comparaison JSON stricte en SQL c'est complexe, 
+    // on va filtrer les résultats du produit en JS pour la précision.
+    let cartItems = await CartItem.findAll({
+      where: { cartId: cart.id, productId, offerId: offerId || null }
+    });
+
+    let cartItem = cartItems.find(item => {
+      const itemMeta = item.metadata || {};
+      const targetMeta = metadata || {};
+      return JSON.stringify(itemMeta) === JSON.stringify(targetMeta);
     });
 
     if (cartItem) {
-      // Mettre à jour la quantité
+      // Mettre à jour la quantité et le sous-total
       const newQuantity = cartItem.quantity + quantity;
       cartItem.quantity = newQuantity;
+      cartItem.subtotal = newQuantity * unitPrice;
+      cartItem.unitPrice = unitPrice;
       await cartItem.save();
     } else {
       // Ajouter le produit au panier
       cartItem = await CartItem.create({
         cartId: cart.id,
         productId,
-        quantity
+        offerId: offerId || null,
+        quantity,
+        unitPrice,
+        subtotal: quantity * unitPrice,
+        metadata
       });
     }
 
@@ -152,13 +190,13 @@ router.post('/add', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image_url', 'images']
+          attributes: ['id', 'name', 'description', 'price', 'image_url', 'images']
         }]
       }]
     });
 
     const totalAmount = updatedCart.CartItems.reduce((total, item) => {
-      return total + (item.quantity * item.Product.price);
+      return total + Number(item.subtotal || (item.quantity * item.Product.price));
     }, 0);
 
     const response = {
@@ -168,10 +206,13 @@ router.post('/add', async (req, res) => {
         id: item.id,
         productId: item.productId,
         quantity: item.quantity,
-        subtotal: item.quantity * item.Product.price,
+        subtotal: Number(item.subtotal || (item.quantity * item.Product.price)),
+        unitPrice: Number(item.unitPrice || item.Product.price),
+        metadata: item.metadata,
         product: {
           id: item.Product.id,
           name: item.Product.name,
+          description: item.Product.description,
           price: item.Product.price,
           image: item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null)
         }
@@ -214,6 +255,7 @@ router.put('/items/:itemId', async (req, res) => {
 
 
     cartItem.quantity = quantity;
+    cartItem.subtotal = quantity * Number(cartItem.unitPrice || cartItem.Product.price);
     await cartItem.save();
 
     // Retourner le panier mis à jour
@@ -223,7 +265,7 @@ router.put('/items/:itemId', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image_url', 'images']
+          attributes: ['id', 'name', 'description', 'price', 'image_url', 'images']
         }]
       }]
     });
@@ -243,6 +285,7 @@ router.put('/items/:itemId', async (req, res) => {
         product: {
           id: item.Product.id,
           name: item.Product.name,
+          description: item.Product.description,
           price: item.Product.price,
           image: item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null)
         }
@@ -287,7 +330,7 @@ router.delete('/items/:itemId', async (req, res) => {
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image_url', 'images']
+          attributes: ['id', 'name', 'description', 'price', 'image_url', 'images']
         }]
       }]
     });
@@ -307,6 +350,7 @@ router.delete('/items/:itemId', async (req, res) => {
         product: {
           id: item.Product.id,
           name: item.Product.name,
+          description: item.Product.description,
           price: item.Product.price,
           image: item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null)
         }
@@ -346,26 +390,61 @@ router.post('/promo', async (req, res) => {
     const customerId = req.user.id;
     const { code } = req.body;
 
-    // Pour l'instant, retourner le panier sans promo
-    // TODO: Implémenter la logique des codes promo
+    if (!code) {
+      return res.status(400).json({ message: 'Code promo requis' });
+    }
+
+    // Trouver la promotion active par son code
+    const promotion = await Promotion.findOne({
+      where: {
+        code,
+        isActive: true,
+        startDate: { [Op.lte]: new Date() },
+        endDate: { [Op.gte]: new Date() }
+      }
+    });
+
+    if (!promotion) {
+      return res.status(404).json({ message: 'Code promo invalide ou expiré' });
+    }
+
+    // Récupérer le panier
     const cart = await Cart.findOne({
       where: { customerId },
       include: [{
         model: CartItem,
         include: [{
           model: Product,
-          attributes: ['id', 'name', 'price', 'image_url', 'images']
+          attributes: ['id', 'name', 'description', 'price', 'image_url', 'images']
         }]
       }]
     });
 
-    if (!cart) {
-      return res.status(404).json({ message: 'Panier non trouvé' });
+    if (!cart || !cart.CartItems || cart.CartItems.length === 0) {
+      return res.status(400).json({ message: 'Le panier est vide' });
     }
 
-    const totalAmount = cart.CartItems.reduce((total, item) => {
+    // Calculer le total actuel
+    const subtotal = cart.CartItems.reduce((total, item) => {
       return total + (item.quantity * item.Product.price);
     }, 0);
+
+    // Vérifier le montant minimum
+    if (promotion.minAmount && subtotal < promotion.minAmount) {
+      return res.status(400).json({
+        message: `Ce code nécessite un montant minimum de ${promotion.minAmount} HTG`
+      });
+    }
+
+    // Calculer la remise
+    let discountAmount = 0;
+    if (promotion.discountType === 'percentage') {
+      discountAmount = (subtotal * Number(promotion.discount)) / 100;
+    } else {
+      discountAmount = Number(promotion.discount);
+    }
+
+    const totalAmount = Math.max(0, subtotal - discountAmount);
 
     const response = {
       id: cart.id,
@@ -378,10 +457,18 @@ router.post('/promo', async (req, res) => {
         product: {
           id: item.Product.id,
           name: item.Product.name,
+          description: item.Product.description,
           price: item.Product.price,
           image: item.Product.image_url || (item.Product.images && item.Product.images.length > 0 ? item.Product.images[0] : null)
         }
       })),
+      promoInfo: {
+        code: promotion.code,
+        discount: Number(promotion.discount),
+        discountType: promotion.discountType,
+        discountAmount
+      },
+      subtotal,
       totalAmount,
       createdAt: cart.createdAt,
       updatedAt: cart.updatedAt

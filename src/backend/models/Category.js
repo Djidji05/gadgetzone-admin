@@ -14,6 +14,28 @@ const Category = sequelize.define('Category', {
   description: {
     type: DataTypes.TEXT
   },
+  slug: {
+    type: DataTypes.STRING,
+    unique: true
+  },
+  icon: {
+    type: DataTypes.STRING,
+    defaultValue: 'fas fa-tag'
+  },
+  parentId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'parent_id',
+    references: {
+      model: 'categories',
+      key: 'id'
+    }
+  },
+  commission_rate: {
+    type: DataTypes.DECIMAL(5, 2),
+    defaultValue: 3.00,
+    allowNull: false
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
@@ -24,7 +46,11 @@ const Category = sequelize.define('Category', {
   }
 }, {
   tableName: 'categories',
-  timestamps: false
+  timestamps: false,
+  indexes: [
+    { fields: ['parent_id'] },
+    { fields: ['slug'] }
+  ]
 });
 
 export default Category;

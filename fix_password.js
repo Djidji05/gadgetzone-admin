@@ -19,7 +19,7 @@ const fixPassword = async () => {
     
     console.log('✅ Tous les mots de passe ont été mis à jour');
     console.log('📋 Vous pouvez maintenant vous connecter avec:');
-    console.log('   - admin@gadgetzone.com / password123');
+    console.log('   - admin@htfasil.com / password123');
     console.log('   - john@example.com / password123');
     console.log('   - jane@example.com / password123');
     

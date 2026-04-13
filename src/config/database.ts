@@ -17,7 +17,7 @@ const getEnv = (key: string, defaultValue?: string): string => {
 const dbConfig = {
   host: getEnv('DB_HOST', 'localhost'),
   port: parseInt(getEnv('DB_PORT', '5432'), 10),
-  database: getEnv('DB_NAME', 'gadgetzone'),
+  database: getEnv('DB_NAME', 'htfasil'),
   username: getEnv('DB_USER', 'postgres'),
   password: getEnv('DB_PASSWORD', ''),
   nodeEnv: getEnv('NODE_ENV', 'development')
@@ -69,8 +69,8 @@ const sequelize = new Sequelize(
       decimalNumbers: true,
       ssl: false, // Désactivez si vous n'utilisez pas SSL
       // Timeout de connexion plus long pour le débogage (en millisecondes)
-      statement_timeout: 10000,
-      idle_in_transaction_session_timeout: 10000,
+      statement_timeout: 45000,
+      idle_in_transaction_session_timeout: 45000,
       // Si vous utilisez un socket Unix
       // socketPath: '/var/run/postgresql',
     },
@@ -83,7 +83,7 @@ const testConnection = async () => {
   try {
     await sequelize.authenticate();
     console.log('✅ Connexion à la base de données établie avec succès.');
-    
+
     // Tester une requête simple
     try {
       const [results] = await sequelize.query('SELECT version();');
@@ -91,11 +91,11 @@ const testConnection = async () => {
     } catch (queryError) {
       console.error('⚠️ Erreur lors de l\'exécution de la requête de test:', queryError);
     }
-    
+
     return true;
   } catch (error: unknown) {
     console.error('❌ Impossible de se connecter à la base de données:');
-    
+
     // Vérifier si c'est une erreur Sequelize
     if (error instanceof Error) {
       const sequelizeError = error as {
@@ -105,12 +105,12 @@ const testConnection = async () => {
         };
         message: string;
       };
-      
+
       console.error('- Message d\'erreur:', sequelizeError.original?.message || sequelizeError.message);
-      
+
       if (sequelizeError.original?.code) {
         console.error('- Code d\'erreur:', sequelizeError.original.code);
-        
+
         // Suggestions basées sur le code d'erreur
         switch (sequelizeError.original.code) {
           case 'ECONNREFUSED':
@@ -129,7 +129,7 @@ const testConnection = async () => {
     } else {
       console.error('- Erreur inconnue:', error);
     }
-    
+
     return false;
   }
 };

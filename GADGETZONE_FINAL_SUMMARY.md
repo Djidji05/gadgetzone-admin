@@ -1,8 +1,8 @@
-# 🎉 GadgetZone - 100% Fonctionnel - Résumé Final
+# 🎉 HTFasil - 100% Fonctionnel - Résumé Final
 
 ## ✅ **Mission Accomplie**
 
-GadgetZone est maintenant **100% fonctionnel** avec TypeScript strict, ESLint corrigé, build production réussi, et une robustesse maximale.
+HTFasil est maintenant **100% fonctionnel** avec TypeScript strict, ESLint corrigé, build production réussi, et une robustesse maximale.
 
 ---
 
@@ -149,13 +149,13 @@ curl http://localhost:3003/api/promotions ✓
 ### **Installation & Démarrage**
 ```bash
 # 1. Backend + Admin
-cd c:\wamp64\www\gadgetzone_admin
+cd c:\wamp64\www\htfasil_admin
 npm install
 npm run start:backend    # Backend (port 3003)
 npm run dev             # Admin (port 5173)
 
 # 2. Website  
-cd c:\wamp64\www\gadgetzone_website
+cd c:\wamp64\www\htfasil_website
 npm install
 npm run dev             # Website (port 5174)
 
@@ -255,7 +255,7 @@ npm run test:database   # Test connexion
 
 ## 🌟 **Conclusion**
 
-**GadgetZone est maintenant une plateforme e-commerce complète, robuste et production-ready !**
+**HTFasil est maintenant une plateforme e-commerce complète, robuste et production-ready !**
 
 - 🎯 **Architecture moderne** : Vue 3 + TypeScript + PostgreSQL
 - 🛡️ **Robustesse maximale** : Fallbacks intelligents, gestion d'erreurs
@@ -267,4 +267,4 @@ npm run test:database   # Test connexion
 
 ---
 
-*GadgetZone - Votre plateforme e-commerce complète, moderne et robuste !*
+*HTFasil - Votre plateforme e-commerce complète, moderne et robuste !*

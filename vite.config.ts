@@ -13,6 +13,8 @@ export default defineConfig({
     port: 5174,
     host: true,
     hmr: {
+      clientPort: 5174,
+      host: 'localhost',
       overlay: false
     }
   },

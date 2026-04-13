@@ -33,7 +33,7 @@ const router = createRouter({
     {
       path: '/ajouter-client',
       name: 'AjouterClient',
-      component: () => import('../views/Clients/ListeClients.vue'),
+      redirect: () => ({ path: '/liste-clients', query: { action: 'add' } }),
       meta: {
         title: 'Ajouter un client',
       },
@@ -41,7 +41,7 @@ const router = createRouter({
     {
       path: '/modifier-client/:id',
       name: 'ModifierClient',
-      component: () => import('../views/Clients/ListeClients.vue'),
+      redirect: (to) => ({ path: '/liste-clients', query: { action: 'edit', id: to.params.id } }),
       meta: {
         title: 'Modifier un client',
       },
@@ -112,6 +112,24 @@ const router = createRouter({
       },
     },
     {
+      path: '/categories',
+      name: 'Categories',
+      component: () => import('../views/Produits/Categories.vue'),
+      meta: {
+        title: 'Gestion des Catégories',
+        requiresAdmin: true
+      },
+    },
+    {
+      path: '/produits/marques',
+      name: 'BrandList',
+      component: () => import('../views/Brands/BrandList.vue'),
+      meta: {
+        title: 'Gestion des Marques',
+        requiresAdmin: true
+      },
+    },
+    {
       path: '/modifier-produit/:id',
       name: 'ModifierProduit',
       component: () => import('../views/Produits/AjouterProduit.vue'),
@@ -125,6 +143,14 @@ const router = createRouter({
       component: () => import('../views/Finance.vue'),
       meta: {
         title: 'Finance - Vue d\'ensemble',
+      },
+    },
+    {
+      path: '/paiements',
+      name: 'Paiements',
+      component: () => import('../views/Paiements/Paiements.vue'),
+      meta: {
+        title: 'Gestion des paiements',
       },
     },
 
@@ -291,6 +317,15 @@ const router = createRouter({
       },
     },
     {
+      path: '/vendors/applications/:id',
+      name: 'VendorApplicationDetail',
+      component: () => import('../views/Vendors/ApplicationDetail.vue'),
+      meta: {
+        title: 'Détails de la Candidature',
+        requiresAdmin: true,
+      },
+    },
+    {
       path: '/vendors/settings',
       name: 'VendorSettings',
       component: () => import('../views/Vendors/StoreSettings.vue'),
@@ -344,6 +379,24 @@ const router = createRouter({
         requiresAdmin: true,
       },
     },
+    {
+      path: '/parametres/commissions',
+      name: 'Commissions',
+      component: () => import('../views/Parametres/Commissions.vue'),
+      meta: {
+        title: 'Gestion des commissions',
+        requiresAdmin: true,
+      },
+    },
+    {
+      path: '/parametres/api',
+      name: 'APIDocumentation',
+      component: () => import('../views/Parametres/APIDocumentation.vue'),
+      meta: {
+        title: 'Documentation API',
+        requiresAdmin: true,
+      },
+    },
     // Support
     {
       path: '/support/tickets',
@@ -369,6 +422,32 @@ const router = createRouter({
         title: 'Support - Documentation',
       },
     },
+    {
+      path: '/support/reviews',
+      name: 'ReviewsModeration',
+      component: () => import('../views/Support/ReviewsModeration.vue'),
+      meta: {
+        title: 'Modération des Avis',
+        requiresAdmin: true,
+      },
+    },
+    // Litiges
+    {
+      path: '/support/disputes',
+      name: 'ListeLitiges',
+      component: () => import('../views/Support/ListeLitiges.vue'),
+      meta: {
+        title: 'Gestion des Litiges',
+      },
+    },
+    {
+      path: '/support/disputes/:id',
+      name: 'LitigeDetail',
+      component: () => import('../views/Support/LitigeDetail.vue'),
+      meta: {
+        title: 'Détails du Litige',
+      },
+    },
     // Marketing
     {
       path: '/marketing/newsletter',
@@ -377,6 +456,80 @@ const router = createRouter({
       meta: {
         title: 'Newsletter',
       },
+    },
+    {
+      path: '/marketing/promos',
+      name: 'Promotions',
+      component: () => import('../views/Marketing/Promotions.vue'),
+      meta: {
+        title: 'Gestion des Promotions',
+        requiresAdmin: true
+      },
+    },
+    {
+      path: '/marketing/campagnes',
+      name: 'Campagnes',
+      component: () => import('../views/Marketing/Campagnes.vue'),
+      meta: {
+        title: 'Gestion des Campagnes',
+        requiresAdmin: true
+      },
+    },
+    {
+      path: '/marketing/ambassadeurs',
+      name: 'AmbassadorList',
+      component: () => import('../views/Ambassadors/AmbassadorList.vue'),
+      meta: {
+        title: 'Gestion des Ambassadeurs',
+        requiresAdmin: true
+      },
+    },
+    {
+      path: '/marketing/boosts',
+      name: 'AdminBoosts',
+      component: () => import('../views/Marketing/AdminBoosts.vue'),
+      meta: {
+        title: 'Gestion des Boosts',
+        requiresAdmin: true
+      },
+    },
+    // Blog
+    {
+      path: '/marketing/blog',
+      name: 'BlogList',
+      component: () => import('../views/Marketing/BlogList.vue'),
+      meta: { title: 'Gestion du Blog', requiresAdmin: true },
+    },
+    {
+      path: '/marketing/blog/new',
+      name: 'BlogCreate',
+      component: () => import('../views/Marketing/BlogEdit.vue'),
+      meta: { title: 'Nouvel Article', requiresAdmin: true },
+    },
+    {
+      path: '/marketing/blog/edit/:id',
+      name: 'BlogEdit',
+      component: () => import('../views/Marketing/BlogEdit.vue'),
+      meta: { title: 'Modifier l\'Article', requiresAdmin: true },
+    },
+    // Pages
+    {
+      path: '/parametres/pages',
+      name: 'PagesList',
+      component: () => import('../views/Parametres/PagesList.vue'),
+      meta: { title: 'Gestion des Pages', requiresAdmin: true },
+    },
+    {
+      path: '/academy',
+      name: 'AcademyManagement',
+      component: () => import('../views/Admin/AcademyManagement.vue'),
+      meta: { title: 'Académie Vendeur', requiresAdmin: true },
+    },
+    {
+      path: '/parametres/pages/edit/:slug',
+      name: 'PageEdit',
+      component: () => import('../views/Parametres/PageEdit.vue'),
+      meta: { title: 'Modifier la Page', requiresAdmin: true },
     },
   ],
   scrollBehavior(to, from, savedPosition) {
@@ -395,15 +548,13 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
   // Initialiser l'auth si pas déjà fait
-  if (!authStore.isAuthenticated) {
-    authStore.init()
-  }
+  await authStore.init()
 
   // Nettoyer les erreurs précédentes
   authStore.clearError()
 
   // Définir les routes publiques
-  const publicPages = ['/signin', '/error-404'];
+  const publicPages = ['/signin', '/error-404', '/rescue'];
   const authRequired = !publicPages.some(page => to.path.startsWith(page)) && !to.meta.public;
 
   if (authRequired && !authStore.isAuthenticated) {
@@ -415,20 +566,19 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // Vérifier les routes admin (ENFORCED FOR EVERYTHING NOT PUBLIC)
-  // GadgetZone Admin est réservé aux admins et gestionnaires
+  // Vérifier les rôles autorisés (Admin Panel réservé aux admins et gestionnaires)
   const isPublic = publicPages.some(page => to.path.startsWith(page)) || to.meta.public;
 
-  if (!isPublic && authStore.isAuthenticated && !authStore.isAdmin && authStore.userRole?.toLowerCase() !== 'seller') {
-    // Si l'utilisateur est connecté mais n'est ni admin ni vendeur
-    console.log("Accès refusé: User role is " + authStore.userRole);
-
-    await authStore.logout()
-    next({
-      path: '/signin',
-      query: { error: 'access_denied' }
-    })
-    return
+  if (!isPublic && authStore.isAuthenticated) {
+    if (!authStore.isAdmin) {
+      console.log("Accès refusé au panel Admin: Rôle insuffisant (" + authStore.userRole + ")");
+      await authStore.logout()
+      next({
+        path: '/signin',
+        query: { error: 'access_denied_admin_only' }
+      })
+      return
+    }
   }
 
   /* 
@@ -452,8 +602,8 @@ router.beforeEach(async (to, from, next) => {
 // Gestion du titre de page
 router.afterEach((to) => {
   if (to.meta.title) {
-    document.title = `${to.meta.title} - GadgetZone Admin`
+    document.title = `${to.meta.title} - htfasil Admin`
   } else {
-    document.title = 'GadgetZone Admin'
+    document.title = 'htfasil Admin'
   }
 })

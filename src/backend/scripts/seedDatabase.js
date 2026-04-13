@@ -94,10 +94,10 @@ export const seedDatabase = async () => {
 
     // Créer un utilisateur admin de démonstration
     const adminUser = await User.create({
-      email: 'admin@gadgetzone.com',
+      email: 'admin@htfasil.com',
       password: '$2b$10$rQZ8kHKHKpZ8K9m9K9K9Ke9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9', // password: admin123
       first_name: 'Admin',
-      last_name: 'GadgetZone',
+      last_name: 'htfasil',
       role: 'admin',
       is_active: true
     });

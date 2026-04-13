@@ -6,7 +6,7 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Panneau d'Administration</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Bienvenue dans l'interface de gestion GadgetZone
+            Bienvenue dans l'interface de gestion HTFasil
           </p>
         </div>
         
@@ -52,17 +52,23 @@
     <div class="col-span-12 xl:col-span-7">
       <RecentOrders />
     </div>
+    
+    <!-- Actions Vendeurs -->
+    <div class="col-span-12 xl:col-span-5">
+      <VendorActions />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, provide } from 'vue'
 import EcommerceMetrics from '@/components/ecommerce/EcommerceMetrics.vue'
 import MonthlyTarget from '@/components/ecommerce/MonthlyTarget.vue'
 import MonthlySale from '@/components/ecommerce/MonthlySale.vue'
 import CustomerDemographic from '@/components/ecommerce/CustomerDemographic.vue'
 import StatisticsChart from '@/components/ecommerce/StatisticsChart.vue'
 import RecentOrders from '@/components/ecommerce/RecentOrders.vue'
+import VendorActions from '@/components/ecommerce/VendorActions.vue'
 
 const quickFilters = [
   { value: 'today', label: "Aujourd'hui" },
@@ -70,8 +76,7 @@ const quickFilters = [
   { value: '30days', label: '30 jours' },
   { value: 'year', label: 'Année' }
 ]
-
 const selectedFilter = ref('30days')
 
-console.log('🔥 Ecommerce.vue - Dashboard complet chargé!')
+provide('dashboardPeriod', selectedFilter)
 </script>

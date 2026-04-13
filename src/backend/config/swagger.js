@@ -5,12 +5,12 @@ const options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'GadgetZone Admin API',
+            title: 'htfasil Admin API',
             version: '1.0.0',
-            description: 'API documentation for GadgetZone e-commerce admin platform',
+            description: 'API documentation for htfasil e-commerce admin platform',
             contact: {
-                name: 'GadgetZone Team',
-                email: 'support@gadgetzone.com'
+                name: 'htfasil Team',
+                email: 'support@htfasil.com'
             },
             license: {
                 name: 'MIT',
@@ -23,7 +23,7 @@ const options = {
                 description: 'Development server'
             },
             {
-                url: 'https://api.gadgetzone.com',
+                url: 'https://api.htfasil.com',
                 description: 'Production server'
             }
         ],

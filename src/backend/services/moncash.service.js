@@ -36,18 +36,18 @@ const monCashService = {
   },
 
   /**
-   * Initialise un paiement
    * @param {string|number} orderId - ID de la commande
    * @param {number} amount - Montant total
+   * @param {string} returnUrl - URL de retour (optionnel)
    * @returns {Promise<string>} URL de redirection
    */
-  createPayment: async (orderId, amount) => {
+  createPayment: async (orderId, amount, returnUrl = null) => {
     try {
       const token = await monCashService.getAccessToken();
 
       const paymentData = {
         orderId: String(orderId),
-        amount: Math.floor(Number(amount)) // MonCash requires integer amount
+        amount: Math.floor(Number(amount)), // MonCash requires integer amount
       };
 
       console.log('Sending MonCash Payment:', paymentData);
@@ -87,6 +87,48 @@ const monCashService = {
       console.error('MonCash CreatePayment Error:', error.response?.data || error.message);
       let msg = error.response?.data?.message || error.response?.data?.error_description || error.message;
       throw new Error(`API Fail: ${msg}`);
+    }
+  },
+
+  /**
+   * Vérifie le statut d'un paiement
+   * @param {string} orderId - ID de transaction ou ID de commande
+   * @returns {Promise<object>} Détails du paiement
+   */
+  retrieveOrder: async (orderId) => {
+    try {
+      const token = await monCashService.getAccessToken();
+      const response = await axios.post(`${API_URL}/v1/RetrieveOrder`, { orderId: String(orderId) }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data.payment;
+    } catch (error) {
+      console.error('MonCash RetrieveOrder Error:', error.response?.data || error.message);
+      return null;
+    }
+  },
+
+  /**
+   * Vérifie le statut d'un paiement par token
+   * @param {string} transactionToken - Token de transaction
+   * @returns {Promise<object>} Détails du paiement
+   */
+  retrieveTransaction: async (transactionToken) => {
+    try {
+      const token = await monCashService.getAccessToken();
+      const response = await axios.post(`${API_URL}/v1/RetrieveTransactionPayment`, { transactionId: transactionToken }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data.payment;
+    } catch (error) {
+      console.error('MonCash RetrieveTransaction Error:', error.response?.data || error.message);
+      return null;
     }
   }
 };

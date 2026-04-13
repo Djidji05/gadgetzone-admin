@@ -4,9 +4,9 @@
   >
     <div class="flex items-center justify-between mb-4">
       <div>
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Ventes Mensuelles</h3>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Volume des Ventes</h3>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Répartition des ventes par mois
+          Répartition des ventes sur la période
         </p>
       </div>
     </div>
@@ -39,13 +39,21 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, inject, watch } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
-import api from '@/services/api'
+import { api } from '@/services/api'
+import { useTheme } from '../layout/ThemeProvider.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const { isDarkMode } = useTheme() as any
+const authStore = useAuthStore()
+
+const dashboardPeriod = inject<any>('dashboardPeriod', ref('30days'))
 
 const isLoading = ref(true)
-const salesData = ref([])
+const salesData = ref<number[]>([])
+const categories = ref<string[]>([])
 
 const series = computed(() => [
   {
@@ -65,11 +73,11 @@ const averageSales = computed(() => {
   return Math.round(avg).toLocaleString('fr-FR')
 })
 
-const chartOptions = ref({
+const chartOptions = computed(() => ({
   colors: ['#3B82F6'],
   chart: {
-    fontFamily: 'Inter, sans-serif',
-    type: 'bar',
+    fontFamily: 'Outfit, sans-serif',
+    type: 'bar' as const,
     toolbar: {
       show: false
     }
@@ -79,7 +87,7 @@ const chartOptions = ref({
       horizontal: false,
       columnWidth: '55%',
       borderRadius: 6,
-      borderRadiusApplication: 'end'
+      borderRadiusApplication: 'end' as const
     }
   },
   dataLabels: {
@@ -91,7 +99,7 @@ const chartOptions = ref({
     colors: ['transparent']
   },
   xaxis: {
-    categories: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'],
+    categories: categories.value,
     axisBorder: {
       show: false
     },
@@ -100,7 +108,7 @@ const chartOptions = ref({
     },
     labels: {
       style: {
-        colors: '#9CA3AF',
+        colors: isDarkMode.value ? '#98A2B3' : '#9CA3AF',
         fontSize: '12px'
       }
     }
@@ -109,10 +117,12 @@ const chartOptions = ref({
     show: false
   },
   yaxis: {
-    title: false,
+    title: {
+      text: undefined
+    },
     labels: {
       style: {
-        colors: '#9CA3AF',
+        colors: isDarkMode.value ? '#98A2B3' : '#9CA3AF',
         fontSize: '12px'
       }
     }
@@ -123,7 +133,7 @@ const chartOptions = ref({
         show: true
       }
     },
-    borderColor: '#E5E7EB',
+    borderColor: isDarkMode.value ? '#1F2A37' : '#E5E7EB',
     strokeDashArray: 5
   },
   fill: {
@@ -135,35 +145,62 @@ const chartOptions = ref({
       show: true
     },
     y: {
-      formatter: function (val) {
+      formatter: function (val: number) {
         return val + ' ventes'
       }
     },
-    theme: 'dark'
+    theme: isDarkMode.value ? 'dark' : 'light'
   }
-})
+}))
 
-const fetchMonthlySales = async () => {
+const fetchSalesData = async (period: string) => {
+  if (!authStore.isAuthenticated) {
+    console.log('🛑 Skip fetchSalesData: User not authenticated')
+    return
+  }
+
   try {
     isLoading.value = true
-    console.log('📊 Fetching monthly sales data...')
+    console.log('📊 Fetching sales volume data for period:', period)
     
-    const response = await api.get('/stats/monthly-sales', {
-      params: { year: new Date().getFullYear() }
+    const response = await api.get('/stats/sales-data', {
+      params: { period, year: new Date().getFullYear() }
     })
     
-    console.log('✅ Monthly sales data received:', response.data)
+    console.log('✅ Sales volume data received:', response.data)
     salesData.value = response.data.sales || []
+    categories.value = response.data.labels || []
   } catch (error) {
-    console.error('❌ Error fetching monthly sales:', error)
-    // Fallback to mock data
-    salesData.value = [168, 385, 201, 298, 187, 195, 291, 110, 215, 390, 280, 112]
+    console.error('❌ Error fetching sales volume:', error)
+    if (period === 'monthly' || period === '30days') {
+      salesData.value = [168, 385, 201, 298, 187, 195, 291, 110, 215, 390, 280, 112]
+      categories.value = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
+    } else {
+      salesData.value = [550, 520, 645]
+      categories.value = ['A', 'B', 'C']
+    }
   } finally {
     isLoading.value = false
   }
 }
 
+watch(dashboardPeriod, (newVal) => {
+  if (authStore.isAuthenticated) {
+    fetchSalesData(newVal)
+  }
+})
+
 onMounted(() => {
-  fetchMonthlySales()
+  if (authStore.isAuthenticated) {
+    fetchSalesData(dashboardPeriod.value)
+  }
+})
+
+// Watch for authentication to trigger initial fetch
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    console.log('🔐 Auth detected, fetching monthly sales volume...')
+    fetchSalesData(dashboardPeriod.value)
+  }
 })
 </script>

@@ -29,7 +29,7 @@ console.log('🔧 DB Config:', {
 });
 
 const sequelize = new Sequelize(
-    process.env.DB_NAME || 'gadgetzone',
+    process.env.DB_NAME || 'htfasil',
     process.env.DB_USER || 'postgres',
     dbPassword,
     {

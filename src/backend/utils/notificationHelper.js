@@ -1,6 +1,8 @@
-import { Notification, User } from '../models/index.js';
+import { Notification, User, Order, OrderItem, Product, Store, Dispute, DisputeMessage, sequelize } from '../models/index.js';
+const { Op } = sequelize;
 import { sendEmail } from '../services/emailService.js';
 import { sendWhatsApp } from '../services/whatsappService.js';
+import { notificationQueue, addJob } from '../config/queues.js';
 
 /**
  * Utilitaire pour créer des notifications
@@ -51,11 +53,13 @@ export async function notifyAllAdmins(type, title, message, options = {}) {
             attributes: ['id']
         });
 
-        let count = 0;
-        for (const admin of admins) {
-            const notif = await createNotification(admin.id, type, title, message, options);
-            if (notif) count++;
-        }
+        // Create notifications in parallel
+        const promises = admins.map(admin =>
+            createNotification(admin.id, type, title, message, options)
+        );
+
+        const results = await Promise.all(promises);
+        const count = results.filter(n => n !== null).length;
 
         console.log(`✅ ${count} admin(s) notifié(s): ${title}`);
         return count;
@@ -81,11 +85,13 @@ export async function notifyByRole(role, type, title, message, options = {}) {
             attributes: ['id']
         });
 
-        let count = 0;
-        for (const user of users) {
-            const notif = await createNotification(user.id, type, title, message, options);
-            if (notif) count++;
-        }
+        // Create notifications in parallel
+        const promises = users.map(user =>
+            createNotification(user.id, type, title, message, options)
+        );
+
+        const results = await Promise.all(promises);
+        const count = results.filter(n => n !== null).length;
 
         console.log(`✅ ${count} utilisateur(s) avec rôle "${role}" notifié(s): ${title}`);
         return count;
@@ -109,18 +115,23 @@ export async function notifyNewOrder(order) {
     const title = `Nouvelle commande #${order.order_number || order.id}`;
     const message = `Commande de ${order.user?.name || 'Client'} pour ${order.total_amount} HTG`;
 
-    // 1. Notification Interne (Admin)
-    await notifyAllAdmins('order', title, message, {
-        relatedId: order.id,
-        relatedType: 'order',
-        metadata: {
-            orderId: order.id,
-            amount: order.total_amount,
-            userId: order.user_id
+    // 1. Offload Admin Notification to Queue (Async)
+    await addJob(notificationQueue, 'admin-alert', {
+        type: 'order',
+        title,
+        message,
+        options: {
+            relatedId: order.id,
+            relatedType: 'order',
+            metadata: {
+                orderId: order.id,
+                amount: order.total_amount,
+                userId: order.user_id
+            }
         }
     });
 
-    // 2. Notification Externe (Client) - Email & WhatsApp
+    // 2. Notification Externe (Client) - Still synchronously for legacy compatibility or move to queue later
     if (order.user) {
         // Email
         if (order.user.email) {
@@ -129,7 +140,7 @@ export async function notifyNewOrder(order) {
             sendEmail(order.user.email, emailSubject, emailBody);
         }
 
-        // WhatsApp (using order shipping phone or user phone)
+        // WhatsApp
         const phone = order.shipping_address?.phone || order.user.phone || order.user.whatsapp;
         if (phone) {
             const waMessage = `Bonjour ${order.user.name}, votre commande #${order.order_number || order.id} est confirmée. Total: ${order.total_amount} HTG.`;
@@ -267,4 +278,151 @@ export async function notifyNewVendorApplication(store, user) {
             userEmail: user.email
         }
     });
+}
+
+/**
+ * Notifie pour un nouveau litige
+ * @param {object} dispute - Objet litige
+ */
+export async function notifyNewDispute(dispute) {
+    try {
+        // 1. Trouver les vendeurs concernés par la commande
+        const orderItems = await OrderItem.findAll({
+            where: { order_id: dispute.order_id },
+            include: [{
+                model: Product,
+                as: 'product',
+                attributes: ['storeId'],
+                include: [{
+                    model: Store,
+                    as: 'store',
+                    include: [{ model: User, as: 'owner', attributes: ['id'] }]
+                }]
+            }]
+        });
+
+        const storeOwners = orderItems
+            .map(item => item.product?.store?.owner)
+            .filter((owner, index, self) => owner && self.findIndex(o => o.id === owner.id) === index);
+
+        for (const owner of storeOwners) {
+            await createNotification(owner.id, 'warning', 'Nouveau litige ouvert', `Un litige a été ouvert pour la commande #${dispute.order_id}`, {
+                relatedId: dispute.id,
+                relatedType: 'dispute'
+            });
+        }
+
+        // 2. Notifier les admins
+        await notifyAllAdmins('info', `Nouveau litige #${dispute.id}`, `Un litige a été ouvert pour la commande #${dispute.order_id}`, {
+            relatedId: dispute.id,
+            relatedType: 'dispute'
+        });
+    } catch (error) {
+        console.error('❌ Erreur notification nouveau litige:', error);
+    }
+}
+
+/**
+ * Notifie pour un nouveau message dans un litige
+ * @param {object} dispute - Objet litige
+ * @param {object} message - Objet message
+ */
+export async function notifyNewDisputeMessage(dispute, message) {
+    try {
+        const isCustomer = message.sender_id === dispute.user_id;
+
+        if (isCustomer) {
+            // Client a écrit -> Notifier Vendeur (si pas déjà fait par l'admin) + Admin
+            const orderItems = await OrderItem.findAll({
+                where: { order_id: dispute.order_id },
+                include: [{
+                    model: Product,
+                    as: 'product',
+                    attributes: ['storeId'],
+                    include: [{
+                        model: Store,
+                        as: 'store',
+                        include: [{ model: User, as: 'owner', attributes: ['id'] }]
+                    }]
+                }]
+            });
+
+            const storeOwners = orderItems
+                .map(item => item.product?.store?.owner)
+                .filter((owner, index, self) => owner && self.findIndex(o => o.id === owner.id) === index);
+
+            for (const owner of storeOwners) {
+                await createNotification(owner.id, 'info', 'Message Client (Litige)', `Nouveau message pour le litige #${dispute.id}`, {
+                    relatedId: dispute.id,
+                    relatedType: 'dispute'
+                });
+            }
+
+            await notifyAllAdmins('info', `Nouveau message litige #${dispute.id}`, `Le client a envoyé un message pour le litige #${dispute.id}`, {
+                relatedId: dispute.id,
+                relatedType: 'dispute'
+            });
+        } else {
+            // Admin ou Vendeur a écrit -> Notifier Client
+            await createNotification(dispute.user_id, 'info', 'Réponse à votre litige', `Une réponse a été apportée à votre litige #${dispute.id}`, {
+                relatedId: dispute.id,
+                relatedType: 'dispute'
+            });
+        }
+    } catch (error) {
+        console.error('❌ Erreur notification message litige:', error);
+    }
+}
+
+/**
+ * Vérifie les litiges sans réponse du vendeur depuis 24h
+ */
+export async function checkStaleDisputes() {
+    try {
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        // Trouver les litiges ouverts il y a plus de 24h
+        const oldDisputes = await Dispute.findAll({
+            where: {
+                status: { [Op.in]: ['pending', 'under_review'] },
+                created_at: { [Op.lt]: twentyFourHoursAgo }
+            },
+            include: [
+                {
+                    model: DisputeMessage,
+                    as: 'messages',
+                    separate: true,
+                    order: [['created_at', 'DESC']],
+                    limit: 1
+                }
+            ]
+        });
+
+        for (const dispute of oldDisputes) {
+            const lastMessage = dispute.messages[0];
+
+            // On alerte si :
+            // 1. Pas de message du tout (le litige a > 24h)
+            // 2. Le dernier message vient du client et il a > 24h
+            let shouldAlert = false;
+
+            if (!lastMessage) {
+                shouldAlert = true;
+            } else if (lastMessage.sender_id === dispute.user_id) {
+                const lastMsgDate = new Date(lastMessage.created_at);
+                if (lastMsgDate < twentyFourHoursAgo) {
+                    shouldAlert = true;
+                }
+            }
+
+            if (shouldAlert) {
+                await notifyAllAdmins('error', `⚠️ Litige sans réponse : #${dispute.id}`, `Le vendeur n'a pas répondu au litige #${dispute.id} depuis plus de 24h.`, {
+                    relatedId: dispute.id,
+                    relatedType: 'dispute'
+                });
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erreur vérification litiges stagnants:', error);
+    }
 }

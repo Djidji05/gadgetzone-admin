@@ -1,4 +1,4 @@
-# 🇭🇹 Guide d'Intégration MonCash - GadgetZone
+# 🇭🇹 Guide d'Intégration MonCash - HTFasil
 
 Ce document explique comment configurer et tester l'intégration de paiement MonCash (Mode Sandbox).
 
@@ -8,7 +8,7 @@ Avant de commencer, assurez-vous d'avoir :
 - Vos identifiants **Client ID** et **Client Secret**.
 
 ## 2. Installation
-Le module nécessaire est déjà installé dans le projet `gadgetzone_admin` :
+Le module nécessaire est déjà installé dans le projet `htfasil_admin` :
 ```bash
 npm install moncash-sdk
 ```
@@ -16,7 +16,7 @@ npm install moncash-sdk
 ## 3. Configuration (.env)
 Pour que le backend puisse communiquer avec MonCash, vous devez configurer les variables d'environnement.
 
-Ouvrez le fichier `c:\wamp64\www\Gadget\gadgetzone_admin\.env` (ou `.env.backend`) et ajoutez/modifiez ces lignes :
+Ouvrez le fichier `c:\wamp64\www\Gadget\htfasil_admin\.env` (ou `.env.backend`) et ajoutez/modifiez ces lignes :
 
 ```ini
 # Configuration MonCash Sandbox
@@ -36,7 +36,7 @@ MONCASH_API_URL=https://sandbox.moncashbutton.digicelhaiti.com/Api
 3. **Appel API** : Le frontend contacte `/api/paiements/init-moncash` avec l'ID de commande et le montant.
 4. **Redirection** : Le backend utilise le SDK pour obtenir une URL de paiement MonCash. Le frontend redirige l'utilisateur vers cette URL.
 5. **Paiement** : L'utilisateur paie sur le site sécurisé de MonCash.
-6. **Retour** : L'utilisateur est redirigé vers la page de succès de GadgetZone.
+6. **Retour** : L'utilisateur est redirigé vers la page de succès de HTFasil.
 
 ### Fichiers Clés
 - **Backend Service** : `src/backend/services/moncash.service.js` (Logique SDK)

@@ -38,7 +38,13 @@ const Message = sequelize.define('Message', {
 }, {
     tableName: 'messages',
     timestamps: true,
-    underscored: true
+    underscored: true,
+    indexes: [
+        { fields: ['conversation_id'] },
+        { fields: ['sender_id'] },
+        { fields: ['is_read'] },
+        { fields: ['created_at'] }
+    ]
 });
 
 export default Message;
