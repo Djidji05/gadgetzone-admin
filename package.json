@@ -58,6 +58,7 @@
     "firebase-admin": "^13.6.1",
     "flatpickr": "^4.6.13",
     "helmet": "^7.1.0",
+    "html5-qrcode": "^2.3.8",
     "ioredis": "^5.9.3",
     "jimp": "^1.6.1",
     "joi": "^18.0.2",
