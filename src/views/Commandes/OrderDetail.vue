@@ -24,39 +24,7 @@
       </div>
     </div>
 
-    <!-- Scanner Modal (Phase 13) -->
-    <div v-if="showScanner" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
-        <div class="p-6 border-b dark:border-gray-700 flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-          <h3 class="text-xl font-bold flex items-center gap-2">
-            <i class="fas fa-qrcode"></i>
-            Scanner le code client
-          </h3>
-          <button @click="stopScanner" class="hover:bg-white/20 p-2 rounded-full transition-colors">
-            <i class="fas fa-times text-xl"></i>
-          </button>
-        </div>
-        
-        <div class="p-6">
-          <div id="qr-reader" class="rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-900 aspect-square border-2 border-dashed border-gray-300 dark:border-gray-700"></div>
-          
-          <div v-if="scannerError" class="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm flex items-start gap-2">
-            <i class="fas fa-exclamation-triangle mt-1"></i>
-            <span>{{ scannerError }}</span>
-          </div>
 
-          <p class="mt-4 text-sm text-gray-500 text-center">
-            Placez le QR code du client au centre du cadre pour valider la livraison.
-          </p>
-        </div>
-
-        <div class="p-6 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-700 flex justify-end gap-3">
-          <button @click="stopScanner" class="px-6 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl font-medium">
-            Annuler
-          </button>
-        </div>
-      </div>
-    </div>
     
     <div v-if="isLoading" class="text-center py-8">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -173,15 +141,7 @@
                 <option value="cancelled">Annulée</option>
               </select>
 
-              <!-- Bouton de Scan (Phase 13) -->
-              <button
-                v-if="['shipped', 'confirmed', 'processing'].includes(order.status)"
-                @click="startScanner"
-                class="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/20 transition-all flex justify-center items-center gap-3 font-bold group"
-              >
-                <i class="fas fa-qrcode text-lg group-hover:scale-110 transition-transform"></i>
-                Valider par Scan (QR)
-              </button>
+
 
               <button
                 @click="updateStatus"
@@ -281,11 +241,7 @@ const isLoading = ref(true)
 const isUpdating = ref(false)
 const newStatus = ref('')
 
-// Scan State (Phase 13)
 const showScanner = ref(false)
-const scannerError = ref('')
-const isVerifying = ref(false)
-let html5QrCode: Html5Qrcode | null = null;
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('fr-FR', {
@@ -367,57 +323,7 @@ const updateStatus = async () => {
   }
 }
 
-// Logic de Scan (Phase 13)
-const startScanner = async () => {
-  showScanner.value = true
-  scannerError.value = ''
-  
-  // Attendre que le DOM soit mis à jour pour que #qr-reader existe
-  setTimeout(() => {
-    html5QrCode = new Html5Qrcode("qr-reader");
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-    
-    html5QrCode.start(
-      { facingMode: "environment" }, 
-      config, 
-      onScanSuccess, 
-      onScanFailure
-    ).catch(err => {
-      console.error("Erreur scanner:", err);
-      scannerError.value = "Impossible d'accéder à la caméra. Veuillez vérifier les permissions.";
-    });
-  }, 100);
-}
 
-const stopScanner = async () => {
-  if (html5QrCode && html5QrCode.isScanning) {
-    await html5QrCode.stop();
-  }
-  showScanner.value = false
-}
-
-const onScanSuccess = async (decodedText: string) => {
-  console.log(`✅ Code scanné : ${decodedText}`);
-  await stopScanner();
-  
-  try {
-    isVerifying.value = true
-    const result = await deliveryService.verifyScan(order.value!.id, decodedText);
-    
-    // Notification de succès (on peut utiliser un toast si disponible, sinon alert)
-    alert("✅ Livraison validée ! Les fonds ont été libérés sur votre compte.");
-    await fetchOrder(); // Recharger pour voir le statut 'delivered'
-  } catch (error: any) {
-    console.error("Erreur lors de la vérification:", error);
-    alert(`❌ Erreur : ${error.response?.data?.error || error.message || "Code invalide"}`);
-  } finally {
-    isVerifying.value = false
-  }
-}
-
-const onScanFailure = (error: any) => {
-  // On ne loggue pas les erreurs de scan continu pour ne pas spammer la console
-}
 
 const exportToPDF = () => {
   if (!order.value) return;
